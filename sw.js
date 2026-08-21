@@ -3,7 +3,10 @@
    e serve offline. A FIPE nunca é cacheada: valor velho seria pior que
    nenhum valor. */
 
-const VERSAO = 'tmycar-v1';
+/* Suba este número junto com o VERSAO_APP do index.html a cada publicação.
+   É o que faz o cache antigo ser descartado no lugar de ficar servindo
+   arquivos velhos. */
+const VERSAO = 'tmycar-1.0.0';
 const CASCA = [
   './',
   './index.html',
@@ -37,7 +40,7 @@ self.addEventListener('fetch', e => {
 
   const url = new URL(req.url);
 
-  /* consultas externas (FIPE) vão sempre à rede e nunca entram no cache */
+  /* consultas externas (FIPE, Firebase) vão sempre à rede e nunca entram no cache */
   if(url.origin !== self.location.origin) return;
 
   /* navegação: tenta a rede e cai no cache quando estiver offline */
