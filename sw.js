@@ -6,7 +6,7 @@
 /* Suba este número junto com o VERSAO_APP do index.html a cada publicação.
    É o que faz o cache antigo ser descartado no lugar de ficar servindo
    arquivos velhos. */
-const VERSAO = 'tmycar-1.3.24';
+const VERSAO = 'tmycar-1.5.0';
 const CASCA = [
   './',
   './index.html',

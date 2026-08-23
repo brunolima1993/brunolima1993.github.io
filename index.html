@@ -1277,6 +1277,17 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 .opt-item > .seta{margin-left:auto;flex-shrink:0}
 /* ================= FIM DOS AJUSTES ================= */
 
+/* plano indisponível durante o período pago */
+.plano.travado{opacity:.42;cursor:default;filter:saturate(.4)}
+.plano.travado .ppreco, .plano.travado .pnome{color:var(--muted)}
+.plano.travado .rb{border-color:var(--line)}
+.plano.travado .pseta{opacity:.35}
+/* plano marcado para entrar no vencimento */
+.plano.marcado{border-color:rgba(240,180,90,.5);
+  background:linear-gradient(135deg,rgba(240,180,90,.12),rgba(240,180,90,.03))}
+.pselo.agenda{background:rgba(240,180,90,.9);color:#2A1B04}
+.pinfo .lnk{color:#0088ff;text-decoration:underline;cursor:pointer;white-space:nowrap}
+
 /* ================= VERSÃO INSTALADA NO CELULAR ================= */
 html, body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 body{display:block;padding:0;margin:0;background:#03060D}
@@ -2281,6 +2292,12 @@ const modelo = (motor) => {
 let PLANO = 'free';
 let CICLO = 'anual';   /* anual | mensal */
 let TRIAL = { fim:null, usado:false, av3:false, av1:false };   /* teste grátis do Premium */
+/* Período pago em curso e mudança marcada para o fim dele.
+   Numa assinatura real quem cobra é a loja: descer de plano no meio do período
+   pago seria tirar da pessoa algo que ela já pagou. Por isso a descida é
+   agendada, não imediata. */
+let PLANO_ATE = null;        /* fim do período pago, em ISO */
+let PLANO_AGENDADO = null;   /* 'free' ou 'mensal', aplicado no vencimento */
 let VEIC = [];
 let ativo = null;
 
@@ -3766,6 +3783,7 @@ const diasDeTeste = () => TRIAL.fim ? Math.ceil((TRIAL.fim - Date.now()) / 864e5
 /* Vencido o teste, o app volta ao grátis. Se sobrar mais carro do que o plano
    grátis comporta, a pessoa escolhe qual fica — nada é apagado. */
 function conferirTeste(){
+  conferirPeriodo();   /* o período pago pode ter vencido também */
   if(!emTeste() || !TRIAL.fim || Date.now() < TRIAL.fim) return false;
   PLANO = 'free'; CICLO = 'anual';
   persistir(); atualizarNav();
@@ -3774,6 +3792,45 @@ function conferirTeste(){
 /* o downgrade é obrigatório: fechar a folha só adia, não resolve */
 function exigirEscolha(){
   if(carregado && ativos().length > LIMITE()) setTimeout(abrirDowngrade, 400);
+}
+
+/* ---------- período pago e mudanças agendadas ---------- */
+const pagoAtivo = () => PLANO === 'premium' && !emTeste() && PLANO_ATE && Date.now() < new Date(PLANO_ATE + 'T23:59:59');
+const fimDoPeriodo = () => PLANO_ATE ? new Date(PLANO_ATE + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+const ordemPlano = { free:0, mensal:1, anual:2 };
+const eDescida = id => ordemPlano[id] < ordemPlano[planoAtual()];
+
+/* Aplica no vencimento o que foi marcado antes. Roda junto com a checagem
+   do teste, então vale para qualquer tela. */
+function conferirPeriodo(){
+  if(!PLANO_ATE || Date.now() < new Date(PLANO_ATE + 'T23:59:59')) return false;
+  const destino = PLANO_AGENDADO;
+  PLANO_ATE = null; PLANO_AGENDADO = null;
+  if(destino === 'free'){ PLANO = 'free'; }
+  else if(destino === 'mensal'){ CICLO = 'mensal'; renovarPeriodo('mensal'); }
+  else { renovarPeriodo(CICLO); }   /* sem mudança marcada, o plano se renova */
+  persistir(); atualizarNav();
+  return !!destino;
+}
+
+function renovarPeriodo(ciclo){
+  const d = new Date();
+  if(ciclo === 'anual') d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 1);
+  PLANO_ATE = iso(d);
+}
+
+function agendarMudanca(id){
+  PLANO_AGENDADO = id;
+  persistir(); pintarConfig();
+  const nome = id === 'free' ? 'plano grátis' : 'Premium mensal';
+  toast(`Você continua no plano atual até ${fimDoPeriodo()}. Depois passa para o ${nome}.`);
+}
+
+function cancelarAgendamento(){
+  PLANO_AGENDADO = null;
+  persistir(); pintarConfig();
+  toast('Mudança cancelada. Sua assinatura segue como está.');
 }
 
 function escolherPlano(id){
@@ -3786,15 +3843,32 @@ function escolherPlano(id){
       () => go('conta'), 'Criar conta');
     return;
   }
+
+  /* Com período pago em curso, descer não vale na hora: a pessoa pagou até o
+     fim do ciclo e continua com o que contratou. A mudança fica marcada. */
+  if(pagoAtivo() && eDescida(id)){
+    const nome = id === 'free' ? 'plano grátis' : 'Premium mensal';
+    confirmar(
+      id === 'free' ? 'Cancelar a assinatura' : 'Passar para o mensal',
+      `Você já pagou até ${fimDoPeriodo()} e continua com tudo até lá.\n`
+      + `No dia seguinte, sua conta passa para o ${nome}.\n\n`
+      + 'Pode voltar atrás a qualquer momento antes dessa data.',
+      () => agendarMudanca(id),
+      id === 'free' ? 'Cancelar assinatura' : 'Marcar mudança');
+    return;
+  }
+
   if(id === 'free'){
     if(ativos().length > 1){ abrirDowngrade(); return; }   // escolhe qual carro fica
-    PLANO = 'free';
+    PLANO = 'free'; PLANO_ATE = null; PLANO_AGENDADO = null;
   } else {
     const estreia = PLANO === 'free';
     PLANO = 'premium'; CICLO = id;
-    if(estreia && !TRIAL.fim) TRIAL.fim = Date.now() + 14*864e5;
+    PLANO_AGENDADO = null;
+    renovarPeriodo(id);
+    if(estreia && !TRIAL.usado && !TRIAL.fim) TRIAL.fim = Date.now() + 14*864e5;
     restaurados = promoverGuardados();
-    toast(estreia ? 'Premium ativo por 14 dias.' : `Plano alterado para ${id === 'anual' ? 'anual' : 'mensal'}.`);
+    toast(estreia ? 'Premium ativo.' : `Plano alterado para ${id === 'anual' ? 'anual' : 'mensal'}.`);
   }
   corrigirAtivo(); persistir(); atualizarNav();
   if(restaurados) go('garagem'); else pintarConfig();
@@ -3835,20 +3909,35 @@ const ico = n => ICONES[n] || '';
 
 function pintarPlanos(){
   const atual = planoAtual();
+  const pago  = pagoAtivo();
+
   $('cfPlanos').innerHTML = `
     <div class="planos">${PLANOS.map(p => {
       const sel = p.id === atual;
-      return `<div class="plano ${sel?'sel':''}" onclick="escolherPlano('${p.id}')">
+      const marcado = PLANO_AGENDADO === p.id;
+      /* com período pago em curso, os planos abaixo do atual ficam apagados:
+         não dá para descer no meio de algo que já foi pago */
+      const travado = pago && !sel && eDescida(p.id) && !marcado;
+      const cls = ['plano', sel?'sel':'', travado?'travado':'', marcado?'marcado':''].filter(Boolean).join(' ');
+      return `<div class="${cls}" onclick="escolherPlano('${p.id}')">
         <span class="rb"></span>
         <div class="pbody">
-          ${p.selo ? `<span class="pselo">${p.selo}</span>` : ''}
-          <div class="pnome">${p.nome}${p.eco?`<span class="peco">${p.eco}</span>`:''}</div>
-          <div class="pnota">${p.nota}</div>
+          ${p.selo && !travado && !sel ? `<span class="pselo">${p.selo}</span>` : ''}
+          ${marcado ? `<span class="pselo agenda">A partir de ${fimDoPeriodo()}</span>` : ''}
+          <div class="pnome">${p.nome}${p.eco && !travado?`<span class="peco">${p.eco}</span>`:''}</div>
+          <div class="pnota">${travado ? `Disponível depois de ${fimDoPeriodo()}` : p.nota}</div>
         </div>
         <div class="ppreco">${p.preco}</div>
         <span class="pseta seta-ic ${p.id==='free'?'pseta-vazia':''}" aria-hidden="true">${p.id!=='free' ? ico('chevron-right') : ''}</span>
       </div>`;
-    }).join('')}</div>`;
+    }).join('')}</div>
+
+    ${pago ? `<div class="pinfo" style="margin-top:11px">
+      <span>${PLANO_AGENDADO
+        ? `Sua assinatura vale até <b>${fimDoPeriodo()}</b>. Depois dessa data você passa para o <b>${PLANO_AGENDADO === 'free' ? 'plano grátis' : 'Premium mensal'}</b>.
+           <span class="lnk" onclick="cancelarAgendamento()">Cancelar essa mudança</span>`
+        : `Sua assinatura está ativa e se renova em <b>${fimDoPeriodo()}</b>. Você pode subir de plano quando quiser; descer só vale a partir dessa data.`}
+      </span></div>` : ''}`;
 }
 
 function pintarConfig(){
@@ -3985,6 +4074,7 @@ function ativarPremium(){
     toast('Teste ativo por 14 dias.');
   } else {
     PLANO = 'premium'; CICLO = precoEscolhido;
+    PLANO_AGENDADO = null; renovarPeriodo(precoEscolhido);
     toast(`Premium ${precoEscolhido === 'anual' ? 'anual' : 'mensal'} ativo.`);
   }
   const restaurados = promoverGuardados();
@@ -4346,7 +4436,14 @@ function obMsg(alvo, txt){
    Cole abaixo o objeto de configuração do seu projeto no Firebase.
    Enquanto ele for null, o app funciona igual a antes: tudo local,
    sem login de verdade e sem cópia na nuvem. */
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBV8AaQ0YX0fl4soUT0brAcnTO37qTJxDw",
+  authDomain: "tmycar-222e5.firebaseapp.com",
+  projectId: "tmycar-222e5",
+  storageBucket: "tmycar-222e5.firebasestorage.app",
+  messagingSenderId: "357646169698",
+  appId: "1:357646169698:web:936c7aa80641b6db26c33b"
+};
 /* exemplo:
 const FIREBASE_CONFIG = {
   apiKey: "...", authDomain: "seu-projeto.firebaseapp.com",
@@ -4513,6 +4610,8 @@ function aplicarEstado(d){
   if(Array.isArray(d.AVISOS))    AVISOS = d.AVISOS;
   if(d.PLANO) PLANO = d.PLANO;
   if(d.CICLO) CICLO = d.CICLO; if(d.TRIAL) Object.assign(TRIAL, d.TRIAL);
+      if(d.PLANO_ATE) PLANO_ATE = d.PLANO_ATE;
+      if(d.PLANO_AGENDADO) PLANO_AGENDADO = d.PLANO_AGENDADO;
   if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
   if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
   if(d.CONSENT) Object.assign(CONSENT, d.CONSENT);
@@ -4790,7 +4889,7 @@ function fecharFolhas(){
 const CHAVE = 'tmycar:dados:v1';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.3.24';
+const VERSAO_APP = '1.5.0';
 let ONBOARD = false;
 let carregado = false;
 
@@ -4823,7 +4922,8 @@ async function persistirLocal(){
   ULTIMA_GRAVACAO = Date.now();
   try{
     await ARMAZEM.set(CHAVE, JSON.stringify({
-      VEIC, REGISTROS, PLANO, CICLO, TRIAL, NOTIF, USUARIO, ativo, ONBOARD, CONSENT, CONTA, AVISOS
+      VEIC, REGISTROS, PLANO, CICLO, TRIAL, NOTIF, USUARIO, ativo, ONBOARD, CONSENT, CONTA, AVISOS,
+      PLANO_ATE, PLANO_AGENDADO
     }));
   }catch(e){ /* sem storage: o demo segue só em memória */ }
 }
@@ -4837,6 +4937,8 @@ async function carregar(){
       if(Array.isArray(d.REGISTROS)) REGISTROS = d.REGISTROS;
       if(d.PLANO) PLANO = d.PLANO;
       if(d.CICLO) CICLO = d.CICLO; if(d.TRIAL) Object.assign(TRIAL, d.TRIAL);
+      if(d.PLANO_ATE) PLANO_ATE = d.PLANO_ATE;
+      if(d.PLANO_AGENDADO) PLANO_AGENDADO = d.PLANO_AGENDADO;
       if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
       if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
       if(typeof d.ativo === 'number') ativo = d.ativo;
