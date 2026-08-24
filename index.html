@@ -4480,17 +4480,34 @@ function iniciarFirebase(){
 const telaAtual = () => { const a = document.querySelector('.screen.active'); return a ? a.id.replace('s-','') : ''; };
 
 /* traduz os erros do Firebase, que chegam em inglês e em código */
+/* Desistir não é erro: quem fecha a janela do Google ou toca em cancelar
+   fez uma escolha, e não precisa levar bronca por isso. */
+const CANCELOU = ['user-cancelled','popup-closed-by-user','cancelled-popup-request','user-disabled-popup'];
+
 function erroAuth(e){
   const c = (e && e.code) || '';
+  if(CANCELOU.some(x => c.includes(x))) return '';   /* silêncio proposital */
+
   if(c.includes('email-already-in-use')) return 'Esse e-mail já tem conta. Toque em "Já tenho conta" para entrar.';
   if(c.includes('invalid-email'))        return 'Confira o e-mail — parece incompleto.';
+  if(c.includes('missing-password'))     return 'Digite sua senha.';
   if(c.includes('weak-password'))        return 'A senha precisa de pelo menos 6 caracteres.';
   if(c.includes('user-not-found'))       return 'Não encontramos conta com esse e-mail.';
+  if(c.includes('user-disabled'))        return 'Esta conta está desativada. Fale com o suporte.';
   if(c.includes('wrong-password') || c.includes('invalid-credential')) return 'E-mail ou senha não conferem.';
-  if(c.includes('too-many-requests'))    return 'Muitas tentativas seguidas. Espere um pouco e tente de novo.';
-  if(c.includes('network'))              return 'Sem conexão com a internet.';
-  if(c.includes('popup-blocked') || c.includes('popup-closed')) return 'A janela do Google fechou antes de concluir.';
-  return (e && e.message) || 'Não deu para concluir agora.';
+  if(c.includes('too-many-requests'))    return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.';
+  if(c.includes('network'))              return 'Sem conexão com a internet. Verifique e tente de novo.';
+  if(c.includes('popup-blocked'))        return 'Seu navegador bloqueou a janela do Google. Libere as janelas pop-up e tente de novo.';
+  if(c.includes('unauthorized-domain'))  return 'Este endereço ainda não foi liberado para login. Avise o suporte.';
+  if(c.includes('operation-not-allowed'))return 'Esse jeito de entrar ainda não está disponível.';
+  if(c.includes('account-exists-with-different-credential'))
+    return 'Esse e-mail já foi cadastrado por outro caminho. Entre com e-mail e senha.';
+  if(c.includes('requires-recent-login')) return 'Por segurança, entre de novo antes de continuar.';
+  if(c.includes('internal-error'))       return 'O serviço de login falhou. Tente de novo em instantes.';
+
+  /* Nunca devolver a mensagem crua: ela vem em inglês e cheia de código. */
+  if(typeof console !== 'undefined' && console.warn) console.warn('auth:', c, e && e.message);
+  return 'Não deu para concluir agora. Tente de novo em instantes.';
 }
 
 function temFirebase(){
@@ -4518,7 +4535,10 @@ async function entrarComGoogle(){
     await AUTH.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     obMsg('obMsgConta','');
     go(ONBOARD ? 'garagem' : 'identidade');
-  }catch(e){ obMsg('obMsgConta', erroAuth(e)); }
+  }catch(e){
+    const m = erroAuth(e);
+    obMsg('obMsgConta', m);   /* vazio quando a pessoa só desistiu */
+  }
 }
 
 async function obContaOk(){
@@ -4889,7 +4909,7 @@ function fecharFolhas(){
 const CHAVE = 'tmycar:dados:v1';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.0';
+const VERSAO_APP = '1.5.1';
 let ONBOARD = false;
 let carregado = false;
 
