@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    /* O app ainda não possui upload. Mantemos o Storage fechado até existir
+       uma política específica de tipo, tamanho, proprietário e antivírus. */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

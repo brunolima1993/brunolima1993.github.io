@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function contaConfirmada() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
+    function dono(uid) {
+      return contaConfirmada() && request.auth.uid == uid;
+    }
+
+    function perfilValido() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'schemaVersion', 'VEIC', 'REGISTROS', 'NOTIF', 'USUARIO',
+          'ativo', 'ONBOARD', 'CONSENT', 'AVISOS', 'em'
+        ])
+        && d.keys().hasOnly([
+          'schemaVersion', 'VEIC', 'REGISTROS', 'NOTIF', 'USUARIO',
+          'ativo', 'ONBOARD', 'CONSENT', 'AVISOS', 'em'
+        ])
+        && d.schemaVersion == 2
+        && d.VEIC is list && d.VEIC.size() <= 3
+        && d.REGISTROS is list && d.REGISTROS.size() <= 2000
+        && d.AVISOS is list && d.AVISOS.size() <= 500
+        && d.NOTIF is map
+        && d.NOTIF.keys().hasAll(['nGeral', 'nData', 'nKm'])
+        && d.NOTIF.keys().hasOnly(['nGeral', 'nData', 'nKm'])
+        && d.NOTIF.nGeral is bool
+        && d.NOTIF.nData is bool
+        && d.NOTIF.nKm is bool
+        && d.USUARIO is map
+        && d.USUARIO.keys().hasAll(['nome'])
+        && d.USUARIO.keys().hasOnly(['nome', 'sobrenome'])
+        && d.USUARIO.nome is string && d.USUARIO.nome.size() <= 30
+        && (!d.USUARIO.keys().hasAny(['sobrenome'])
+          || (d.USUARIO.sobrenome is string && d.USUARIO.sobrenome.size() <= 40))
+        && (d.ativo == null || d.ativo is int)
+        && d.ONBOARD is bool
+        && d.CONSENT is map
+        && d.CONSENT.keys().hasAll(['termos', 'em'])
+        && d.CONSENT.keys().hasOnly(['termos', 'em'])
+        && d.CONSENT.termos is bool
+        && (d.CONSENT.em == null
+          || (d.CONSENT.em is string && d.CONSENT.em.size() <= 10))
+        && d.em is int;
+    }
+
+    match /usuarios/{uid} {
+      allow read, delete: if dono(uid);
+      allow create, update: if dono(uid) && perfilValido();
+    }
+
+    /* Assinatura, teste grátis e vencimentos são legíveis pelo titular, mas
+       somente Admin SDK/Cloud Functions podem gravar. SDKs administrativos
+       não passam pelas Security Rules. */
+    match /assinaturas/{uid} {
+      allow read: if dono(uid);
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

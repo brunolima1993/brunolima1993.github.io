@@ -116,7 +116,7 @@ body{background:radial-gradient(circle at 50% 0%,#25324A,#0E1420 70%);
   padding:3px 8px;border-radius:6px;white-space:nowrap}
 .ok{background:var(--green-soft);color:var(--green)}
 .warn{background:var(--amber-soft);color:var(--amber)}
-.due{background:var(--red-soft);color:var(--red)}
+.status.bad,.due{background:var(--red-soft);color:var(--red)}
 .chev{color:var(--dim);font-size:15px}
 
 .add-wrap{padding:18px 20px 22px}
@@ -129,8 +129,13 @@ body{background:radial-gradient(circle at 50% 0%,#25324A,#0E1420 70%);
   display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;flex-shrink:0;
   box-shadow:0 4px 14px rgba(20,90,180,.3)}
 
-.sp-top{display:flex;justify-content:space-between;margin-bottom:14px}
+.sp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.sp-top .status{flex-shrink:0}
 .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.sp-copy{min-width:0;padding-right:10px}
+.oleo-recomendado{display:block;margin-top:4px;font-size:10.5px;font-weight:600;letter-spacing:.01em;
+  text-transform:none;color:var(--dim);line-height:1.35}
+.oleo-recomendado b{color:#20b7ff;text-shadow:0 0 8px rgba(0,174,255,.58);font-weight:800}
 .pill{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.03em;
   text-transform:uppercase;padding:4px 10px;border-radius:7px}
 .pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
@@ -1833,6 +1838,8 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   .nav{padding-bottom:max(6px,env(safe-area-inset-bottom))!important}
   .toast{bottom:calc(72px + env(safe-area-inset-bottom))}
 }
+#shBoxKm .flabel{text-align:center!important}
+#shBoxKm input{text-align:center!important}
 /* ================= FIM DO FLUXO DE ACESSO ================= */
 </style>
 </head>
@@ -2430,6 +2437,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="section-title" id="shTitle">Registrar troca</div>
       <div id="shPartes"></div>
       <div id="shCambio"></div>
+      <div id="shOleoMotor"></div>
       <div class="card" style="padding:4px 16px">
         <div id="shNaoSei"></div>
         <div class="field ctr" id="shBoxKm"><label class="flabel">KM do carro na troca</label><input class="mono" id="shKm" inputmode="numeric"></div>
@@ -3293,13 +3301,17 @@ function pintarPainel(){
       }
       const c = calc(it, v.km, it.ultKm, it.ultData);
       const kmManda = c.manda==='km';
-      /* a viscosidade que o dono informou no cadastro estava sendo guardada e nunca mostrada */
-      const extra = (it.id === 'oleo' && v.oleo && v.oleo !== '—')
-        ? `<span style="color:var(--ink)"> · ${esc(v.oleo)}</span>`
-        : (it.id === 'cambio' && it.oleo)
+      /* A especificação do cadastro é a recomendação. No óleo do motor ela
+         fica em uma segunda linha para não quebrar o cabeçalho do card. */
+      const extra = (it.id === 'cambio' && it.oleo)
         ? `<span style="color:var(--ink)"> · ${esc(it.oleo)}</span>` : '';
+      const recomendacaoOleo = it.id === 'oleo' && v.oleo && v.oleo !== '—'
+        ? `<span class="oleo-recomendado">recomendado <b>${esc(v.oleo)}</b></span>` : '';
+      const oleoRegistrado = it.id === 'oleo' && it.oleoUsado
+        ? `<div class="odo-hint" style="text-align:left;margin-top:9px;color:var(--muted)">Última troca registrada com <b style="color:var(--ink)">${esc(it.oleoUsado)}</b>.</div>`
+        : '';
       h += `<div class="card" style="color:${corDe(c.cl)}">
-        <div class="sp-top"><span class="eyebrow">${esc(it.crit)}${extra}</span>
+        <div class="sp-top"><div class="sp-copy"><span class="eyebrow">${esc(it.crit)}${extra}</span>${recomendacaoOleo}</div>
           <span class="status ${c.cl}">${c.rot}</span></div>
         <div style="color:var(--ink);font-size:15px;font-weight:700;margin-bottom:3px">${esc(it.nome)}</div>
         <div class="sdate">${
@@ -3312,6 +3324,7 @@ function pintarPainel(){
           <div class="critbox ${kmManda?'manda':''}"><b>Por quilometragem</b><span style="color:${kmManda?'inherit':'var(--ink)'}">${c.proxKm?fmt(c.proxKm)+' km':'—'}</span></div>
           <div class="critbox ${!kmManda?'manda':''}"><b>Por tempo</b><span style="color:${!kmManda?'inherit':'var(--ink)'}">${c.proxData?mesAno(c.proxData):'—'}</span></div>
         </div>
+        ${oleoRegistrado}
         ${c.brando?`<div class="msgbox w" style="margin-top:11px"><span>Passou do prazo em anos, mas ainda faltam ${fmt(c.km)} km. A borracha resseca com o tempo — vale inspecionar na próxima revisão, não é urgência.</span></div>`:''}
         ${it.obs?`<div class="odo-hint" style="text-align:left;margin-top:10px;color:var(--dim)">${it.obs}</div>`:''}
         <button class="cta outline" style="margin-top:12px;padding:9px;font-size:12.5px" onclick="abrirSheet('${it.id}')">Registrar troca</button>
@@ -3956,6 +3969,7 @@ function abrirSheet(id){
 
   /* o câmbio pede duas coisas a mais: o tipo e o óleo, e aceita "não sei" */
   const ehCambio = itAtual.id === 'cambio';
+  const ehOleoMotor = itAtual.id === 'oleo';
   shNaoSei = false;
   $('shCambio').innerHTML = ehCambio ? `
     <div class="card" style="margin-bottom:12px">
@@ -3972,6 +3986,16 @@ function abrirSheet(id){
         <p class="ajuda">Se não souber, deixe em branco — dá para salvar assim.</p>
       </div>
       <p class="ajuda" style="margin-top:6px">O intervalo varia entre modelos e entre automático e manual. <b style="color:var(--ink)">Confira o manual antes de executar a troca.</b></p>
+    </div>` : '';
+
+  const oleoRecomendado = v.oleo && v.oleo !== '—' ? v.oleo : '';
+  $('shOleoMotor').innerHTML = ehOleoMotor ? `
+    <div class="card" style="margin-bottom:12px;padding:4px 16px">
+      <div class="field">
+        <label class="flabel">Viscosidade utilizada <span style="color:var(--dim);font-weight:500">· opcional</span></label>
+        <input id="shViscosidade" maxlength="30" placeholder="ex.: 5W-30, 10W-40" value="${esc(itAtual.oleoUsado||'')}">
+        <p class="ajuda">Registre o óleo que foi realmente colocado nesta troca.${oleoRecomendado ? ` A recomendação do app é <b style="color:var(--ink)">${esc(oleoRecomendado)}</b>.` : ''}</p>
+      </div>
     </div>` : '';
 
   $('shNaoSei').innerHTML = ehCambio ? `
@@ -4056,6 +4080,11 @@ function salvarTroca(){
     itAtual.oleo = ($('shOleoCambio') ? $('shOleoCambio').value : '').trim();
     itAtual.crit = itAtual.tipo === 'automatico' ? 'câmbio automático' : 'câmbio manual';
   }
+  if(itAtual.id === 'oleo'){
+    const viscosidade = ($('shViscosidade') ? $('shViscosidade').value : '').trim();
+    if(viscosidade) itAtual.oleoUsado = viscosidade;
+    else delete itAtual.oleoUsado;
+  }
   if(marc){
     itAtual.partes.forEach(p => {
       /* o intervalo vale para todos; a troca, só para os marcados */
@@ -4074,8 +4103,9 @@ function salvarTroca(){
     itAtual.ikm  = novos.__item.ikm;
     itAtual.imes = novos.__item.imes;
   }
-  if(km && km>v.km) v.km = km;
-
+  /* Uma troca acima do odômetro salvo também representa uma leitura mais nova.
+     Uma troca histórica abaixo do KM atual é guardada sem reduzir o odômetro. */
+  if(km && km > v.km) v.km = km;
   varrerPrazos(); varrerPendencias(); persistir(); fecharSheet(); pintarPainel(); pintarSino();
 }
 function abrirOdo(){
@@ -5048,15 +5078,27 @@ function sincronizarContaAutenticada(u){
     CONTA = { email:u.email || null, local:false };
     return Promise.resolve({ existe:false, perfilConcluido:false, emailNaoVerificado:true });
   }
-  EMAIL_VERIFICACAO_PENDENTE = null;
-  UID = u.uid;
-  CONTA = { email:u.email || null, local:false };
-  if(u.displayName && !USUARIO.nome) USUARIO.nome = u.displayName.split(' ')[0];
-  if(SINCRONIZACAO_UID !== UID || !SINCRONIZACAO_CONTA){
-    SINCRONIZACAO_UID = UID;
-    SINCRONIZACAO_CONTA = puxarDaNuvem();
-  }
+  if(SINCRONIZACAO_UID === u.uid && SINCRONIZACAO_CONTA) return SINCRONIZACAO_CONTA;
+
+  /* Antes de consultar a nuvem, muda para o espaço local exclusivo desse UID.
+     Assim, dados anônimos ou de outra conta nunca entram na comparação nem
+     podem ser enviados para o usuário que acabou de entrar. */
+  SINCRONIZACAO_UID = u.uid;
+  SINCRONIZACAO_CONTA = (async() => {
+    await ativarContextoUsuario(u);
+    EMAIL_VERIFICACAO_PENDENTE = null;
+    UID = u.uid;
+    CONTA = { email:u.email || null, local:false };
+    if(u.displayName && !USUARIO.nome) USUARIO.nome = u.displayName.split(' ')[0];
+    return puxarDaNuvem();
+  })();
   return SINCRONIZACAO_CONTA;
+}
+
+function navegarDepoisDaAutenticacao(entrada){
+  go(entrada && entrada.perfilConcluido ? 'garagem' : 'identidade');
+  if(entrada && entrada.importacaoDisponivel)
+    setTimeout(oferecerImportacaoAnonima, 180);
 }
 
 function iniciarFirebase(){
@@ -5076,15 +5118,29 @@ function iniciarFirebase(){
           SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
           if(carregado && telaAtual() !== 'criar-conta') mostrarVerificacaoEmail(u.email);
         }else{
-          await sincronizarContaAutenticada(u);
+          const entrada = await sincronizarContaAutenticada(u);
+          if(carregado){
+            const atual = telaAtual();
+            if(entrada && entrada.perfilConcluido &&
+               ['bemvindo','conta','criar-conta','verificar-email'].includes(atual))
+              go('garagem');
+            else if(entrada && !entrada.perfilConcluido && atual === 'bemvindo')
+              go('identidade');
+            if(entrada && entrada.importacaoDisponivel)
+              setTimeout(oferecerImportacaoAnonima, 180);
+          }
         }
       }else{
+        await ativarContextoAnonimo();
         UID = null;
         CONTA = { email:null, local:true };
         EMAIL_VERIFICACAO_PENDENTE = null;
         SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
       }
-      if(!EXCLUINDO_CONTA) persistir();
+      /* Uma conta ainda não verificada não deve carimbar seu e-mail no espaço
+         anônimo nem provocar gravações antes de receber autorização. */
+      if(!EXCLUINDO_CONTA && !IMPORTACAO_ANONIMA_DISPONIVEL &&
+         (!u || !contaPrecisaVerificacao(u))) persistir();
       if(carregado){
         atualizarNav();
         const atual = telaAtual();
@@ -5250,7 +5306,7 @@ async function confirmarVerificacaoEmail(){
     const entrada = await sincronizarContaAutenticada(atualizado);
     persistir();
     toast('E-mail confirmado. Conta liberada!');
-    go(entrada.perfilConcluido ? 'garagem' : 'identidade');
+    navegarDepoisDaAutenticacao(entrada);
   }catch(err){
     msgVerificacao(erroAuth(err), 'e');
   }finally{
@@ -5282,7 +5338,7 @@ async function entrarComGoogle(origem='conta'){
     const entrada = await sincronizarContaAutenticada(cred.user);
     obMsg(alvo,'');
     origemIdentidade = origem;
-    go(entrada.perfilConcluido ? 'garagem' : 'identidade');
+    navegarDepoisDaAutenticacao(entrada);
   }catch(e){
     const m = erroAuth(e);
     obMsg(alvo, m);   /* vazio quando a pessoa só desistiu */
@@ -5307,7 +5363,7 @@ async function entrarConta(){
     }
     const entrada = await sincronizarContaAutenticada(cred.user);
     obMsg('obMsgConta','');
-    go(entrada.perfilConcluido ? 'garagem' : 'identidade');
+    navegarDepoisDaAutenticacao(entrada);
   }catch(err){ obMsg('obMsgConta', erroAuth(err)); }
 }
 
@@ -5359,11 +5415,16 @@ async function recuperarSenha(){
 }
 
 async function sairDaConta(){
-  if(AUTH && UID){ try{ await AUTH.signOut(); }catch(e){} }
+  /* Salva somente no espaço desta conta. A troca para o espaço anônimo ocorre
+     antes de qualquer nova renderização, evitando resíduos no aparelho. */
+  if(UID) await persistirLocal();
+  if(UID) await salvarNaNuvemAgora();
+  if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
+  await ativarContextoAnonimo();
   CONTA = { email:null, local:true }; UID = null;
   EMAIL_VERIFICACAO_PENDENTE = null;
   SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
-  ONBOARD = false; persistir(); go('bemvindo');
+  persistir(); go('bemvindo');
 }
 
 function provedoresDaConta(u){
@@ -5411,20 +5472,22 @@ function abrirExclusaoConta(){
   if(usaSenha && $('cfSenhaExcluir')) setTimeout(() => $('cfSenhaExcluir').focus(), 120);
 }
 
-async function limparDadosLocaisDaConta(){
+async function limparDadosLocaisDaConta(uidExcluir=null){
   clearTimeout(envioPendente); envioPendente = null;
-  VEIC = []; REGISTROS = []; AVISOS = [];
-  ativo = null; veicSel = null;
-  PLANO = 'free'; CICLO = 'anual';
-  TRIAL = { fim:null, usado:false, av3:false, av1:false };
-  PLANO_ATE = null; PLANO_AGENDADO = null;
-  NOTIF.nGeral = true; NOTIF.nData = true; NOTIF.nKm = true;
-  USUARIO.nome = ''; delete USUARIO.sobrenome;
-  ONBOARD = false; CONSENT = { termos:false, em:null };
-  CONTA = { email:null, local:true }; UID = null;
+  const uidAlvo = uidExcluir || UID || (AUTH && AUTH.currentUser && AUTH.currentUser.uid) || null;
+  resetarEstadoEmMemoria();
+  UID = null;
   EMAIL_VERIFICACAO_PENDENTE = null;
+  IMPORTACAO_ANONIMA_DISPONIVEL = false;
   SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
-  try{ await ARMAZEM.delete(CHAVE); }catch(e){}
+  try{
+    await ARMAZEM.delete(uidAlvo ? chaveDoUsuario(uidAlvo) : CHAVE_ANONIMA);
+    /* Na exclusão de uma conta, também remove sobras locais antigas desse
+       aparelho. A ação já foi confirmada como exclusão definitiva. */
+    if(uidAlvo) await ARMAZEM.delete(CHAVE_ANONIMA);
+    await ARMAZEM.delete(CHAVE_LEGADA);
+  }catch(e){}
+  CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
   atualizarNav(); pintarSino();
 }
 
@@ -5464,11 +5527,11 @@ async function excluirConta(){
     clearTimeout(envioPendente); envioPendente = null;
     EXCLUINDO_CONTA = true;
     refConta = NUVEM.collection('usuarios').doc(u.uid);
-    copiaSeguranca = JSON.parse(JSON.stringify(estadoAtual()));
+    copiaSeguranca = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
     await refConta.delete();
     dadosNuvemApagados = true;
     await u.delete();
-    await limparDadosLocaisDaConta();
+    await limparDadosLocaisDaConta(u.uid);
     EXCLUINDO_CONTA = false;
     fecharConfirma(); go('bemvindo'); toast('Conta excluída definitivamente.');
   }catch(e){
@@ -5496,32 +5559,70 @@ async function excluirConta(){
 }
 
 /* ---------- cópia na nuvem ----------
-   É isso que transforma a conta numa promessa cumprida: sem sincronizar,
-   criar conta não protegeria nada. */
-function estadoAtual(){
-  return { VEIC, REGISTROS, PLANO, CICLO, TRIAL, NOTIF, USUARIO, ativo,
+   O perfil gravado pelo navegador contém apenas dados que pertencem ao
+   usuário. Plano, teste e vencimento são deliberadamente excluídos: quando a
+   cobrança entrar, esses campos ficarão em /assinaturas/{uid} e só o servidor
+   da loja poderá escrevê-los. */
+function dadosUsuarioAtual(){
+  return { schemaVersion:2, VEIC, REGISTROS, NOTIF, USUARIO, ativo,
            ONBOARD, CONSENT, AVISOS, em: Date.now() };
 }
 
+/* Estado completo é apenas o cache local do protótipo. Nunca deve ser usado
+   como autorização para liberar recursos pagos no servidor. */
+function estadoAtual(){
+  return { ...dadosUsuarioAtual(), PLANO, CICLO, TRIAL, PLANO_ATE, PLANO_AGENDADO,
+           CONTA };
+}
+
 let envioPendente = null;
+async function salvarNaNuvemAgora(){
+  if(!NUVEM || !UID) return false;
+  clearTimeout(envioPendente); envioPendente = null;
+  const uidDestino = UID;
+  const pacote = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
+  try{
+    await NUVEM.collection('usuarios').doc(uidDestino).set(pacote, { merge:false });
+    return true;
+  }catch(e){ return false; }
+}
+
 function mandarParaNuvem(){
   if(!NUVEM || !UID) return;
   clearTimeout(envioPendente);                    /* junta várias gravações seguidas */
+  const uidDestino = UID;
+  const pacote = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
   envioPendente = setTimeout(() => {
-    NUVEM.collection('usuarios').doc(UID)
-      .set(JSON.parse(JSON.stringify(estadoAtual())), { merge:false })
+    /* UID e conteúdo são capturados juntos. Uma troca de conta durante os
+       1,2 s de espera nunca redireciona um pacote antigo ao novo usuário. */
+    NUVEM.collection('usuarios').doc(uidDestino)
+      .set(pacote, { merge:false })
       .catch(() => {});                            /* falhar aqui nunca trava o app */
   }, 1200);
 }
 
+let IMPORTACAO_ANONIMA_DISPONIVEL = false;
+
 async function puxarDaNuvem(){
   if(!NUVEM || !UID) return { existe:false, perfilConcluido:!!ONBOARD };
+  IMPORTACAO_ANONIMA_DISPONIVEL = false;
   try{
     const doc = await NUVEM.collection('usuarios').doc(UID).get();
     if(!doc.exists){
+      const temCacheDaConta = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length) || ONBOARD;
+      if(temCacheDaConta){
+        /* O cache já pertence a este UID: pode reconstruir o documento sem
+           consultar ou misturar o espaço anônimo. */
+        mandarParaNuvem();
+        return { existe:false, perfilConcluido:!!ONBOARD, restauradoDoCache:true };
+      }
       ONBOARD = false;
-      mandarParaNuvem();
-      return { existe:false, perfilConcluido:false };
+      /* Dados do modo sem conta nunca são enviados automaticamente. Só a
+         confirmação explícita do usuário pode vinculá-los a esta conta. */
+      IMPORTACAO_ANONIMA_DISPONIVEL = await temDadosAnonimosParaImportar();
+      if(!IMPORTACAO_ANONIMA_DISPONIVEL) mandarParaNuvem();
+      return { existe:false, perfilConcluido:false,
+               importacaoDisponivel:IMPORTACAO_ANONIMA_DISPONIVEL };
     }   /* primeira vez: sobe o que há aqui */
     const d = doc.data() || {};
     const perfilConcluido = d.ONBOARD === true;
@@ -5564,18 +5665,48 @@ function aplicarEstado(d){
   if(Array.isArray(d.VEIC))      VEIC = d.VEIC;
   if(Array.isArray(d.REGISTROS)) REGISTROS = d.REGISTROS;
   if(Array.isArray(d.AVISOS))    AVISOS = d.AVISOS;
-  if(d.PLANO) PLANO = d.PLANO;
-  if(d.CICLO) CICLO = d.CICLO; if(d.TRIAL) Object.assign(TRIAL, d.TRIAL);
-      if(d.PLANO_ATE) PLANO_ATE = d.PLANO_ATE;
-      if(d.PLANO_AGENDADO) PLANO_AGENDADO = d.PLANO_AGENDADO;
   if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
   if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
   if(d.CONSENT) Object.assign(CONSENT, d.CONSENT);
-  if(typeof d.ativo === 'number') ativo = d.ativo;
-  if(d.ONBOARD) ONBOARD = true;
+  if(d.ativo === null || typeof d.ativo === 'number') ativo = d.ativo;
+  if(typeof d.ONBOARD === 'boolean') ONBOARD = d.ONBOARD;
   migrarItens(); corrigirAtivo();
   ULTIMA_GRAVACAO = d.em || Date.now();
   persistirLocal();
+}
+
+async function temDadosAnonimosParaImportar(){
+  const d = await lerEstadoLocal(CHAVE_ANONIMA);
+  return !!(d && d.CONTA && d.CONTA.local !== false &&
+    ((Array.isArray(d.VEIC) && d.VEIC.length) ||
+     (Array.isArray(d.REGISTROS) && d.REGISTROS.length)));
+}
+
+function oferecerImportacaoAnonima(){
+  if(!IMPORTACAO_ANONIMA_DISPONIVEL || !UID) return;
+  IMPORTACAO_ANONIMA_DISPONIVEL = false; /* evita duas folhas pelo observador e pelo botão */
+  confirmar('Levar os dados deste aparelho?',
+    'Encontramos veículos ou lançamentos usados anteriormente no modo sem conta. Só vamos vinculá-los à conta atual se você confirmar.',
+    () => importarDadosAnonimosNaConta(), 'Levar para minha conta');
+}
+
+async function importarDadosAnonimosNaConta(){
+  if(!UID || CONTEXTO_LOCAL !== `uid:${UID}`) return;
+  const d = await lerEstadoLocal(CHAVE_ANONIMA);
+  if(!d || !d.CONTA || d.CONTA.local === false){
+    toast('Não há dados do modo sem conta para importar.');
+    return;
+  }
+  resetarEstadoEmMemoria();
+  aplicarEstado(d);                 /* aplica somente os campos editáveis */
+  CONTA = { email:(AUTH && AUTH.currentUser && AUTH.currentUser.email) || null, local:false };
+  ONBOARD = !!d.ONBOARD;
+  await persistirLocal();
+  mandarParaNuvem();
+  await ARMAZEM.delete(CHAVE_ANONIMA);
+  atualizarNav(); pintarSino();
+  go(ONBOARD ? 'garagem' : 'identidade');
+  toast('Dados vinculados à sua conta.');
 }
 
 
@@ -5850,10 +5981,15 @@ function fecharFolhas(){
 }
 
 /* ================= PERSISTÊNCIA ================= */
-const CHAVE = 'tmycar:dados:v1';
+const CHAVE_LEGADA = 'tmycar:dados:v1';
+const PREFIXO_CHAVE = 'tmycar:dados:v2';
+const CHAVE_ANONIMA = `${PREFIXO_CHAVE}:anonimo`;
+const chaveDoUsuario = uid => `${PREFIXO_CHAVE}:usuario:${uid}`;
+let CHAVE_ATIVA = CHAVE_ANONIMA;
+let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.44';
+const VERSAO_APP = '1.5.48';
 let ONBOARD = false;
 let carregado = false;
 
@@ -5876,6 +6012,99 @@ const ARMAZEM = {
 
 let ULTIMA_GRAVACAO = 0;
 
+async function lerEstadoLocal(chave){
+  try{
+    const r = await ARMAZEM.get(chave);
+    return r && r.value ? JSON.parse(r.value) : null;
+  }catch(e){ return null; }
+}
+
+function resetarEstadoEmMemoria(){
+  VEIC = []; REGISTROS = []; AVISOS = [];
+  ativo = null; veicSel = null;
+  PLANO = 'free'; CICLO = 'anual';
+  TRIAL = { fim:null, usado:false, av3:false, av1:false };
+  PLANO_ATE = null; PLANO_AGENDADO = null;
+  NOTIF.nGeral = true; NOTIF.nData = true; NOTIF.nKm = true;
+  USUARIO.nome = ''; delete USUARIO.sobrenome;
+  ONBOARD = false; CONSENT = { termos:false, em:null };
+  CONTA = { email:null, local:true };
+  ULTIMA_GRAVACAO = 0;
+}
+
+function aplicarEstadoLocalCompleto(d){
+  resetarEstadoEmMemoria();
+  if(!d || typeof d !== 'object') return;
+  if(Array.isArray(d.VEIC))       VEIC = d.VEIC;
+  if(Array.isArray(d.REGISTROS))  REGISTROS = d.REGISTROS;
+  if(Array.isArray(d.AVISOS))     AVISOS = d.AVISOS;
+  if(d.PLANO) PLANO = d.PLANO;
+  if(d.CICLO) CICLO = d.CICLO;
+  if(d.TRIAL) Object.assign(TRIAL, d.TRIAL);
+  if(d.PLANO_ATE) PLANO_ATE = d.PLANO_ATE;
+  if(d.PLANO_AGENDADO) PLANO_AGENDADO = d.PLANO_AGENDADO;
+  if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
+  if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
+  if(d.CONSENT) Object.assign(CONSENT, d.CONSENT);
+  if(d.CONTA) Object.assign(CONTA, d.CONTA);
+  if(typeof d.ativo === 'number') ativo = d.ativo;
+  ONBOARD = d.ONBOARD === true;
+  ULTIMA_GRAVACAO = Number(d.em) || 0;
+  migrarItens(); corrigirAtivo();
+}
+
+async function ativarContextoUsuario(u){
+  if(!u || !u.uid) return;
+  const contexto = `uid:${u.uid}`;
+  if(CONTEXTO_LOCAL === contexto){
+    UID = u.uid;
+    CONTA = { email:u.email || null, local:false };
+    return;
+  }
+
+  if(carregado && !EXCLUINDO_CONTA) await persistirLocal();
+  const chave = chaveDoUsuario(u.uid);
+  let d = await lerEstadoLocal(chave);
+
+  /* Migração segura da versão antiga: só associa o cache legado quando o
+     e-mail salvo nele coincide com a identidade confirmada pelo Firebase. */
+  if(!d){
+    const legado = await lerEstadoLocal(CHAVE_LEGADA);
+    const emailLegado = legado && legado.CONTA && legado.CONTA.local === false
+      ? String(legado.CONTA.email || '').trim().toLowerCase() : '';
+    const emailAtual = String(u.email || '').trim().toLowerCase();
+    if(emailLegado && emailLegado === emailAtual){
+      d = legado;
+      try{
+        await ARMAZEM.set(chave, JSON.stringify(d));
+        await ARMAZEM.delete(CHAVE_LEGADA);
+      }catch(e){}
+    }
+  }
+
+  CHAVE_ATIVA = chave;
+  CONTEXTO_LOCAL = contexto;
+  aplicarEstadoLocalCompleto(d);
+  UID = u.uid;
+  CONTA = { email:u.email || null, local:false };
+}
+
+async function ativarContextoAnonimo(){
+  IMPORTACAO_ANONIMA_DISPONIVEL = false;
+  if(CONTEXTO_LOCAL === 'anon'){
+    UID = null;
+    CONTA = { email:null, local:true };
+    return;
+  }
+  if(carregado && !EXCLUINDO_CONTA) await persistirLocal();
+  const d = await lerEstadoLocal(CHAVE_ANONIMA);
+  CHAVE_ATIVA = CHAVE_ANONIMA;
+  CONTEXTO_LOCAL = 'anon';
+  aplicarEstadoLocalCompleto(d);
+  UID = null;
+  CONTA = { email:null, local:true };
+}
+
 async function persistir(){
   await persistirLocal();
   mandarParaNuvem();
@@ -5885,40 +6114,36 @@ async function persistirLocal(){
   if(!carregado) return;
   ULTIMA_GRAVACAO = Date.now();
   try{
-    await ARMAZEM.set(CHAVE, JSON.stringify({
-      VEIC, REGISTROS, PLANO, CICLO, TRIAL, NOTIF, USUARIO, ativo, ONBOARD, CONSENT, CONTA, AVISOS,
-      PLANO_ATE, PLANO_AGENDADO
-    }));
+    const d = estadoAtual();
+    d.em = ULTIMA_GRAVACAO;
+    d.CONTA = CONTEXTO_LOCAL === 'anon'
+      ? { email:null, local:true }
+      : { email:CONTA.email || null, local:false };
+    await ARMAZEM.set(CHAVE_ATIVA, JSON.stringify(d));
   }catch(e){ /* sem storage: o demo segue só em memória */ }
 }
 
 async function carregar(){
   try{
-    const r = await ARMAZEM.get(CHAVE);
-    if(r && r.value){
-      const d = JSON.parse(r.value);
-      if(Array.isArray(d.VEIC)) VEIC = d.VEIC;
-      if(Array.isArray(d.REGISTROS)) REGISTROS = d.REGISTROS;
-      if(d.PLANO) PLANO = d.PLANO;
-      if(d.CICLO) CICLO = d.CICLO; if(d.TRIAL) Object.assign(TRIAL, d.TRIAL);
-      if(d.PLANO_ATE) PLANO_ATE = d.PLANO_ATE;
-      if(d.PLANO_AGENDADO) PLANO_AGENDADO = d.PLANO_AGENDADO;
-      if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
-      if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
-      if(typeof d.ativo === 'number') ativo = d.ativo;
-      if(d.ONBOARD) ONBOARD = true;
-      if(d.CONSENT) Object.assign(CONSENT, d.CONSENT);
-      if(d.CONTA) Object.assign(CONTA, d.CONTA);
-      if(Array.isArray(d.AVISOS)) AVISOS = d.AVISOS;
-      /* veículos salvos antes tinham o intervalo só no conjunto */
-      VEIC.forEach(v => (v.itens||[]).forEach(it => {
-        if(it.partes) it.partes.forEach(p => {
-          if(p.ikm  == null) p.ikm  = it.ikm;
-          if(p.imes == null) p.imes = it.imes;
-        });
-      }));
-      ['nGeral','nData','nKm'].forEach(k => $(k) && $(k).classList.toggle('on', !!NOTIF[k]));
+    let d = await lerEstadoLocal(CHAVE_ANONIMA);
+    if(d){
+      CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
+      aplicarEstadoLocalCompleto(d);
+    }else{
+      const legado = await lerEstadoLocal(CHAVE_LEGADA);
+      if(legado && (!legado.CONTA || legado.CONTA.local !== false)){
+        CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
+        aplicarEstadoLocalCompleto(legado);
+        await ARMAZEM.set(CHAVE_ANONIMA, JSON.stringify(legado));
+        await ARMAZEM.delete(CHAVE_LEGADA);
+      }else{
+        /* Cache antigo de uma conta só volta quando o Firebase confirmar o
+           mesmo e-mail. Até lá a tela começa vazia, sem expor histórico. */
+        CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
+        resetarEstadoEmMemoria();
+      }
     }
+    ['nGeral','nData','nKm'].forEach(k => $(k) && $(k).classList.toggle('on', !!NOTIF[k]));
   }catch(e){ /* primeira abertura ou storage indisponível */ }
   carregado = true;
   iniciarFirebase();
