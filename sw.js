@@ -1,70 +1,63 @@
-/* TMy Car — service worker
-   O app inteiro cabe num arquivo, então o cache é simples: guarda a casca
-   e serve offline. A FIPE nunca é cacheada: valor velho seria pior que
-   nenhum valor. */
-
-/* Suba este número junto com o VERSAO_APP do index.html a cada publicação.
-   É o que faz o cache antigo ser descartado no lugar de ficar servindo
-   arquivos velhos. */
-const VERSAO = 'tmycar-1.5.1';
-const CASCA = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/maskable-192.png',
-  './icons/maskable-512.png'
+const CACHE_APP = 'tmycar-pwa-v1.5.44';
+const INICIO = new URL('./', self.registration.scope).href;
+const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
+const ARQUIVOS_APP = [
+  INICIO,
+  HTML_PRINCIPAL,
+  new URL('./manifest.webmanifest', self.registration.scope).href,
+  new URL('./icons/icon-192.png', self.registration.scope).href,
+  new URL('./icons/icon-512.png', self.registration.scope).href,
+  new URL('./icons/icon-maskable-512.png', self.registration.scope).href,
+  new URL('./icons/apple-touch-icon.png', self.registration.scope).href
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(VERSAO)
-      .then(c => c.addAll(CASCA))
+self.addEventListener('install', evento => {
+  evento.waitUntil(
+    caches.open(CACHE_APP)
+      .then(cache => cache.addAll(ARQUIVOS_APP))
       .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting())   // um recurso ausente não pode travar a instalação
   );
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
+self.addEventListener('activate', evento => {
+  evento.waitUntil(
     caches.keys()
-      .then(chaves => Promise.all(chaves.filter(k => k !== VERSAO).map(k => caches.delete(k))))
+      .then(chaves => Promise.all(chaves
+        .filter(chave => chave.startsWith('tmycar-pwa-') && chave !== CACHE_APP)
+        .map(chave => caches.delete(chave))))
       .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', e => {
-  const req = e.request;
-  if(req.method !== 'GET') return;
+self.addEventListener('fetch', evento => {
+  const pedido = evento.request;
+  const url = new URL(pedido.url);
+  if(pedido.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  const url = new URL(req.url);
-
-  /* consultas externas (FIPE, Firebase) vão sempre à rede e nunca entram no cache */
-  if(url.origin !== self.location.origin) return;
-
-  /* navegação: tenta a rede e cai no cache quando estiver offline */
-  if(req.mode === 'navigate'){
-    e.respondWith(
-      fetch(req)
-        .then(r => {
-          const copia = r.clone();
-          caches.open(VERSAO).then(c => c.put('./index.html', copia));
-          return r;
-        })
-        .catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
-    );
+  if(pedido.mode === 'navigate'){
+    evento.respondWith((async()=>{
+      try{
+        const resposta = await fetch(pedido);
+        if(resposta.ok){
+          const cache = await caches.open(CACHE_APP);
+          cache.put(HTML_PRINCIPAL, resposta.clone());
+        }
+        return resposta;
+      }catch(e){
+        return (await caches.match(HTML_PRINCIPAL)) || (await caches.match(INICIO));
+      }
+    })());
     return;
   }
 
-  /* demais arquivos do próprio app: cache primeiro, rede como reserva */
-  e.respondWith(
-    caches.match(req).then(cacheado => cacheado || fetch(req).then(r => {
-      if(r && r.status === 200 && r.type === 'basic'){
-        const copia = r.clone();
-        caches.open(VERSAO).then(c => c.put(req, copia));
-      }
-      return r;
-    }).catch(() => cacheado))
-  );
+  evento.respondWith((async()=>{
+    const salva = await caches.match(pedido);
+    if(salva) return salva;
+    const resposta = await fetch(pedido);
+    if(resposta.ok){
+      const cache = await caches.open(CACHE_APP);
+      cache.put(pedido, resposta.clone());
+    }
+    return resposta;
+  })());
 });
