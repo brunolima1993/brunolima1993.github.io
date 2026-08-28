@@ -1794,6 +1794,15 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 .auth-card{padding:4px 16px!important;background:rgba(255,255,255,.047)!important;border-color:rgba(140,184,230,.13)!important}
 .auth-submit{margin-top:11px}
 .auth-helper{font-size:10.5px;color:var(--dim);line-height:1.45;margin:8px 3px 0;text-align:left}
+.password-strength{margin-top:9px;font-size:10.5px;line-height:1.35;color:var(--dim)}
+.password-strength-track{height:3px;border-radius:99px;background:rgba(151,184,224,.13);overflow:hidden;margin-bottom:6px}
+.password-strength-track span{display:block;width:0;height:100%;border-radius:inherit;background:#6f829f;transition:width .2s,background .2s}
+.password-strength[data-nivel="curta"]{color:#e0b876}
+.password-strength[data-nivel="curta"] .password-strength-track span{background:#e0a34f}
+.password-strength[data-nivel="valida"]{color:#77caff}
+.password-strength[data-nivel="valida"] .password-strength-track span{background:#159dff;box-shadow:0 0 8px rgba(21,157,255,.45)}
+.password-strength[data-nivel="forte"]{color:#75dfb2}
+.password-strength[data-nivel="forte"] .password-strength-track span{background:#36d58f;box-shadow:0 0 8px rgba(54,213,143,.42)}
 .auth-actions-row{margin-top:15px;padding-top:14px;border-top:1px solid var(--line);
   display:flex;align-items:center;justify-content:center;gap:13px;white-space:nowrap}
 .auth-signup-prompt{display:flex;align-items:center;gap:4px;font-size:11.2px;color:var(--muted)}
@@ -1949,9 +1958,15 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <div class="field"><label class="flabel">E-mail</label>
             <input id="obEmailCriar" type="email" inputmode="email" placeholder="voce@email.com" autocomplete="email"></div>
           <div class="field"><label class="flabel">Senha</label>
-            <input id="obSenhaCriar" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+            <input id="obSenhaCriar" type="password" placeholder="Use 12 ou mais caracteres" autocomplete="new-password"
+              minlength="12" maxlength="128" oninput="atualizarForcaSenha()">
+            <div class="password-strength" id="forcaSenha" aria-live="polite" data-nivel="vazia">
+              <div class="password-strength-track" aria-hidden="true"><span id="forcaSenhaBar"></span></div>
+              <span id="forcaSenhaTexto">Frases e espaços são permitidos.</span>
+            </div></div>
           <div class="field"><label class="flabel">Confirmar senha</label>
-            <input id="obSenhaConfirmar" type="password" placeholder="Digite a senha novamente" autocomplete="new-password" onkeydown="if(event.key==='Enter') criarConta()"></div>
+            <input id="obSenhaConfirmar" type="password" placeholder="Digite a senha novamente" autocomplete="new-password"
+              minlength="12" maxlength="128" onkeydown="if(event.key==='Enter') criarConta()"></div>
         </div>
         <div class="auth-helper">Ao continuar, você seguirá para o cadastro do seu nome e para os termos de uso.</div>
         <div id="obMsgCriar"></div>
@@ -5194,7 +5209,7 @@ function erroAuth(e){
     return 'Não foi possível criar a conta com esses dados. Tente entrar ou recuperar sua senha.';
   if(c.includes('invalid-email'))        return 'Confira o e-mail — parece incompleto.';
   if(c.includes('missing-password'))     return 'Digite sua senha.';
-  if(c.includes('weak-password'))        return 'A senha precisa de pelo menos 6 caracteres.';
+  if(c.includes('weak-password'))        return 'Use uma senha com pelo menos 12 caracteres.';
   if(c.includes('user-not-found') || c.includes('wrong-password') || c.includes('invalid-credential'))
     return 'E-mail ou senha não conferem.';
   if(c.includes('user-disabled'))        return 'Esta conta está desativada. Fale com o suporte.';
@@ -5228,7 +5243,36 @@ function ambientePermiteLoginGoogle(alvo){
 }
 
 const emailValido = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+const TAMANHO_MINIMO_NOVA_SENHA = 12;
 let origemIdentidade = 'criar-conta';
+
+function atualizarForcaSenha(){
+  const campo = $('obSenhaCriar');
+  const caixa = $('forcaSenha');
+  const barra = $('forcaSenhaBar');
+  const texto = $('forcaSenhaTexto');
+  if(!campo || !caixa || !barra || !texto) return;
+
+  const tamanho = campo.value.length;
+  if(!tamanho){
+    caixa.dataset.nivel = 'vazia';
+    barra.style.width = '0';
+    texto.textContent = 'Frases e espaços são permitidos.';
+  }else if(tamanho < TAMANHO_MINIMO_NOVA_SENHA){
+    const faltam = TAMANHO_MINIMO_NOVA_SENHA - tamanho;
+    caixa.dataset.nivel = 'curta';
+    barra.style.width = `${Math.max(8, Math.round(tamanho / TAMANHO_MINIMO_NOVA_SENHA * 48))}%`;
+    texto.textContent = `Falta${faltam === 1 ? '' : 'm'} ${faltam} caractere${faltam === 1 ? '' : 's'}.`;
+  }else if(tamanho < 16){
+    caixa.dataset.nivel = 'valida';
+    barra.style.width = '65%';
+    texto.textContent = 'Senha válida. Uma frase maior fica ainda mais forte.';
+  }else{
+    caixa.dataset.nivel = 'forte';
+    barra.style.width = tamanho >= 20 ? '100%' : '85%';
+    texto.textContent = tamanho >= 20 ? 'Senha muito forte.' : 'Senha forte.';
+  }
+}
 
 function emailDaTelaDeAcesso(){
   const tela = telaAtual();
@@ -5242,6 +5286,7 @@ function irParaCriarConta(){
   const e = emailDaTelaDeAcesso();
   go('criar-conta');
   if(e) $('obEmailCriar').value = e;
+  atualizarForcaSenha();
 }
 
 function irParaLogin(){
@@ -5401,7 +5446,8 @@ async function criarConta(){
   const s = $('obSenhaCriar').value;
   const c = $('obSenhaConfirmar').value;
   if(!emailValido(e)) return obMsg('obMsgCriar','Confira o e-mail — parece incompleto.');
-  if(s.length < 6) return obMsg('obMsgCriar','A senha precisa de pelo menos 6 caracteres.');
+  if(s.length < TAMANHO_MINIMO_NOVA_SENHA)
+    return obMsg('obMsgCriar',`Use uma senha com pelo menos ${TAMANHO_MINIMO_NOVA_SENHA} caracteres.`);
   if(s !== c) return obMsg('obMsgCriar','As senhas não conferem. Digite a mesma senha nos dois campos.');
 
   origemIdentidade = 'criar-conta';
@@ -6018,7 +6064,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.50';
+const VERSAO_APP = '1.5.51';
 let ONBOARD = false;
 let carregado = false;
 

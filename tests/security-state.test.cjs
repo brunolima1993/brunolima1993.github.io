@@ -123,7 +123,7 @@ test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
   assert.ok(appCheck < auth && appCheck < firestore);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.50/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.51/);
 });
 
 test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
@@ -153,5 +153,47 @@ test('erros de login não permitem descobrir se um e-mail está cadastrado', () 
   assert.doesNotMatch(html, /Não encontramos conta com esse e-mail/i);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.50/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.51/);
+});
+
+test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => {
+  assert.match(html, /id="obSenhaCriar"[^>]*minlength="12"[^>]*maxlength="128"/);
+  assert.match(html, /id="obSenhaConfirmar"[^>]*minlength="12"[^>]*maxlength="128"/);
+  assert.match(html, /const TAMANHO_MINIMO_NOVA_SENHA = 12/);
+  assert.match(html, /s\.length < TAMANHO_MINIMO_NOVA_SENHA/);
+  assert.match(html, /function atualizarForcaSenha\(\)/);
+
+  /* O login mantém compatibilidade com senhas antigas já aceitas pelo Firebase. */
+  assert.match(html, /async function entrarConta\(\)[\s\S]*?if\(s\.length < 6\)/);
+  assert.doesNotMatch(html, /Mínimo 6 caracteres/);
+
+  const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
+  assert.match(sw, /tmycar-pwa-v1\.5\.51/);
+});
+
+test('indicador de senha acompanha o comprimento sem exigir composição', () => {
+  const elementos = {
+    obSenhaCriar: { value:'' },
+    forcaSenha: { dataset:{} },
+    forcaSenhaBar: { style:{} },
+    forcaSenhaTexto: { textContent:'' }
+  };
+  const contexto = vm.createContext({
+    console,
+    $: id => elementos[id]
+  });
+  vm.runInContext(
+    trecho('const TAMANHO_MINIMO_NOVA_SENHA = 12;', 'function emailDaTelaDeAcesso'),
+    contexto
+  );
+
+  elementos.obSenhaCriar.value = 'frase curta';
+  vm.runInContext('atualizarForcaSenha()', contexto);
+  assert.equal(elementos.forcaSenha.dataset.nivel, 'curta');
+  assert.match(elementos.forcaSenhaTexto.textContent, /Falta 1 caractere/);
+
+  elementos.obSenhaCriar.value = 'uma frase de senha simples';
+  vm.runInContext('atualizarForcaSenha()', contexto);
+  assert.equal(elementos.forcaSenha.dataset.nivel, 'forte');
+  assert.equal(elementos.forcaSenhaBar.style.width, '100%');
 });
