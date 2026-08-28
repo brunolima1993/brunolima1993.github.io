@@ -123,7 +123,7 @@ test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
   assert.ok(appCheck < auth && appCheck < firestore);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.49/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.50/);
 });
 
 test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
@@ -135,4 +135,23 @@ test('JavaScript interno do aplicativo permanece sintaticamente válido', () => 
   scripts.forEach((codigo, indice) => {
     assert.doesNotThrow(() => new vm.Script(codigo), `script interno ${indice + 1}`);
   });
+});
+
+test('erros de login não permitem descobrir se um e-mail está cadastrado', () => {
+  const contexto = vm.createContext({ console });
+  vm.runInContext(trecho('const CANCELOU =', 'function temFirebase'), contexto);
+  const mensagens = vm.runInContext(`({
+    inexistente: erroAuth({ code:'auth/user-not-found' }),
+    senhaErrada: erroAuth({ code:'auth/wrong-password' }),
+    credencialInvalida: erroAuth({ code:'auth/invalid-credential' }),
+    duplicado: erroAuth({ code:'auth/email-already-in-use' })
+  })`, contexto);
+
+  assert.equal(mensagens.inexistente, mensagens.senhaErrada);
+  assert.equal(mensagens.inexistente, mensagens.credencialInvalida);
+  assert.doesNotMatch(mensagens.duplicado, /já (tem|existe|foi cadastrado)/i);
+  assert.doesNotMatch(html, /Não encontramos conta com esse e-mail/i);
+
+  const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
+  assert.match(sw, /tmycar-pwa-v1\.5\.50/);
 });

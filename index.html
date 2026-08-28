@@ -5189,13 +5189,15 @@ function erroAuth(e){
   const c = (e && e.code) || '';
   if(CANCELOU.some(x => c.includes(x))) return '';   /* silêncio proposital */
 
-  if(c.includes('email-already-in-use')) return 'Esse e-mail já tem conta. Toque em "Já tenho conta" para entrar.';
+  /* Não confirmar publicamente se um endereço já pertence a uma conta. */
+  if(c.includes('email-already-in-use'))
+    return 'Não foi possível criar a conta com esses dados. Tente entrar ou recuperar sua senha.';
   if(c.includes('invalid-email'))        return 'Confira o e-mail — parece incompleto.';
   if(c.includes('missing-password'))     return 'Digite sua senha.';
   if(c.includes('weak-password'))        return 'A senha precisa de pelo menos 6 caracteres.';
-  if(c.includes('user-not-found'))       return 'Não encontramos conta com esse e-mail.';
+  if(c.includes('user-not-found') || c.includes('wrong-password') || c.includes('invalid-credential'))
+    return 'E-mail ou senha não conferem.';
   if(c.includes('user-disabled'))        return 'Esta conta está desativada. Fale com o suporte.';
-  if(c.includes('wrong-password') || c.includes('invalid-credential')) return 'E-mail ou senha não conferem.';
   if(c.includes('too-many-requests'))    return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.';
   if(c.includes('network'))              return 'Sem conexão com a internet. Verifique e tente de novo.';
   if(c.includes('popup-blocked'))        return 'Seu navegador bloqueou a janela do Google. Libere as janelas pop-up e tente de novo.';
@@ -6016,7 +6018,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.49';
+const VERSAO_APP = '1.5.50';
 let ONBOARD = false;
 let carregado = false;
 
