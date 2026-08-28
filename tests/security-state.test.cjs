@@ -123,7 +123,7 @@ test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
   assert.ok(appCheck < auth && appCheck < firestore);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.51/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
 });
 
 test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
@@ -153,7 +153,7 @@ test('erros de login não permitem descobrir se um e-mail está cadastrado', () 
   assert.doesNotMatch(html, /Não encontramos conta com esse e-mail/i);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.51/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
 });
 
 test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => {
@@ -168,7 +168,7 @@ test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => 
   assert.doesNotMatch(html, /Mínimo 6 caracteres/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.51/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
 });
 
 test('indicador de senha acompanha o comprimento sem exigir composição', () => {
@@ -196,4 +196,19 @@ test('indicador de senha acompanha o comprimento sem exigir composição', () =>
   vm.runInContext('atualizarForcaSenha()', contexto);
   assert.equal(elementos.forcaSenha.dataset.nivel, 'forte');
   assert.equal(elementos.forcaSenhaBar.style.width, '100%');
+});
+
+test('Firebase SDK está fixado na versão estável selecionada', () => {
+  const componentes = ['app', 'app-check', 'auth', 'firestore'];
+  for(const componente of componentes){
+    assert.match(
+      html,
+      new RegExp(`https://www\\.gstatic\\.com/firebasejs/12\\.18\\.0/firebase-${componente}-compat\\.js`)
+    );
+  }
+  assert.doesNotMatch(html, /firebasejs\/10\.12\.2\//);
+  assert.match(html, /const VERSAO_APP = '1\.5\.52'/);
+
+  const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
+  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
 });
