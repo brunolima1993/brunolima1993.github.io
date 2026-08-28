@@ -1391,6 +1391,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 .pselo.agenda{background:rgba(240,180,90,.9);color:#2A1B04}
 .pinfo .lnk{color:#0088ff;text-decoration:underline;cursor:pointer;white-space:nowrap}
 </style><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
@@ -5049,6 +5050,10 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "357646169698",
   appId: "1:357646169698:web:936c7aa80641b6db26c33b"
 };
+/* Chave pública do reCAPTCHA Enterprise registrada no Firebase App Check.
+   O App Check só é iniciado em HTTPS; arquivos locais e localhost continuam
+   disponíveis para testes sem enviar uma atestação de produção inválida. */
+const APP_CHECK_RECAPTCHA_ENTERPRISE_KEY = '6LfxB5wtAAAAAJK0EokYezZxZqjkk_41D32fw112';
 /* exemplo:
 const FIREBASE_CONFIG = {
   apiKey: "...", authDomain: "seu-projeto.firebaseapp.com",
@@ -5057,7 +5062,7 @@ const FIREBASE_CONFIG = {
 };
 */
 
-let AUTH = null, NUVEM = null, UID = null;
+let AUTH = null, NUVEM = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 
@@ -5101,10 +5106,32 @@ function navegarDepoisDaAutenticacao(entrada){
     setTimeout(oferecerImportacaoAnonima, 180);
 }
 
+function iniciarAppCheck(){
+  if(location.protocol !== 'https:' ||
+     !APP_CHECK_RECAPTCHA_ENTERPRISE_KEY ||
+     typeof firebase.appCheck !== 'function') return false;
+  try{
+    APP_CHECK = firebase.appCheck();
+    APP_CHECK.activate(
+      new firebase.appCheck.ReCaptchaEnterpriseProvider(
+        APP_CHECK_RECAPTCHA_ENTERPRISE_KEY
+      ),
+      true /* renova automaticamente o token */
+    );
+    return true;
+  }catch(e){
+    console.warn('App Check não pôde ser iniciado neste ambiente.', e);
+    return false;
+  }
+}
+
 function iniciarFirebase(){
   if(!FIREBASE_CONFIG || typeof firebase === 'undefined') return false;
   try{
     firebase.initializeApp(FIREBASE_CONFIG);
+    /* Precisa acontecer antes de Auth e Firestore para que as primeiras
+       solicitações ao Firebase já levem o token do App Check. */
+    iniciarAppCheck();
     AUTH  = firebase.auth();
     NUVEM = firebase.firestore();
     AUTH.languageCode = 'pt-BR';
@@ -5989,7 +6016,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.48';
+const VERSAO_APP = '1.5.49';
 let ONBOARD = false;
 let carregado = false;
 

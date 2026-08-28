@@ -109,3 +109,30 @@ test('configurações Firebase são JSON válido', () => {
   assert.doesNotThrow(() => JSON.parse(fs.readFileSync(path.join(raiz, '.firebaserc'), 'utf8')));
   assert.doesNotThrow(() => JSON.parse(fs.readFileSync(path.join(raiz, 'firestore.indexes.json'), 'utf8')));
 });
+
+test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
+  assert.match(html, /firebase-app-check-compat\.js/);
+  assert.match(html, /APP_CHECK_RECAPTCHA_ENTERPRISE_KEY\s*=\s*'6LfxB5wtAAAAAJK0EokYezZxZqjkk_41D32fw112'/);
+  assert.match(html, /new firebase\.appCheck\.ReCaptchaEnterpriseProvider/);
+
+  const inicializacao = html.indexOf('firebase.initializeApp(FIREBASE_CONFIG)');
+  const appCheck = html.indexOf('iniciarAppCheck();', inicializacao);
+  const auth = html.indexOf('AUTH  = firebase.auth();', inicializacao);
+  const firestore = html.indexOf('NUVEM = firebase.firestore();', inicializacao);
+  assert.ok(inicializacao >= 0 && appCheck > inicializacao);
+  assert.ok(appCheck < auth && appCheck < firestore);
+
+  const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
+  assert.match(sw, /tmycar-pwa-v1\.5\.49/);
+});
+
+test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
+  const scripts = Array.from(html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi))
+    .filter(resultado => !/type=["']application\/json["']/i.test(resultado[1]))
+    .map(resultado => resultado[2])
+    .filter(codigo => codigo.trim());
+  assert.ok(scripts.length > 0);
+  scripts.forEach((codigo, indice) => {
+    assert.doesNotThrow(() => new vm.Script(codigo), `script interno ${indice + 1}`);
+  });
+});
