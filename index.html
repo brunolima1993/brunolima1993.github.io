@@ -4563,6 +4563,50 @@ function abrirOferta(origem){
 }
 function fecharOferta(){ $('ofBg').classList.remove('on'); $('of').classList.remove('on'); }
 let ATIVANDO_TESTE = false;
+async function chamarAtivacaoTeste(){
+  if(FUNCTIONS){
+    const ativar = FUNCTIONS.httpsCallable('ativarTesteGratis', {
+      limitedUseAppCheckTokens:true
+    });
+    return ativar({});
+  }
+
+  /* Caminho alternativo para navegadores que carregam Auth e App Check, mas
+     não registram o conector compatível de Functions. A função continua
+     protegida pelos mesmos tokens e validações do servidor. */
+  if(!AUTH || !AUTH.currentUser || !APP_CHECK ||
+     typeof APP_CHECK.getLimitedUseToken !== 'function'){
+    const indisponivel = new Error('Firebase Functions indisponível.');
+    indisponivel.code = 'functions/unavailable';
+    throw indisponivel;
+  }
+  const [tokenConta, tokenApp] = await Promise.all([
+    AUTH.currentUser.getIdToken(),
+    APP_CHECK.getLimitedUseToken()
+  ]);
+  const resposta = await fetch(
+    'https://southamerica-east1-tmycar-222e5.cloudfunctions.net/ativarTesteGratis',
+    {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer ' + tokenConta,
+        'X-Firebase-AppCheck':tokenApp.token
+      },
+      body:JSON.stringify({ data:{} })
+    }
+  );
+  let retorno = {};
+  try{ retorno = await resposta.json(); }catch(e){}
+  if(!resposta.ok || retorno.error){
+    const status = String(retorno && retorno.error && retorno.error.status || 'INTERNAL')
+      .toLowerCase().replaceAll('_','-');
+    const falha = new Error(retorno && retorno.error && retorno.error.message || 'Falha na função.');
+    falha.code = 'functions/' + status;
+    throw falha;
+  }
+  return retorno.result || retorno.data || retorno;
+}
 async function iniciarTesteGratis(){
   /* defesa para um botão antigo ainda visível enquanto o estado era atualizado */
   if(TRIAL.usado){ abrirOferta('premium'); return; }
@@ -4573,18 +4617,11 @@ async function iniciarTesteGratis(){
     return;
   }
   if(ATIVANDO_TESTE) return;
-  if(!FUNCTIONS){
-    toast('O teste grátis ainda não está disponível. Tente novamente após a atualização do servidor.');
-    return;
-  }
   ATIVANDO_TESTE = true;
   const bt = $('ofBotao');
   if(bt){ bt.disabled = true; bt.textContent = 'Ativando…'; }
   try{
-    const ativar = FUNCTIONS.httpsCallable('ativarTesteGratis', {
-      limitedUseAppCheckTokens:true
-    });
-    await ativar({});
+    await chamarAtivacaoTeste();
     await puxarAssinatura();
     const restaurados = promoverGuardados();
     corrigirAtivo();
@@ -6223,7 +6260,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.57';
+const VERSAO_APP = '1.5.58';
 let ONBOARD = false;
 let carregado = false;
 
