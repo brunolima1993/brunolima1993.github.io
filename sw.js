@@ -1,4 +1,4 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.56';
+const CACHE_APP = 'tmycar-pwa-v1.5.57';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -8,7 +8,12 @@ const ARQUIVOS_APP = [
   new URL('./icons/icon-192.png', self.registration.scope).href,
   new URL('./icons/icon-512.png', self.registration.scope).href,
   new URL('./icons/icon-maskable-512.png', self.registration.scope).href,
-  new URL('./icons/apple-touch-icon.png', self.registration.scope).href
+  new URL('./icons/apple-touch-icon.png', self.registration.scope).href,
+  new URL('./vendor/firebase-12.18.0/firebase-app-compat.js', self.registration.scope).href,
+  new URL('./vendor/firebase-12.18.0/firebase-app-check-compat.js', self.registration.scope).href,
+  new URL('./vendor/firebase-12.18.0/firebase-auth-compat.js', self.registration.scope).href,
+  new URL('./vendor/firebase-12.18.0/firebase-firestore-compat.js', self.registration.scope).href,
+  new URL('./vendor/firebase-12.18.0/firebase-functions-compat.js', self.registration.scope).href
 ];
 
 self.addEventListener('install', evento => {

@@ -1390,11 +1390,11 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   background:linear-gradient(135deg,rgba(240,180,90,.12),rgba(240,180,90,.03))}
 .pselo.agenda{background:rgba(240,180,90,.9);color:#2A1B04}
 .pinfo .lnk{color:#0088ff;text-decoration:underline;cursor:pointer;white-space:nowrap}
-</style><script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+</style><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
+<script src="vendor/firebase-12.18.0/firebase-app-check-compat.js"></script>
+<script src="vendor/firebase-12.18.0/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-12.18.0/firebase-firestore-compat.js"></script>
+<script src="vendor/firebase-12.18.0/firebase-functions-compat.js"></script>
 
 <style id="gastos-ref-v2">
 /* GASTOS — composição baseada na referência enviada */
@@ -4398,6 +4398,11 @@ function pintarPlanos(){
       </div>`;
     }).join('')}</div>
 
+    ${PLANO === 'free' && !TRIAL.usado ? `<div class="pinfo" style="margin-top:11px;display:block;text-align:center">
+      <span><b>Teste o Premium por 14 dias.</b><br>Use até 3 veículos, consulte a Tabela FIPE e navegue sem anúncios.</span>
+      <button class="cta" style="margin-top:12px" onclick="iniciarTesteGratis()">Ativar 14 dias grátis</button>
+    </div>` : ''}
+
     ${pago ? `<div class="pinfo" style="margin-top:11px">
       <span>${PLANO_AGENDADO
         ? `Sua assinatura vale até <b>${fimDoPeriodo()}</b>. Depois dessa data você passa para o <b>${PLANO_AGENDADO === 'free' ? 'plano grátis' : 'Premium mensal'}</b>.
@@ -4576,7 +4581,9 @@ async function iniciarTesteGratis(){
   const bt = $('ofBotao');
   if(bt){ bt.disabled = true; bt.textContent = 'Ativando…'; }
   try{
-    const ativar = FUNCTIONS.httpsCallable('ativarTesteGratis');
+    const ativar = FUNCTIONS.httpsCallable('ativarTesteGratis', {
+      limitedUseAppCheckTokens:true
+    });
     await ativar({});
     await puxarAssinatura();
     const restaurados = promoverGuardados();
@@ -6216,7 +6223,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.56';
+const VERSAO_APP = '1.5.57';
 let ONBOARD = false;
 let carregado = false;
 
