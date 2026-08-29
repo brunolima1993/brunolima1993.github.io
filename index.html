@@ -5081,6 +5081,7 @@ let AUTH = null, NUVEM = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
+let PARAR_OUVINTE_NUVEM = null, OUVINTE_NUVEM_UID = null;
 
 function contaPrecisaVerificacao(u){
   if(!u || u.emailVerified) return false;
@@ -5104,6 +5105,7 @@ function sincronizarContaAutenticada(u){
   /* Antes de consultar a nuvem, muda para o espaço local exclusivo desse UID.
      Assim, dados anônimos ou de outra conta nunca entram na comparação nem
      podem ser enviados para o usuário que acabou de entrar. */
+  pararOuvinteNuvem();
   SINCRONIZACAO_UID = u.uid;
   SINCRONIZACAO_CONTA = (async() => {
     await ativarContextoUsuario(u);
@@ -5111,9 +5113,42 @@ function sincronizarContaAutenticada(u){
     UID = u.uid;
     CONTA = { email:u.email || null, local:false };
     if(u.displayName && !USUARIO.nome) USUARIO.nome = u.displayName.split(' ')[0];
-    return puxarDaNuvem();
+    const resultado = await puxarDaNuvem();
+    iniciarOuvinteNuvem(u.uid);
+    return resultado;
   })();
   return SINCRONIZACAO_CONTA;
+}
+
+function pararOuvinteNuvem(){
+  if(PARAR_OUVINTE_NUVEM){
+    try{ PARAR_OUVINTE_NUVEM(); }catch(e){}
+  }
+  PARAR_OUVINTE_NUVEM = null;
+  OUVINTE_NUVEM_UID = null;
+}
+
+function iniciarOuvinteNuvem(uidConta){
+  if(!NUVEM || !uidConta || OUVINTE_NUVEM_UID === uidConta) return;
+  pararOuvinteNuvem();
+  OUVINTE_NUVEM_UID = uidConta;
+  PARAR_OUVINTE_NUVEM = NUVEM.collection('usuarios').doc(uidConta).onSnapshot(
+    { includeMetadataChanges:true },
+    doc => {
+      if(UID !== uidConta || !doc.exists || doc.metadata.hasPendingWrites || doc.metadata.fromCache) return;
+      const d = doc.data() || {};
+      const remotoEm = Number(d.em) || 0;
+      if(remotoEm <= (ULTIMA_GRAVACAO || 0)) return;
+      if(ALTERACOES_PENDENTES){
+        puxarDaNuvem();
+        return;
+      }
+      aplicarEstado(d);
+      repintarDadosSincronizados();
+      toast('Dados atualizados em outro aparelho.');
+    },
+    e => avisarFalhaNuvem(e)
+  );
 }
 
 function navegarDepoisDaAutenticacao(entrada){
@@ -5167,6 +5202,7 @@ function iniciarFirebase(){
       await PERSISTENCIA_NUVEM;
       if(u){
         if(contaPrecisaVerificacao(u)){
+          pararOuvinteNuvem();
           UID = null;
           CONTA = { email:u.email || null, local:false };
           EMAIL_VERIFICACAO_PENDENTE = u.email || null;
@@ -5186,6 +5222,7 @@ function iniciarFirebase(){
           }
         }
       }else{
+        pararOuvinteNuvem();
         await ativarContextoAnonimo();
         UID = null;
         CONTA = { email:null, local:true };
@@ -5741,27 +5778,29 @@ async function puxarDaNuvem(){
     const temAquiDados  = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length);
     const temNuvemDados = (d.VEIC && d.VEIC.length) || (d.REGISTROS && d.REGISTROS.length);
 
-    /* aparelho novo, ou aparelho vazio: traz tudo da nuvem */
-    if(temNuvemDados && !temAquiDados){
-      aplicarEstado(d);
-      resultado.aplicadoDaNuvem = true;
-      return resultado;
-    }
+    const remotoEm = Number(d.em) || 0;
+    const localEm = Number(ULTIMA_GRAVACAO) || 0;
+    const nuvemMaisNova = remotoEm > localEm || (temNuvemDados && !temAquiDados);
 
-    /* os dois têm dados: vale o mais recente, e o outro não é apagado sem aviso */
-    if(temNuvemDados && temAquiDados){
-      const nuvemMaisNova = (d.em || 0) > (ULTIMA_GRAVACAO || 0);
-      if(nuvemMaisNova){
+    /* Uma lista vazia também é um estado válido: pode significar que o último
+       veículo foi excluído em outro aparelho. A decisão usa a revisão, não a
+       presença de itens, para a exclusão nunca ser confundida com ausência de
+       sincronização. */
+    if(nuvemMaisNova){
+      if(ALTERACOES_PENDENTES && temAquiDados){
         confirmar('Encontramos dados na sua conta',
           'A conta tem um histórico mais recente que o deste aparelho. Quer trazer o da conta? O que está aqui agora será substituído.',
           () => { aplicarEstado(d); repintarDadosSincronizados(); toast('Histórico restaurado.'); },
           'Trazer da conta');
-      }else if((d.em || 0) < (ULTIMA_GRAVACAO || 0)){
-        mandarParaNuvem();
+      }else{
+        aplicarEstado(d);
+        resultado.aplicadoDaNuvem = true;
       }
       return resultado;
     }
-    mandarParaNuvem();
+
+    if(localEm > remotoEm || (temAquiDados && !temNuvemDados && remotoEm === 0))
+      mandarParaNuvem();
     return resultado;
   }catch(e){
     /* offline ou sem permissão: segue com o que já estava confirmado localmente */
@@ -6098,7 +6137,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.53';
+const VERSAO_APP = '1.5.54';
 let ONBOARD = false;
 let carregado = false;
 

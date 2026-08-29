@@ -143,7 +143,7 @@ test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
   assert.ok(appCheck < auth && appCheck < firestore);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
 });
 
 test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
@@ -173,7 +173,7 @@ test('erros de login não permitem descobrir se um e-mail está cadastrado', () 
   assert.doesNotMatch(html, /Não encontramos conta com esse e-mail/i);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
 });
 
 test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => {
@@ -188,7 +188,7 @@ test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => 
   assert.doesNotMatch(html, /Mínimo 6 caracteres/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
 });
 
 test('indicador de senha acompanha o comprimento sem exigir composição', () => {
@@ -237,6 +237,42 @@ test('sincronização entre aparelhos inicia imediatamente e sobrevive a retomad
   assert.match(html, /PENDENTE_NUVEM:ALTERACOES_PENDENTES/);
   assert.match(html, /persistirLocal\(marcarAlteracao=true\)/);
   assert.match(html, /em: ULTIMA_GRAVACAO \|\| Date\.now\(\)/);
+  assert.match(html, /\.onSnapshot\([\s\S]*includeMetadataChanges:true/);
+  assert.match(html, /doc\.metadata\.hasPendingWrites/);
+  assert.match(html, /doc\.metadata\.fromCache/);
+});
+
+test('exclusão remota mais recente substitui uma garagem local não pendente', async () => {
+  const remoto = {
+    VEIC: [], REGISTROS: [], AVISOS: [],
+    NOTIF: { nGeral:true, nData:true, nKm:true },
+    USUARIO: { nome:'Bruno' }, CONSENT: { termos:true, em:'2026-08-24' },
+    ativo:null, ONBOARD:true, em:200
+  };
+  const contexto = vm.createContext({ console, remoto });
+  vm.runInContext(`
+    let UID = 'mesma-conta', ONBOARD = true, IMPORTACAO_ANONIMA_DISPONIVEL = false;
+    let VEIC = [{ modelo:'Pulse' }], REGISTROS = [], AVISOS = [];
+    let ULTIMA_GRAVACAO = 100, ALTERACOES_PENDENTES = false;
+    const USUARIO = { nome:'Bruno' }, CONSENT = { termos:true, em:'2026-08-24' };
+    let aplicou = false, reenviou = false;
+    const NUVEM = { collection:() => ({ doc:() => ({
+      get:async() => ({ exists:true, data:() => remoto })
+    }) }) };
+    function aplicarEstado(d){ VEIC = d.VEIC; ULTIMA_GRAVACAO = d.em; aplicou = true; }
+    function mandarParaNuvem(){ reenviou = true; }
+    function confirmar(){ throw new Error('não deve pedir confirmação sem alteração local pendente'); }
+    async function temDadosAnonimosParaImportar(){ return false; }
+  ` + trecho('async function puxarDaNuvem(){', 'function aplicarEstado(d){'), contexto);
+
+  const resultado = await vm.runInContext(`(async() => {
+    const retorno = await puxarDaNuvem();
+    return { retorno, aplicou, reenviou, quantidade:VEIC.length };
+  })()`, contexto);
+  assert.equal(resultado.aplicou, true);
+  assert.equal(resultado.reenviou, false);
+  assert.equal(resultado.quantidade, 0);
+  assert.equal(resultado.retorno.aplicadoDaNuvem, true);
 });
 
 test('Firebase SDK está fixado na versão estável selecionada', () => {
@@ -248,8 +284,8 @@ test('Firebase SDK está fixado na versão estável selecionada', () => {
     );
   }
   assert.doesNotMatch(html, /firebasejs\/10\.12\.2\//);
-  assert.match(html, /const VERSAO_APP = '1\.5\.53'/);
+  assert.match(html, /const VERSAO_APP = '1\.5\.54'/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
 });
