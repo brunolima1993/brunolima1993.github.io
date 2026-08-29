@@ -1394,6 +1394,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
 
 <style id="gastos-ref-v2">
 /* GASTOS — composição baseada na referência enviada */
@@ -2689,6 +2690,7 @@ const modelo = (motor) => {
 let PLANO = 'free';
 let CICLO = 'anual';   /* anual | mensal */
 let TRIAL = { fim:null, usado:false, av3:false, av1:false };   /* teste grátis do Premium */
+let ASSINATURA_CARREGADA = false;
 /* Período pago em curso e mudança marcada para o fim dele.
    Numa assinatura real quem cobra é a loja: descer de plano no meio do período
    pago seria tirar da pessoa algo que ela já pagou. Por isso a descida é
@@ -4295,13 +4297,12 @@ const eDescida = id => ordemPlano[id] < ordemPlano[planoAtual()];
    do teste, então vale para qualquer tela. */
 function conferirPeriodo(){
   if(!PLANO_ATE || Date.now() < new Date(PLANO_ATE + 'T23:59:59')) return false;
-  const destino = PLANO_AGENDADO;
   PLANO_ATE = null; PLANO_AGENDADO = null;
-  if(destino === 'free'){ PLANO = 'free'; }
-  else if(destino === 'mensal'){ CICLO = 'mensal'; renovarPeriodo('mensal'); }
-  else { renovarPeriodo(CICLO); }   /* sem mudança marcada, o plano se renova */
-  persistir(); atualizarNav();
-  return !!destino;
+  PLANO = 'free'; CICLO = 'anual';
+  /* Renovação e cobrança nunca são presumidas pelo navegador. Se a loja
+     confirmar um novo período, /assinaturas/{uid} libera o Premium de novo. */
+  persistirLocal(false); atualizarNav();
+  return true;
 }
 
 function renovarPeriodo(ciclo){
@@ -4319,14 +4320,11 @@ function agendarMudanca(id){
 }
 
 function cancelarAgendamento(){
-  PLANO_AGENDADO = null;
-  persistir(); atualizarPlanoVisivel();
-  toast('Mudança cancelada. Sua assinatura segue como está.');
+  toast('A alteração da assinatura será gerenciada pela Google Play.');
 }
 
 function escolherPlano(id){
   if(id === planoAtual()) return;
-  let restaurados = 0;
   /* assinatura pertence à conta, não ao aparelho: sem conta não há como restaurar */
   if(id !== 'free' && CONTA.local){
     confirmar('Crie uma conta para assinar',
@@ -4334,35 +4332,11 @@ function escolherPlano(id){
       () => go('criar-conta'), 'Criar conta');
     return;
   }
-
-  /* Com período pago em curso, descer não vale na hora: a pessoa pagou até o
-     fim do ciclo e continua com o que contratou. A mudança fica marcada. */
-  if(pagoAtivo() && eDescida(id)){
-    const nome = id === 'free' ? 'plano grátis' : 'Premium mensal';
-    confirmar(
-      id === 'free' ? 'Cancelar a assinatura' : 'Passar para o mensal',
-      `Você já pagou até ${fimDoPeriodo()} e continua com tudo até lá.\n`
-      + `No dia seguinte, sua conta passa para o ${nome}.\n\n`
-      + 'Pode voltar atrás a qualquer momento antes dessa data.',
-      () => agendarMudanca(id),
-      id === 'free' ? 'Cancelar assinatura' : 'Marcar mudança');
+  if(id === 'free'){
+    toast('O cancelamento será feito pela Google Play quando as assinaturas forem publicadas.');
     return;
   }
-
-  if(id === 'free'){
-    if(ativos().length > 1){ abrirDowngrade(); return; }   // escolhe qual carro fica
-    PLANO = 'free'; PLANO_ATE = null; PLANO_AGENDADO = null;
-  } else {
-    const estreia = PLANO === 'free';
-    PLANO = 'premium'; CICLO = id;
-    PLANO_AGENDADO = null;
-    renovarPeriodo(id);
-    if(estreia && !TRIAL.usado && !TRIAL.fim) TRIAL.fim = Date.now() + 14*864e5;
-    restaurados = promoverGuardados();
-    toast(estreia ? 'Premium ativo.' : `Plano alterado para ${id === 'anual' ? 'anual' : 'mensal'}.`);
-  }
-  corrigirAtivo(); persistir(); atualizarNav();
-  if(restaurados) go('garagem'); else atualizarPlanoVisivel();
+  toast('A assinatura paga será liberada junto com a publicação na Google Play.');
 }
 
 /* ícones circulares reaproveitáveis, no acabamento da referência */
@@ -4583,7 +4557,8 @@ function abrirOferta(origem){
   $('ofBg').classList.add('on'); $('of').classList.add('on');
 }
 function fecharOferta(){ $('ofBg').classList.remove('on'); $('of').classList.remove('on'); }
-function iniciarTesteGratis(){
+let ATIVANDO_TESTE = false;
+async function iniciarTesteGratis(){
   /* defesa para um botão antigo ainda visível enquanto o estado era atualizado */
   if(TRIAL.usado){ abrirOferta('premium'); return; }
   if(CONTA.local){
@@ -4592,17 +4567,42 @@ function iniciarTesteGratis(){
       () => go('criar-conta'), 'Criar conta');
     return;
   }
-  PLANO = 'premium'; CICLO = 'teste';
-  TRIAL.usado = true;
-  TRIAL.fim = Date.now() + 14*864e5;
-  TRIAL.av3 = false; TRIAL.av1 = false;
-  promoverGuardados();
-  corrigirAtivo();
-  persistir(); atualizarNav();
-  go('garagem');
-  toast('Premium liberado por 14 dias.');
+  if(ATIVANDO_TESTE) return;
+  if(!FUNCTIONS){
+    toast('O teste grátis ainda não está disponível. Tente novamente após a atualização do servidor.');
+    return;
+  }
+  ATIVANDO_TESTE = true;
+  const bt = $('ofBotao');
+  if(bt){ bt.disabled = true; bt.textContent = 'Ativando…'; }
+  try{
+    const ativar = FUNCTIONS.httpsCallable('ativarTesteGratis');
+    await ativar({});
+    await puxarAssinatura();
+    const restaurados = promoverGuardados();
+    corrigirAtivo();
+    await persistirLocal(false);
+    atualizarNav(); fecharOferta();
+    go(restaurados ? 'garagem' : (ofTelaAnterior || 'garagem'));
+    toast('Premium liberado por 14 dias.');
+  }catch(e){
+    const c = String(e && e.code || '');
+    if(c.includes('already-exists') || c.includes('failed-precondition')){
+      await puxarAssinatura();
+      toast('O teste grátis já foi utilizado por esta conta.');
+    }else if(c.includes('unauthenticated')){
+      toast('Entre novamente na sua conta para ativar o teste.');
+    }else if(c.includes('permission-denied')){
+      toast('Confirme seu e-mail antes de ativar o teste.');
+    }else{
+      toast('Não foi possível ativar o teste agora. Verifique a conexão e tente novamente.');
+    }
+  }finally{
+    ATIVANDO_TESTE = false;
+    if(bt){ bt.disabled = false; bt.textContent = TRIAL.usado ? 'Assinar Premium' : 'Ativar 14 dias grátis'; }
+  }
 }
-function ativarPremium(){
+async function ativarPremium(){
   if(CONTA.local){
     fecharOferta();
     const testeDisponivel = !TRIAL.usado;
@@ -4613,26 +4613,11 @@ function ativarPremium(){
       () => go('criar-conta'), 'Criar conta');
     return;
   }
-  /* o teste é um estado próprio: não é mensal nem anual, e tem prazo */
   if(!TRIAL.usado){
-    PLANO = 'premium'; CICLO = 'teste';
-    TRIAL.usado = true;
-    TRIAL.fim = Date.now() + 14*864e5;
-    toast('Teste ativo por 14 dias.');
-  } else {
-    PLANO = 'premium'; CICLO = precoEscolhido;
-    PLANO_AGENDADO = null; renovarPeriodo(precoEscolhido);
-    toast(`Premium ${precoEscolhido === 'anual' ? 'anual' : 'mensal'} ativo.`);
+    await iniciarTesteGratis();
+    return;
   }
-  const restaurados = promoverGuardados();
-  corrigirAtivo();
-  persistir(); atualizarNav(); fecharOferta();
-  /* volta para onde a pessoa estava, sem disparar consulta nenhuma */
-  /* nunca abrir a FIPE aqui: consulta é ação do usuário, não efeito de assinar */
-  if(restaurados) go('garagem');
-  else if(ofOrigem === 'gastos' && ofTelaAnterior !== 'garagem') go('gastos');
-  else if(ofTelaAnterior === 'fipe') go('painel');
-  else go(ofTelaAnterior || 'garagem');
+  toast('A assinatura paga será liberada junto com a publicação na Google Play.');
 }
 
 let REGISTROS = [];
@@ -5077,11 +5062,13 @@ const FIREBASE_CONFIG = {
 };
 */
 
-let AUTH = null, NUVEM = null, UID = null, APP_CHECK = null;
+let AUTH = null, NUVEM = null, FUNCTIONS = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
 let PARAR_OUVINTE_NUVEM = null, OUVINTE_NUVEM_UID = null;
+let PARAR_OUVINTE_ASSINATURA = null, OUVINTE_ASSINATURA_UID = null;
+let ASSINATURA_IMPRESSAO = '';
 
 function contaPrecisaVerificacao(u){
   if(!u || u.emailVerified) return false;
@@ -5113,8 +5100,12 @@ function sincronizarContaAutenticada(u){
     UID = u.uid;
     CONTA = { email:u.email || null, local:false };
     if(u.displayName && !USUARIO.nome) USUARIO.nome = u.displayName.split(' ')[0];
+    /* Primeiro chegam os veículos; só depois o plano pode reativar os que
+       estavam guardados. A ordem evita que um cache antigo substitua a nuvem. */
     const resultado = await puxarDaNuvem();
+    await puxarAssinatura();
     iniciarOuvinteNuvem(u.uid);
+    iniciarOuvinteAssinatura(u.uid);
     return resultado;
   })();
   return SINCRONIZACAO_CONTA;
@@ -5126,6 +5117,12 @@ function pararOuvinteNuvem(){
   }
   PARAR_OUVINTE_NUVEM = null;
   OUVINTE_NUVEM_UID = null;
+  if(PARAR_OUVINTE_ASSINATURA){
+    try{ PARAR_OUVINTE_ASSINATURA(); }catch(e){}
+  }
+  PARAR_OUVINTE_ASSINATURA = null;
+  OUVINTE_ASSINATURA_UID = null;
+  ASSINATURA_IMPRESSAO = '';
 }
 
 function iniciarOuvinteNuvem(uidConta){
@@ -5148,6 +5145,87 @@ function iniciarOuvinteNuvem(uidConta){
       toast('Dados atualizados em outro aparelho.');
     },
     e => avisarFalhaNuvem(e)
+  );
+}
+
+function valorEmMs(v){
+  if(v == null) return null;
+  if(typeof v === 'number' && Number.isFinite(v)) return v;
+  if(v && typeof v.toMillis === 'function') return v.toMillis();
+  if(v && Number.isFinite(v.seconds)) return v.seconds * 1000;
+  const n = Date.parse(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizarAssinatura(d){
+  const a = d && typeof d === 'object' ? d : {};
+  const agora = Date.now();
+  const testeUsado = a.testeUsado === true;
+  const testeFim = valorEmMs(a.testeFim);
+  const periodoFimMs = valorEmMs(a.periodoFim);
+  const ativa = a.status === 'ativo';
+  const testeAtivo = ativa && a.plano === 'premium' && a.ciclo === 'teste'
+    && testeFim != null && testeFim > agora;
+  const cicloPago = a.ciclo === 'mensal' || a.ciclo === 'anual';
+  const pagoAtivoNuvem = ativa && a.plano === 'premium' && cicloPago
+    && periodoFimMs != null && periodoFimMs > agora;
+  const premium = testeAtivo || pagoAtivoNuvem;
+  const periodoFim = periodoFimMs == null ? null : iso(new Date(periodoFimMs));
+  const agendado = a.planoAgendado === 'free' || a.planoAgendado === 'mensal'
+    ? a.planoAgendado : null;
+  return {
+    PLANO:premium ? 'premium' : 'free',
+    CICLO:premium ? a.ciclo : 'anual',
+    TRIAL:{ fim:testeFim, usado:testeUsado, av3:false, av1:false },
+    PLANO_ATE:premium && cicloPago ? periodoFim : null,
+    PLANO_AGENDADO:premium ? agendado : null
+  };
+}
+
+function aplicarAssinatura(d, avisar=false){
+  const a = normalizarAssinatura(d);
+  const impressao = JSON.stringify(a);
+  const mudou = ASSINATURA_IMPRESSAO && ASSINATURA_IMPRESSAO !== impressao;
+  const eraFree = PLANO === 'free';
+  ASSINATURA_IMPRESSAO = impressao;
+  PLANO = a.PLANO; CICLO = a.CICLO;
+  TRIAL = a.TRIAL;
+  PLANO_ATE = a.PLANO_ATE;
+  PLANO_AGENDADO = a.PLANO_AGENDADO;
+  ASSINATURA_CARREGADA = true;
+  const restaurados = eraFree && PLANO === 'premium' ? promoverGuardados() : 0;
+  corrigirAtivo();
+  if(restaurados && UID) persistir(); else persistirLocal(false);
+  if(carregado) repintarDadosSincronizados();
+  if(avisar && mudou) toast('Seu plano foi atualizado.');
+  exigirEscolha();
+}
+
+async function puxarAssinatura(){
+  if(!NUVEM || !UID){ aplicarAssinatura(null); return { existe:false }; }
+  try{
+    const doc = await NUVEM.collection('assinaturas').doc(UID).get();
+    aplicarAssinatura(doc.exists ? doc.data() : null);
+    return { existe:doc.exists };
+  }catch(e){
+    /* Sem cache e sem rede, permanece no plano grátis. Um plano pago nunca é
+       inventado a partir de valores antigos do localStorage. */
+    if(!ASSINATURA_CARREGADA) aplicarAssinatura(null);
+    return { existe:false, erro:true };
+  }
+}
+
+function iniciarOuvinteAssinatura(uidConta){
+  if(!NUVEM || !uidConta || OUVINTE_ASSINATURA_UID === uidConta) return;
+  if(PARAR_OUVINTE_ASSINATURA){ try{ PARAR_OUVINTE_ASSINATURA(); }catch(e){} }
+  OUVINTE_ASSINATURA_UID = uidConta;
+  PARAR_OUVINTE_ASSINATURA = NUVEM.collection('assinaturas').doc(uidConta).onSnapshot(
+    { includeMetadataChanges:true },
+    doc => {
+      if(UID !== uidConta || doc.metadata.hasPendingWrites) return;
+      aplicarAssinatura(doc.exists ? doc.data() : null, !doc.metadata.fromCache);
+    },
+    e => console.warn('Não foi possível acompanhar a assinatura.', e)
   );
 }
 
@@ -5185,6 +5263,8 @@ function iniciarFirebase(){
     iniciarAppCheck();
     AUTH  = firebase.auth();
     NUVEM = firebase.firestore();
+    FUNCTIONS = typeof firebase.functions === 'function'
+      ? firebase.functions('southamerica-east1') : null;
     /* No navegador o cache persistente vem desligado. Ativá-lo faz Safari,
        Chrome e Firefox guardarem também as gravações ainda não confirmadas e
        enviarem tudo quando a conexão voltar. */
@@ -5693,11 +5773,10 @@ function dadosUsuarioAtual(){
            ONBOARD, CONSENT, AVISOS, em: ULTIMA_GRAVACAO || Date.now() };
 }
 
-/* Estado completo é apenas o cache local do protótipo. Nunca deve ser usado
-   como autorização para liberar recursos pagos no servidor. */
+/* O cache local contém apenas dados do usuário. Assinatura não volta para o
+   localStorage: ela é reconstruída do documento protegido no Firestore. */
 function estadoAtual(){
-  return { ...dadosUsuarioAtual(), PLANO, CICLO, TRIAL, PLANO_ATE, PLANO_AGENDADO,
-           CONTA, PENDENTE_NUVEM:ALTERACOES_PENDENTES };
+  return { ...dadosUsuarioAtual(), CONTA, PENDENTE_NUVEM:ALTERACOES_PENDENTES };
 }
 
 let FILA_NUVEM = Promise.resolve(true);
@@ -6137,7 +6216,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.54';
+const VERSAO_APP = '1.5.55';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6174,6 +6253,7 @@ function resetarEstadoEmMemoria(){
   PLANO = 'free'; CICLO = 'anual';
   TRIAL = { fim:null, usado:false, av3:false, av1:false };
   PLANO_ATE = null; PLANO_AGENDADO = null;
+  ASSINATURA_CARREGADA = false; ASSINATURA_IMPRESSAO = '';
   NOTIF.nGeral = true; NOTIF.nData = true; NOTIF.nKm = true;
   USUARIO.nome = ''; delete USUARIO.sobrenome;
   ONBOARD = false; CONSENT = { termos:false, em:null };
@@ -6188,11 +6268,8 @@ function aplicarEstadoLocalCompleto(d){
   if(Array.isArray(d.VEIC))       VEIC = d.VEIC;
   if(Array.isArray(d.REGISTROS))  REGISTROS = d.REGISTROS;
   if(Array.isArray(d.AVISOS))     AVISOS = d.AVISOS;
-  if(d.PLANO) PLANO = d.PLANO;
-  if(d.CICLO) CICLO = d.CICLO;
-  if(d.TRIAL) Object.assign(TRIAL, d.TRIAL);
-  if(d.PLANO_ATE) PLANO_ATE = d.PLANO_ATE;
-  if(d.PLANO_AGENDADO) PLANO_AGENDADO = d.PLANO_AGENDADO;
+  /* PLANO/CICLO/TRIAL de versões anteriores são ignorados. Esses valores
+     locais causavam exatamente a divergência entre Safari e Chrome. */
   if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
   if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
   if(d.CONSENT) Object.assign(CONSENT, d.CONSENT);

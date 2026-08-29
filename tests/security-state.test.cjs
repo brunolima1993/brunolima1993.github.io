@@ -83,7 +83,7 @@ test('modo anônimo e contas diferentes permanecem isolados', async () => {
   });
 });
 
-test('perfil enviado pelo cliente não contém assinatura ou teste', () => {
+test('perfil e cache local não contêm autoridade de assinatura ou teste', () => {
   const c = ambienteDeEstado();
   const resultado = vm.runInContext(`(() => {
     PLANO = 'premium'; CICLO = 'teste'; TRIAL.usado = true;
@@ -93,8 +93,10 @@ test('perfil enviado pelo cliente não contém assinatura ou teste', () => {
 
   for (const campo of ['PLANO', 'CICLO', 'TRIAL', 'PLANO_ATE', 'PLANO_AGENDADO', 'CONTA']) {
     assert.equal(campo in resultado.perfil, false, `${campo} não pode ir para /usuarios`);
-    assert.equal(campo in resultado.local, true, `${campo} deve continuar no cache do protótipo`);
+    if(campo !== 'CONTA')
+      assert.equal(campo in resultado.local, false, `${campo} não pode voltar do localStorage`);
   }
+  assert.equal('CONTA' in resultado.local, true);
 });
 
 test('abrir a conta não transforma cache antigo em alteração mais recente', async () => {
@@ -143,7 +145,7 @@ test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
   assert.ok(appCheck < auth && appCheck < firestore);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.55/);
 });
 
 test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
@@ -173,7 +175,7 @@ test('erros de login não permitem descobrir se um e-mail está cadastrado', () 
   assert.doesNotMatch(html, /Não encontramos conta com esse e-mail/i);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.55/);
 });
 
 test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => {
@@ -188,7 +190,7 @@ test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => 
   assert.doesNotMatch(html, /Mínimo 6 caracteres/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.55/);
 });
 
 test('indicador de senha acompanha o comprimento sem exigir composição', () => {
@@ -242,6 +244,53 @@ test('sincronização entre aparelhos inicia imediatamente e sobrevive a retomad
   assert.match(html, /doc\.metadata\.fromCache/);
 });
 
+test('assinatura é lida em tempo real e nunca gravada pelo navegador', () => {
+  const entrada = trecho('function sincronizarContaAutenticada(u){', 'function pararOuvinteNuvem(){');
+  assert.match(html, /collection\('assinaturas'\)\.doc\(UID\)\.get\(\)/);
+  assert.match(html, /collection\('assinaturas'\)\.doc\(uidConta\)\.onSnapshot\(/);
+  assert.ok(entrada.indexOf('const resultado = await puxarDaNuvem();') < entrada.indexOf('await puxarAssinatura();'));
+  assert.doesNotMatch(html, /collection\('assinaturas'\)[\s\S]{0,120}\.set\(/);
+  assert.doesNotMatch(html, /collection\('assinaturas'\)[\s\S]{0,120}\.update\(/);
+  assert.match(html, /PLANO\/CICLO\/TRIAL de versões anteriores são ignorados/);
+});
+
+test('assinatura vencida volta ao grátis e teste vigente libera Premium', () => {
+  const contexto = vm.createContext({ console, Date, Number, JSON });
+  vm.runInContext(`
+    const iso = d => d.toISOString().slice(0,10);
+  ` + trecho('function valorEmMs(v){', 'function aplicarAssinatura(d, avisar=false){'), contexto);
+  const agora = Date.now();
+  const resultado = vm.runInContext(`(() => ({
+    teste: normalizarAssinatura({
+      plano:'premium', ciclo:'teste', status:'ativo', testeUsado:true,
+      testeFim:${agora + 86400000}
+    }),
+    vencida: normalizarAssinatura({
+      plano:'premium', ciclo:'anual', status:'ativo', testeUsado:true,
+      periodoFim:${agora - 86400000}
+    })
+  }))()`, contexto);
+  assert.equal(resultado.teste.PLANO, 'premium');
+  assert.equal(resultado.teste.CICLO, 'teste');
+  assert.equal(resultado.vencida.PLANO, 'free');
+  assert.equal(resultado.vencida.TRIAL.usado, true);
+});
+
+test('teste grátis usa função protegida, transação e App Check', () => {
+  const funcao = fs.readFileSync(path.join(raiz, 'functions', 'index.js'), 'utf8');
+  const publicador = fs.readFileSync(path.join(raiz, 'PUBLICAR-ASSINATURAS.cmd'), 'utf8');
+  assert.match(html, /FUNCTIONS\.httpsCallable\('ativarTesteGratis'\)/);
+  assert.match(funcao, /enforceAppCheck:\s*true/);
+  assert.match(funcao, /consumeAppCheckToken:\s*true/);
+  assert.match(funcao, /request\.app\.alreadyConsumed/);
+  assert.match(funcao, /runTransaction/);
+  assert.match(funcao, /collection\("beneficiosTeste"\)/);
+  assert.match(funcao, /testeUsado:\s*true/);
+  assert.match(publicador, /functions:ativarTesteGratis,firestore:rules/);
+  assert.match(publicador, /--project tmycar-222e5/);
+  assert.doesNotMatch(html, /PLANO = 'premium'; CICLO = 'teste';/);
+});
+
 test('exclusão remota mais recente substitui uma garagem local não pendente', async () => {
   const remoto = {
     VEIC: [], REGISTROS: [], AVISOS: [],
@@ -276,7 +325,7 @@ test('exclusão remota mais recente substitui uma garagem local não pendente', 
 });
 
 test('Firebase SDK está fixado na versão estável selecionada', () => {
-  const componentes = ['app', 'app-check', 'auth', 'firestore'];
+  const componentes = ['app', 'app-check', 'auth', 'firestore', 'functions'];
   for(const componente of componentes){
     assert.match(
       html,
@@ -284,8 +333,8 @@ test('Firebase SDK está fixado na versão estável selecionada', () => {
     );
   }
   assert.doesNotMatch(html, /firebasejs\/10\.12\.2\//);
-  assert.match(html, /const VERSAO_APP = '1\.5\.54'/);
+  assert.match(html, /const VERSAO_APP = '1\.5\.55'/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.54/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.55/);
 });

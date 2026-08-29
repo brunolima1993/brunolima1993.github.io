@@ -39,7 +39,7 @@ de e-mail já está cadastrado.
 ## 4. Dependências Web
 
 O Firebase JavaScript SDK está fixado na versão `12.18.0` para App, App Check,
-Authentication e Cloud Firestore. A interface `compat` foi mantida nesta etapa
+Authentication, Cloud Firestore e Cloud Functions. A interface `compat` foi mantida nesta etapa
 para isolar o risco da atualização. A migração para a API modular deve ser
 feita separadamente, com novos testes de regressão.
 
@@ -57,6 +57,16 @@ firebase.cmd deploy --only hosting
 
 O arquivo `firebase.json` adiciona HTTPS/HSTS, proteção contra iframe, `nosniff`, política de referência, permissões restritas e uma CSP inicialmente em modo de relatório. A CSP só deverá ser colocada em modo obrigatório depois de retirar scripts, estilos e eventos inline.
 
+## 7. Assinatura e teste grátis — base segura pronta
+
+O plano não é mais aceito do `localStorage` nem de `usuarios/{UID}`. O app lê
+`assinaturas/{UID}` e a função `ativarTesteGratis` valida Auth, e-mail confirmado
+e App Check antes de liberar os 14 dias. Uma transação também impede repetir o
+benefício com o mesmo e-mail. Consulte `ASSINATURAS-FIREBASE.md` para publicar.
+
 ## Ainda pendente antes de cobrar
 
-O Premium visual continua sendo um comportamento de protótipo local. Antes de aceitar dinheiro, uma Cloud Function deve validar a identidade, iniciar o teste de 14 dias uma única vez e atualizar `assinaturas/{UID}`. Compras da Google Play também precisam ser confirmadas no servidor antes de liberar o plano.
+As compras mensal e anual continuam bloqueadas. A próxima etapa financeira é
+integrar a Google Play Billing e fazer o servidor validar cada compra antes de
+atualizar `assinaturas/{UID}`. O HTML nunca deve aceitar recibo ou plano sem essa
+validação do lado do servidor.
