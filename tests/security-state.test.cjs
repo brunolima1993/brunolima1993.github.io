@@ -32,7 +32,8 @@ function ambienteDeEstado() {
     function migrarItens(){}
     function corrigirAtivo(){}
     function mandarParaNuvem(){}
-    const window = {};
+    const window = { addEventListener(){} };
+    const document = { visibilityState:'visible', addEventListener(){} };
     const localStorage = {
       getItem:k => memoria.has(k) ? memoria.get(k) : null,
       setItem:(k,v) => memoria.set(k,v),
@@ -42,7 +43,7 @@ function ambienteDeEstado() {
   contexto.memoria = memoria;
   vm.runInContext(
     base
-      + trecho('function dadosUsuarioAtual(){', 'let envioPendente')
+      + trecho('function dadosUsuarioAtual(){', 'let FILA_NUVEM')
       + trecho("const CHAVE_LEGADA = 'tmycar:dados:v1';", 'async function carregar(){'),
     contexto
   );
@@ -96,6 +97,25 @@ test('perfil enviado pelo cliente não contém assinatura ou teste', () => {
   }
 });
 
+test('abrir a conta não transforma cache antigo em alteração mais recente', async () => {
+  const c = ambienteDeEstado();
+  const resultado = await vm.runInContext(`(async() => {
+    carregado = true;
+    ULTIMA_GRAVACAO = 123456;
+    ALTERACOES_PENDENTES = false;
+    await persistirLocal(false);
+    const apenasCache = { em:ULTIMA_GRAVACAO, pendente:ALTERACOES_PENDENTES };
+    await persistirLocal(true);
+    const alteracaoReal = { em:ULTIMA_GRAVACAO, pendente:ALTERACOES_PENDENTES };
+    return { apenasCache, alteracaoReal };
+  })()`, c);
+
+  assert.equal(resultado.apenasCache.em, 123456);
+  assert.equal(resultado.apenasCache.pendente, false);
+  assert.ok(resultado.alteracaoReal.em > 123456);
+  assert.equal(resultado.alteracaoReal.pendente, true);
+});
+
 test('regras negam acesso global e escrita de assinaturas', () => {
   const regras = fs.readFileSync(path.join(raiz, 'firestore.rules'), 'utf8');
   assert.match(regras, /request\.auth\.uid == uid/);
@@ -123,7 +143,7 @@ test('App Check Enterprise é carregado antes de Auth e Firestore', () => {
   assert.ok(appCheck < auth && appCheck < firestore);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
 });
 
 test('JavaScript interno do aplicativo permanece sintaticamente válido', () => {
@@ -153,7 +173,7 @@ test('erros de login não permitem descobrir se um e-mail está cadastrado', () 
   assert.doesNotMatch(html, /Não encontramos conta com esse e-mail/i);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
 });
 
 test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => {
@@ -168,7 +188,7 @@ test('novas senhas exigem comprimento forte sem bloquear contas antigas', () => 
   assert.doesNotMatch(html, /Mínimo 6 caracteres/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
 });
 
 test('indicador de senha acompanha o comprimento sem exigir composição', () => {
@@ -198,6 +218,27 @@ test('indicador de senha acompanha o comprimento sem exigir composição', () =>
   assert.equal(elementos.forcaSenhaBar.style.width, '100%');
 });
 
+test('sincronização entre aparelhos inicia imediatamente e sobrevive a retomadas', () => {
+  const inicializacao = trecho('function iniciarFirebase(){', 'const CANCELOU =');
+  assert.match(inicializacao, /NUVEM\.enablePersistence\(\{ synchronizeTabs:true \}\)/);
+  assert.ok(
+    inicializacao.indexOf('NUVEM.enablePersistence') < inicializacao.indexOf('AUTH.onAuthStateChanged'),
+    'a persistência precisa ser preparada antes do observador de login'
+  );
+
+  const nuvem = trecho('let FILA_NUVEM', 'let IMPORTACAO_ANONIMA_DISPONIVEL');
+  assert.match(nuvem, /function enfileirarNaNuvem/);
+  assert.match(nuvem, /return enfileirarNaNuvem\(uidDestino, pacote\)/);
+  assert.doesNotMatch(nuvem, /setTimeout/);
+  assert.doesNotMatch(nuvem, /\.catch\(\(\) => \{\}\)/);
+
+  assert.match(html, /document\.addEventListener\('visibilitychange'/);
+  assert.match(html, /window\.addEventListener\('online', sincronizarAoRetomar\)/);
+  assert.match(html, /PENDENTE_NUVEM:ALTERACOES_PENDENTES/);
+  assert.match(html, /persistirLocal\(marcarAlteracao=true\)/);
+  assert.match(html, /em: ULTIMA_GRAVACAO \|\| Date\.now\(\)/);
+});
+
 test('Firebase SDK está fixado na versão estável selecionada', () => {
   const componentes = ['app', 'app-check', 'auth', 'firestore'];
   for(const componente of componentes){
@@ -207,8 +248,8 @@ test('Firebase SDK está fixado na versão estável selecionada', () => {
     );
   }
   assert.doesNotMatch(html, /firebasejs\/10\.12\.2\//);
-  assert.match(html, /const VERSAO_APP = '1\.5\.52'/);
+  assert.match(html, /const VERSAO_APP = '1\.5\.53'/);
 
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-  assert.match(sw, /tmycar-pwa-v1\.5\.52/);
+  assert.match(sw, /tmycar-pwa-v1\.5\.53/);
 });

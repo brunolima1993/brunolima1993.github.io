@@ -5080,6 +5080,7 @@ const FIREBASE_CONFIG = {
 let AUTH = null, NUVEM = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
+let PERSISTENCIA_NUVEM = Promise.resolve(false);
 
 function contaPrecisaVerificacao(u){
   if(!u || u.emailVerified) return false;
@@ -5149,9 +5150,21 @@ function iniciarFirebase(){
     iniciarAppCheck();
     AUTH  = firebase.auth();
     NUVEM = firebase.firestore();
+    /* No navegador o cache persistente vem desligado. Ativá-lo faz Safari,
+       Chrome e Firefox guardarem também as gravações ainda não confirmadas e
+       enviarem tudo quando a conexão voltar. */
+    PERSISTENCIA_NUVEM = NUVEM.enablePersistence({ synchronizeTabs:true })
+      .then(() => true)
+      .catch(e => {
+        const c = String(e && e.code || '');
+        if(!c.includes('failed-precondition') && !c.includes('unimplemented'))
+          console.warn('Persistência offline do Firestore indisponível.', e);
+        return false;
+      });
     AUTH.languageCode = 'pt-BR';
     AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);   /* continua logado */
     AUTH.onAuthStateChanged(async u => {
+      await PERSISTENCIA_NUVEM;
       if(u){
         if(contaPrecisaVerificacao(u)){
           UID = null;
@@ -5182,7 +5195,7 @@ function iniciarFirebase(){
       /* Uma conta ainda não verificada não deve carimbar seu e-mail no espaço
          anônimo nem provocar gravações antes de receber autorização. */
       if(!EXCLUINDO_CONTA && !IMPORTACAO_ANONIMA_DISPONIVEL &&
-         (!u || !contaPrecisaVerificacao(u))) persistir();
+         (!u || !contaPrecisaVerificacao(u))) persistirLocal(false);
       if(carregado){
         atualizarNav();
         const atual = telaAtual();
@@ -5492,7 +5505,7 @@ async function recuperarSenha(){
 async function sairDaConta(){
   /* Salva somente no espaço desta conta. A troca para o espaço anônimo ocorre
      antes de qualquer nova renderização, evitando resíduos no aparelho. */
-  if(UID) await persistirLocal();
+  if(UID) await persistirLocal(false);
   if(UID) await salvarNaNuvemAgora();
   if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
   await ativarContextoAnonimo();
@@ -5548,7 +5561,7 @@ function abrirExclusaoConta(){
 }
 
 async function limparDadosLocaisDaConta(uidExcluir=null){
-  clearTimeout(envioPendente); envioPendente = null;
+  FILA_NUVEM = Promise.resolve(false);
   const uidAlvo = uidExcluir || UID || (AUTH && AUTH.currentUser && AUTH.currentUser.uid) || null;
   resetarEstadoEmMemoria();
   UID = null;
@@ -5599,7 +5612,7 @@ async function excluirConta(){
     }
 
     if(!NUVEM){ const e = new Error('cloud-unavailable'); e.code = 'app/cloud-unavailable'; throw e; }
-    clearTimeout(envioPendente); envioPendente = null;
+    await FILA_NUVEM.catch(() => false);
     EXCLUINDO_CONTA = true;
     refConta = NUVEM.collection('usuarios').doc(u.uid);
     copiaSeguranca = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
@@ -5640,40 +5653,56 @@ async function excluirConta(){
    da loja poderá escrevê-los. */
 function dadosUsuarioAtual(){
   return { schemaVersion:2, VEIC, REGISTROS, NOTIF, USUARIO, ativo,
-           ONBOARD, CONSENT, AVISOS, em: Date.now() };
+           ONBOARD, CONSENT, AVISOS, em: ULTIMA_GRAVACAO || Date.now() };
 }
 
 /* Estado completo é apenas o cache local do protótipo. Nunca deve ser usado
    como autorização para liberar recursos pagos no servidor. */
 function estadoAtual(){
   return { ...dadosUsuarioAtual(), PLANO, CICLO, TRIAL, PLANO_ATE, PLANO_AGENDADO,
-           CONTA };
+           CONTA, PENDENTE_NUVEM:ALTERACOES_PENDENTES };
 }
 
-let envioPendente = null;
-async function salvarNaNuvemAgora(){
-  if(!NUVEM || !UID) return false;
-  clearTimeout(envioPendente); envioPendente = null;
+let FILA_NUVEM = Promise.resolve(true);
+let ERRO_NUVEM_AVISADO = false;
+
+function avisarFalhaNuvem(e){
+  console.warn('Não foi possível sincronizar os dados com a nuvem.', e);
+  if(ERRO_NUVEM_AVISADO || !carregado) return;
+  ERRO_NUVEM_AVISADO = true;
+  toast('Os dados ficaram salvos neste aparelho, mas ainda não chegaram à nuvem. Vamos tentar novamente.');
+}
+
+function enfileirarNaNuvem(uidDestino, pacote){
+  /* As gravações começam imediatamente e são executadas na ordem. Isso evita
+     que uma resposta antiga termine por último e substitua uma mudança nova. */
+  const tarefa = FILA_NUVEM.catch(() => false).then(async() => {
+    const atual = AUTH && AUTH.currentUser;
+    if(!NUVEM || !atual || atual.uid !== uidDestino || EXCLUINDO_CONTA) return false;
+    await NUVEM.collection('usuarios').doc(uidDestino).set(pacote, { merge:false });
+    ERRO_NUVEM_AVISADO = false;
+    if(Number(pacote.em) >= (ULTIMA_GRAVACAO || 0)){
+      ALTERACOES_PENDENTES = false;
+      await persistirLocal(false);
+    }
+    return true;
+  }).catch(e => {
+    avisarFalhaNuvem(e);
+    return false;
+  });
+  FILA_NUVEM = tarefa;
+  return tarefa;
+}
+
+function salvarNaNuvemAgora(){
+  if(!NUVEM || !UID) return Promise.resolve(false);
   const uidDestino = UID;
   const pacote = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
-  try{
-    await NUVEM.collection('usuarios').doc(uidDestino).set(pacote, { merge:false });
-    return true;
-  }catch(e){ return false; }
+  return enfileirarNaNuvem(uidDestino, pacote);
 }
 
 function mandarParaNuvem(){
-  if(!NUVEM || !UID) return;
-  clearTimeout(envioPendente);                    /* junta várias gravações seguidas */
-  const uidDestino = UID;
-  const pacote = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
-  envioPendente = setTimeout(() => {
-    /* UID e conteúdo são capturados juntos. Uma troca de conta durante os
-       1,2 s de espera nunca redireciona um pacote antigo ao novo usuário. */
-    NUVEM.collection('usuarios').doc(uidDestino)
-      .set(pacote, { merge:false })
-      .catch(() => {});                            /* falhar aqui nunca trava o app */
-  }, 1200);
+  return salvarNaNuvemAgora();
 }
 
 let IMPORTACAO_ANONIMA_DISPONIVEL = false;
@@ -5713,7 +5742,11 @@ async function puxarDaNuvem(){
     const temNuvemDados = (d.VEIC && d.VEIC.length) || (d.REGISTROS && d.REGISTROS.length);
 
     /* aparelho novo, ou aparelho vazio: traz tudo da nuvem */
-    if(temNuvemDados && !temAquiDados){ aplicarEstado(d); return resultado; }
+    if(temNuvemDados && !temAquiDados){
+      aplicarEstado(d);
+      resultado.aplicadoDaNuvem = true;
+      return resultado;
+    }
 
     /* os dois têm dados: vale o mais recente, e o outro não é apagado sem aviso */
     if(temNuvemDados && temAquiDados){
@@ -5721,9 +5754,9 @@ async function puxarDaNuvem(){
       if(nuvemMaisNova){
         confirmar('Encontramos dados na sua conta',
           'A conta tem um histórico mais recente que o deste aparelho. Quer trazer o da conta? O que está aqui agora será substituído.',
-          () => { aplicarEstado(d); pintarGaragem(); toast('Histórico restaurado.'); },
+          () => { aplicarEstado(d); repintarDadosSincronizados(); toast('Histórico restaurado.'); },
           'Trazer da conta');
-      }else{
+      }else if((d.em || 0) < (ULTIMA_GRAVACAO || 0)){
         mandarParaNuvem();
       }
       return resultado;
@@ -5747,7 +5780,8 @@ function aplicarEstado(d){
   if(typeof d.ONBOARD === 'boolean') ONBOARD = d.ONBOARD;
   migrarItens(); corrigirAtivo();
   ULTIMA_GRAVACAO = d.em || Date.now();
-  persistirLocal();
+  ALTERACOES_PENDENTES = false;
+  persistirLocal(false);
 }
 
 async function temDadosAnonimosParaImportar(){
@@ -6064,7 +6098,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.52';
+const VERSAO_APP = '1.5.53';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6086,6 +6120,7 @@ const ARMAZEM = {
 };
 
 let ULTIMA_GRAVACAO = 0;
+let ALTERACOES_PENDENTES = false;
 
 async function lerEstadoLocal(chave){
   try{
@@ -6105,6 +6140,7 @@ function resetarEstadoEmMemoria(){
   ONBOARD = false; CONSENT = { termos:false, em:null };
   CONTA = { email:null, local:true };
   ULTIMA_GRAVACAO = 0;
+  ALTERACOES_PENDENTES = false;
 }
 
 function aplicarEstadoLocalCompleto(d){
@@ -6125,6 +6161,7 @@ function aplicarEstadoLocalCompleto(d){
   if(typeof d.ativo === 'number') ativo = d.ativo;
   ONBOARD = d.ONBOARD === true;
   ULTIMA_GRAVACAO = Number(d.em) || 0;
+  ALTERACOES_PENDENTES = d.PENDENTE_NUVEM === true;
   migrarItens(); corrigirAtivo();
 }
 
@@ -6137,7 +6174,7 @@ async function ativarContextoUsuario(u){
     return;
   }
 
-  if(carregado && !EXCLUINDO_CONTA) await persistirLocal();
+  if(carregado && !EXCLUINDO_CONTA) await persistirLocal(false);
   const chave = chaveDoUsuario(u.uid);
   let d = await lerEstadoLocal(chave);
 
@@ -6171,7 +6208,7 @@ async function ativarContextoAnonimo(){
     CONTA = { email:null, local:true };
     return;
   }
-  if(carregado && !EXCLUINDO_CONTA) await persistirLocal();
+  if(carregado && !EXCLUINDO_CONTA) await persistirLocal(false);
   const d = await lerEstadoLocal(CHAVE_ANONIMA);
   CHAVE_ATIVA = CHAVE_ANONIMA;
   CONTEXTO_LOCAL = 'anon';
@@ -6182,12 +6219,15 @@ async function ativarContextoAnonimo(){
 
 async function persistir(){
   await persistirLocal();
-  mandarParaNuvem();
+  return mandarParaNuvem();
 }
 
-async function persistirLocal(){
+async function persistirLocal(marcarAlteracao=true){
   if(!carregado) return;
-  ULTIMA_GRAVACAO = Date.now();
+  if(marcarAlteracao){
+    ULTIMA_GRAVACAO = Date.now();
+    ALTERACOES_PENDENTES = true;
+  }
   try{
     const d = estadoAtual();
     d.em = ULTIMA_GRAVACAO;
@@ -6197,6 +6237,41 @@ async function persistirLocal(){
     await ARMAZEM.set(CHAVE_ATIVA, JSON.stringify(d));
   }catch(e){ /* sem storage: o demo segue só em memória */ }
 }
+
+function repintarDadosSincronizados(){
+  atualizarNav(); pintarSino();
+  const atual = telaAtual();
+  if(atual === 'garagem') pintarGaragem();
+  if(atual === 'painel') pintarPainel();
+  if(atual === 'avisos') pintarAvisos();
+  if(atual === 'fipe') pintarFipe();
+  if(atual === 'gastos') pintarGastos();
+  if(atual === 'gasto-ipva') pintarCategoriaGasto('ipva');
+  if(atual === 'gasto-combustivel') pintarCategoriaGasto('combustivel');
+  if(atual === 'config') pintarConfig();
+  if(atual === 'notificacoes') pintarNotificacoes();
+  if(atual === 'conta-dados') pintarContaDados();
+}
+
+let ULTIMA_CONSULTA_AO_RETORNAR = 0;
+async function sincronizarAoRetomar(){
+  if(!UID || !NUVEM || !AUTH || !AUTH.currentUser || document.visibilityState === 'hidden') return;
+  const agora = Date.now();
+  if(agora - ULTIMA_CONSULTA_AO_RETORNAR < 3000) return;
+  ULTIMA_CONSULTA_AO_RETORNAR = agora;
+  await PERSISTENCIA_NUVEM;
+  const resultado = await puxarDaNuvem();
+  if(resultado && resultado.aplicadoDaNuvem) repintarDadosSincronizados();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden'){
+    if(UID && ALTERACOES_PENDENTES) salvarNaNuvemAgora();
+  }else{
+    sincronizarAoRetomar();
+  }
+});
+window.addEventListener('online', sincronizarAoRetomar);
 
 async function carregar(){
   try{
