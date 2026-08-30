@@ -984,6 +984,8 @@ textarea::placeholder{color:var(--dim)}
 .fnext-value{display:block;margin-top:4px;font-family:'Inter',sans-serif;
   font-size:13.5px;font-weight:800;letter-spacing:.01em;line-height:1.35}
 .fnext-hint{display:block;margin-top:3px;font-size:10px;line-height:1.35;color:var(--muted)}
+.next-used{display:block;margin-top:5px;font-family:'Inter',sans-serif;
+  font-size:8.5px;font-weight:500;letter-spacing:.06em;color:#d9efff}
 .swatch{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
 .sw{width:30px;height:30px;border-radius:9px;cursor:pointer;border:2px solid transparent;box-shadow:0 0 0 1px rgba(255,255,255,.16) inset}
 .sw.sel{border-color:var(--blue);box-shadow:0 0 0 1px rgba(255,255,255,.3) inset,0 0 10px rgba(58,159,240,.5)}
@@ -2469,6 +2471,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div id="shPartes"></div>
       <div id="shCambio"></div>
       <div id="shOleoMotor"></div>
+      <div id="shFreio"></div>
       <div class="card" style="padding:4px 16px">
         <div id="shNaoSei"></div>
         <div class="field ctr" id="shBoxKm"><label class="flabel">KM do carro na troca</label><input class="mono" id="shKm" inputmode="numeric"></div>
@@ -3335,11 +3338,17 @@ function pintarPainel(){
       }
       const c = calc(it, v.km, it.ultKm, it.ultData);
       const prox = resumoProxima(c);
+      const utilizado = it.id === 'oleo' ? it.oleoUsado
+        : it.id === 'cambio' ? it.oleo
+        : it.id === 'freio' ? it.fluidoUsado
+        : '';
+      const utilizadoNaTroca = utilizado && !c.vazio ? utilizado : '';
       h += `<div class="card" style="color:${corDe(c.cl)}">
         <div class="sp-top"><span style="color:var(--ink);font-size:15px;font-weight:700">${esc(it.nome)}</span>
           <span class="status ${c.cl}">${c.rot}</span></div>
         <div class="next-maint ${c.vazio?'empty':''}">
           <span class="next-label">Próxima troca</span>
+          ${utilizadoNaTroca ? `<span class="next-used">${esc(utilizadoNaTroca)}</span>` : ''}
           <span class="next-value">${prox.valor}</span>
           <span class="next-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
         </div>
@@ -3986,6 +3995,7 @@ function abrirSheet(id){
   /* o câmbio pede duas coisas a mais: o tipo e o óleo, e aceita "não sei" */
   const ehCambio = itAtual.id === 'cambio';
   const ehOleoMotor = itAtual.id === 'oleo';
+  const ehFreio = itAtual.id === 'freio';
   shNaoSei = false;
   $('shCambio').innerHTML = ehCambio ? `
     <div class="card" style="margin-bottom:12px">
@@ -4011,6 +4021,23 @@ function abrirSheet(id){
         <label class="flabel">Viscosidade utilizada <span style="color:var(--dim);font-weight:500">· opcional</span></label>
         <input id="shViscosidade" maxlength="30" placeholder="ex.: 5W-30, 10W-40" value="${esc(itAtual.oleoUsado||'')}">
         <p class="ajuda">Registre o óleo que foi realmente colocado nesta troca.${oleoRecomendado ? ` A recomendação do app é <b style="color:var(--ink)">${esc(oleoRecomendado)}</b>.` : ''}</p>
+      </div>
+    </div>` : '';
+
+  const fluidoFreio = itAtual.fluidoUsado || '';
+  $('shFreio').innerHTML = ehFreio ? `
+    <div class="card" style="margin-bottom:12px;padding:4px 16px">
+      <div class="field">
+        <label class="flabel">Fluido utilizado <span style="color:var(--dim);font-weight:500">· opcional</span></label>
+        <div class="selw"><select id="shFluidoFreio">
+          <option value="" ${fluidoFreio?'':'selected'}>Não informado</option>
+          <option value="DOT 3" ${fluidoFreio==='DOT 3'?'selected':''}>DOT 3</option>
+          <option value="DOT 4" ${fluidoFreio==='DOT 4'?'selected':''}>DOT 4</option>
+          <option value="DOT 4 LV" ${fluidoFreio==='DOT 4 LV'?'selected':''}>DOT 4 LV</option>
+          <option value="DOT 5" ${fluidoFreio==='DOT 5'?'selected':''}>DOT 5</option>
+          <option value="DOT 5.1" ${fluidoFreio==='DOT 5.1'?'selected':''}>DOT 5.1</option>
+        </select></div>
+        <p class="ajuda">Registre exatamente o tipo colocado nesta troca. <b style="color:var(--ink)">DOT 5 não deve ser misturado com DOT 3, DOT 4, DOT 4 LV ou DOT 5.1.</b> Na dúvida, confira o manual do veículo.</p>
       </div>
     </div>` : '';
 
@@ -4100,6 +4127,11 @@ function salvarTroca(){
     const viscosidade = ($('shViscosidade') ? $('shViscosidade').value : '').trim();
     if(viscosidade) itAtual.oleoUsado = viscosidade;
     else delete itAtual.oleoUsado;
+  }
+  if(itAtual.id === 'freio'){
+    const fluido = ($('shFluidoFreio') ? $('shFluidoFreio').value : '').trim();
+    if(fluido) itAtual.fluidoUsado = fluido;
+    else delete itAtual.fluidoUsado;
   }
   if(marc){
     itAtual.partes.forEach(p => {
@@ -6256,7 +6288,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.62';
+const VERSAO_APP = '1.5.66';
 let ONBOARD = false;
 let carregado = false;
 
