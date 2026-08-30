@@ -644,14 +644,14 @@ select option{background:#0B1A33;color:#E8EDF5}
 .ftempo{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;max-width:44%}
 .ftempo-lab{font-size:8.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
 .ftempo-val{font-size:11.5px;font-weight:600;text-align:right;line-height:1.3}
-.fitem{display:flex;align-items:center;gap:11px;padding:11px 0;text-align:left;
-  border-bottom:1px solid var(--line)}
+.fitem{display:block;padding:13px 0;text-align:center;border-bottom:1px solid var(--line)}
 .fitem:last-child{border-bottom:0;padding-bottom:0}
 .fitem:first-child{padding-top:0}
+.fitem-head{display:grid;grid-template-columns:24px minmax(0,1fr) 24px;align-items:center;gap:8px}
 .fmk{width:21px;height:21px;border-radius:50%;flex-shrink:0;display:flex;
   align-items:center;justify-content:center;font-size:11px;font-weight:800;
   font-family:'Inter',sans-serif;color:#07142C}
-.fbody{flex:1;min-width:0}
+.fbody{min-width:0;text-align:center;padding:0 28px}
 .fnome{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.2}
 .fritmo{font-size:10.5px;color:var(--dim);margin-top:3px;
   font-family:'IBM Plex Mono',monospace}
@@ -970,6 +970,20 @@ textarea::placeholder{color:var(--dim)}
 .critbox span{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
 .critbox.manda{border-color:currentColor}
 .critbox.manda span{color:inherit}
+.next-maint{margin-top:12px;padding:13px 14px;border-radius:12px;text-align:center;
+  background:rgba(0,0,0,.24);border:1px solid rgba(151,184,224,.10)}
+.next-label,.fnext-label{display:block;font-size:8.5px;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;color:#20b7ff;text-shadow:0 0 10px rgba(0,174,255,.62)}
+.next-value{display:block;margin-top:5px;font-family:'Inter',sans-serif;
+  font-size:16px;font-weight:800;letter-spacing:.01em;color:currentColor}
+.next-hint{display:block;margin-top:5px;font-size:10.5px;line-height:1.4;color:var(--muted)}
+.next-maint.empty .next-value{color:var(--ink)}
+.next-hint.is-status,.fnext-hint.is-status{color:#20b7ff;font-weight:700;
+  text-shadow:0 0 9px rgba(0,174,255,.58)}
+.fnext-label{margin-top:7px}
+.fnext-value{display:block;margin-top:4px;font-family:'Inter',sans-serif;
+  font-size:13.5px;font-weight:800;letter-spacing:.01em;line-height:1.35}
+.fnext-hint{display:block;margin-top:3px;font-size:10px;line-height:1.35;color:var(--muted)}
 .swatch{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
 .sw{width:30px;height:30px;border-radius:9px;cursor:pointer;border:2px solid transparent;box-shadow:0 0 0 1px rgba(255,255,255,.16) inset}
 .sw.sel{border-color:var(--blue);box-shadow:0 0 0 1px rgba(255,255,255,.3) inset,0 0 10px rgba(58,159,240,.5)}
@@ -2648,6 +2662,7 @@ const HOJE = new Date(); HOJE.setHours(0,0,0,0);
 const DIA = 864e5;
 const iso = d => d.toISOString().slice(0,10);
 const mesAno = d => d.toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('.','');
+const dataPt = d => d.toLocaleDateString('pt-BR');
 /* 31/01 + 1 mês daria 03/03 no JS puro: fixa no último dia do mês de destino */
 function somarMeses(d, meses){
   const r = new Date(d.getTime());
@@ -2743,6 +2758,20 @@ function calc(it, km, ultKm, ultData, peca){
   return r;
 }
 const corDe = cl => cl==='ok'?'var(--green)':cl==='warn'?'var(--amber)':cl==='nt'?'var(--dim)':'var(--red)';
+
+/* O painel mostra só o destino da próxima manutenção. O intervalo que gera
+   esse destino continua guardado e totalmente editável dentro da folha. */
+function resumoProxima(c){
+  if(c.vazio) return {
+    valor:'Sem registro',
+    detalhe:'Informe a última troca para calcular a próxima.'
+  };
+  const alvos = [
+    c.proxKm != null ? `${fmt(c.proxKm)} km` : null,
+    c.proxData ? dataPt(c.proxData) : null
+  ].filter(Boolean);
+  return { valor:alvos.join(' · ') || '—', detalhe:c.txt || '' };
+}
 
 /* ---------- navegação ---------- */
 function go(t){
@@ -3280,71 +3309,40 @@ function pintarPainel(){
         const cs = it.partes.map(p=>({p, c:calc(it,v.km,p.ultKm,p.ultData,p)}));
         const pior = cs.slice().sort((a,b)=>b.c.pct-a.c.pct)[0].c;
         h += `<div class="card" style="--e:${corDe(pior.cl)}">
-          <div class="sp-top"><span class="eyebrow">${it.crit}</span>
+          <div class="sp-top"><span style="color:var(--ink);font-size:15px;font-weight:700">${esc(it.nome)}</span>
             <span class="status ${pior.cl}">${pior.rot}</span></div>
-          <div class="track"><div class="pfill" style="width:${pior.pct.toFixed(1)}%;background:${corDe(pior.cl)}"></div></div>
-          <div style="margin-top:13px">
+          <div>
             ${cs.map(({p,c})=>{
-              const cr = critDe(it,p);
-              const ritmo = [cr.ikm?fmt(cr.ikm)+' km':null,
-                             cr.imes?cr.imes+(cr.imes===1?' mês':' meses'):null].filter(Boolean).join(' ou ');
               const cor = corDe(c.cl);
-              /* o lado direito mostra sempre o TEMPO — se não há prazo definido,
-                 mostra um traço em vez de cair na conta por quilometragem */
-              const cd = calc(it, v.km, p.ultKm, p.ultData, p);
-              const temPrazo = cr.imes && p.ultData;
-              const tempo = !cr.imes ? '—'
-                : !p.ultData ? '—'
-                : (cd.dias == null ? '—'
-                  : cd.dias > 0
-                    ? (cd.dias >= 60 ? `Faltam ${Math.round(cd.dias/30)} meses` : `Faltam ${cd.dias} dias`)
-                    : `Vencido há ${Math.abs(cd.dias) >= 60 ? Math.round(Math.abs(cd.dias)/30)+' meses' : Math.abs(cd.dias)+' dias'}`);
+              const prox = resumoProxima(c);
               return `<div class="fitem">
-                <span class="fmk" style="background:${cor}">${c.vazio?'?':c.cl==='ok'?'✓':'!'}</span>
-                <div class="fbody">
+                <div class="fitem-head">
+                  <span class="fmk" style="background:${cor}">${c.vazio?'?':c.cl==='ok'?'✓':'!'}</span>
                   <div class="fnome">${esc(p.nome)}</div>
-                  <div class="fritmo">${ritmo||'sem intervalo definido'}</div>
+                  <span aria-hidden="true"></span>
                 </div>
-                <span class="ftempo">
-                  <span class="ftempo-lab">Tempo</span>
-                  <span class="ftempo-val" style="color:${temPrazo?cor:'var(--dim)'}">${tempo}</span>
-                </span>
+                <div class="fbody">
+                  <span class="fnext-label">Próxima troca</span>
+                  <span class="fnext-value" style="color:${c.vazio?'var(--ink)':cor}">${prox.valor}</span>
+                  <span class="fnext-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
+                </div>
               </div>`;
             }).join('')}
           </div>
-          ${pior.vazio?`<div class="odo-hint" style="text-align:left;margin-top:6px">Nenhum filtro tem registro ainda. Sugestão do app: <b style="color:var(--ink)">${esc(it.crit)}</b>, ajustável ao registrar.</div>`:''}
           <button class="cta outline" style="margin-top:12px;padding:9px;font-size:12.5px" onclick="abrirSheet('${it.id}')">Registrar troca</button>
         </div>`;
         return;
       }
       const c = calc(it, v.km, it.ultKm, it.ultData);
-      const kmManda = c.manda==='km';
-      /* A especificação do cadastro é a recomendação. No óleo do motor ela
-         fica em uma segunda linha para não quebrar o cabeçalho do card. */
-      const extra = (it.id === 'cambio' && it.oleo)
-        ? `<span style="color:var(--ink)"> · ${esc(it.oleo)}</span>` : '';
-      const recomendacaoOleo = it.id === 'oleo' && v.oleo && v.oleo !== '—'
-        ? `<span class="oleo-recomendado">recomendado <b>${esc(v.oleo)}</b></span>` : '';
-      const oleoRegistrado = it.id === 'oleo' && it.oleoUsado
-        ? `<div class="odo-hint" style="text-align:left;margin-top:9px;color:var(--muted)">Última troca registrada com <b style="color:var(--ink)">${esc(it.oleoUsado)}</b>.</div>`
-        : '';
+      const prox = resumoProxima(c);
       h += `<div class="card" style="color:${corDe(c.cl)}">
-        <div class="sp-top"><div class="sp-copy"><span class="eyebrow">${esc(it.crit)}${extra}</span>${recomendacaoOleo}</div>
+        <div class="sp-top"><span style="color:var(--ink);font-size:15px;font-weight:700">${esc(it.nome)}</span>
           <span class="status ${c.cl}">${c.rot}</span></div>
-        <div style="color:var(--ink);font-size:15px;font-weight:700;margin-bottom:3px">${esc(it.nome)}</div>
-        <div class="sdate">${
-          c.vazio ? 'Informe quando foi a última troca para o app começar a contar.'
-          : c.definida ? `${c.txt} · próxima troca definida por você em ${fmt(it.proxFixo)} km`
-          : `${c.txt} · última: ${fmt(it.ultKm)} km, ${mesAno(new Date(it.ultData+'T00:00:00'))}`}</div>
-        ${c.vazio && it.crit ? `<div class="odo-hint" style="text-align:left;margin-top:8px">Sugestão do app: <b style="color:var(--ink)">${esc(it.crit)}</b>. Você ajusta ao registrar a primeira troca — o manual do seu carro manda mais.</div>` : ''}
-        ${c.vazio?'':`<div class="track"><div class="pfill" style="width:${c.pct.toFixed(1)}%;background:${corDe(c.cl)}"></div></div>`}
-        <div class="crit" style="${c.vazio?'display:none':''}">
-          <div class="critbox ${kmManda?'manda':''}"><b>Por quilometragem</b><span style="color:${kmManda?'inherit':'var(--ink)'}">${c.proxKm?fmt(c.proxKm)+' km':'—'}</span></div>
-          <div class="critbox ${!kmManda?'manda':''}"><b>Por tempo</b><span style="color:${!kmManda?'inherit':'var(--ink)'}">${c.proxData?mesAno(c.proxData):'—'}</span></div>
+        <div class="next-maint ${c.vazio?'empty':''}">
+          <span class="next-label">Próxima troca</span>
+          <span class="next-value">${prox.valor}</span>
+          <span class="next-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
         </div>
-        ${oleoRegistrado}
-        ${c.brando?`<div class="msgbox w" style="margin-top:11px"><span>Passou do prazo em anos, mas ainda faltam ${fmt(c.km)} km. A borracha resseca com o tempo — vale inspecionar na próxima revisão, não é urgência.</span></div>`:''}
-        ${it.obs?`<div class="odo-hint" style="text-align:left;margin-top:10px;color:var(--dim)">${it.obs}</div>`:''}
         <button class="cta outline" style="margin-top:12px;padding:9px;font-size:12.5px" onclick="abrirSheet('${it.id}')">Registrar troca</button>
       </div>`;
     });
@@ -6258,7 +6256,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.59';
+const VERSAO_APP = '1.5.62';
 let ONBOARD = false;
 let carregado = false;
 
