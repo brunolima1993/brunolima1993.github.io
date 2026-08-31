@@ -975,7 +975,7 @@ textarea::placeholder{color:var(--dim)}
 .next-label,.fnext-label{display:block;font-size:8.5px;font-weight:800;letter-spacing:.12em;
   text-transform:uppercase;color:#20b7ff;text-shadow:0 0 10px rgba(0,174,255,.62)}
 .next-value{display:block;margin-top:5px;font-family:'Inter',sans-serif;
-  font-size:16px;font-weight:800;letter-spacing:.01em;color:currentColor}
+  font-size:16px;font-weight:800;letter-spacing:.01em;color:var(--ink)}
 .next-hint{display:block;margin-top:5px;font-size:10.5px;line-height:1.4;color:var(--muted)}
 .next-maint.empty .next-value{color:var(--ink)}
 .next-hint.is-status,.fnext-hint.is-status{color:#20b7ff;font-weight:700;
@@ -989,6 +989,10 @@ textarea::placeholder{color:var(--dim)}
 .swatch{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
 .sw{width:30px;height:30px;border-radius:9px;cursor:pointer;border:2px solid transparent;box-shadow:0 0 0 1px rgba(255,255,255,.16) inset}
 .sw.sel{border-color:var(--blue);box-shadow:0 0 0 1px rgba(255,255,255,.3) inset,0 0 10px rgba(58,159,240,.5)}
+.cambio-cadastro{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.cambio-cadastro .radio{min-height:46px;align-items:center;justify-content:center;padding:10px 8px;text-align:center}
+.cambio-cadastro .radio>div{min-width:0}
+.cambio-cadastro .radio b{display:block;font-size:12.5px}
 .sheet-bg{position:absolute;inset:0;background:rgba(2,5,12,.72);z-index:40;display:none}
 .sheet-bg.on{display:block}
 .sheet{position:absolute;left:0;right:0;bottom:0;z-index:41;background:#0B182E;border-top:1px solid var(--line-strong);
@@ -1038,6 +1042,10 @@ textarea::placeholder{color:var(--dim)}
 /* itens do painel de manutenção */
 .sp-top{justify-content:center;gap:9px;flex-wrap:wrap}
 .sdate, .eyebrow{text-align:center;display:block}
+#s-painel .card{text-align:center}
+#s-painel .sp-top{flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:7px}
+#s-painel .next-maint,#s-painel .fitem,#s-painel .fbody,#s-painel .fnome{text-align:center}
+#s-painel .fitem-head{justify-items:center}
 
 /* opções de escolha: em linha — no seletor de planos o preço fica à direita
    do nome, e centralizar desmancha essa leitura em colunas */
@@ -1892,14 +1900,16 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <div style="font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);font-weight:700">
             T<b style="color:#0088ff;text-shadow:0 0 8px rgba(0,136,255,.45)">My</b> Car</div>
           <h1 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin:10px 0 8px;line-height:1.2">
-            O adesivo do para-brisa,<br>sem o adesivo</h1>
+            O adesivo do seu<br>para-brisa online</h1>
           <p style="font-size:15px;color:#0088ff;font-weight:600;letter-spacing:.01em;margin:0 0 12px;text-shadow:0 0 10px rgba(0,136,255,.35)">
             Manutenção na palma da mão</p>
           <p style="font-size:13.5px;color:var(--muted);line-height:1.6;max-width:33ch;margin:0 auto">
-            Seu carro usa correia ou corrente? O app sabe — são <b style="color:var(--ink)">36 marcas conferidas motor a motor</b> — e cuida das datas por você.</p>
+            São <b style="color:var(--ink)">36 marcas conferidas motor a motor</b>, criadas para te ajudar a manter a performance e a segurança em cada detalhe.</p>
         </div>
       </div>
       <div class="cta-wrap">
+        <p style="margin:0 0 14px;text-align:center;color:var(--dim);font-size:11.5px;font-weight:400;line-height:1.45;letter-spacing:.01em">
+          O histórico do seu carro a um clique.</p>
         <button class="cta" onclick="go('conta')">Começar</button>
       </div>
     </div>
@@ -2155,7 +2165,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="section">
         <div class="section-title">Quilometragem</div>
         <div class="card" style="padding:4px 16px">
-          <div class="field"><label class="flabel">KM atual</label>
+          <div class="field"><label class="flabel">KM atual <span style="color:var(--dim);font-weight:500">· opcional</span></label>
             <input class="mono" id="cKm" inputmode="numeric" placeholder="135.000"></div>
         </div>
       </div>
@@ -2189,6 +2199,12 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <div class="section-title">Óleo do motor <span class="tagcat" id="cTagOleo" style="display:none">do catálogo</span></div>
         <div class="card" style="padding:4px 16px">
           <div class="field"><label class="flabel">Viscosidade</label><input id="cOleo" placeholder="5W-30"></div>
+          <div class="field"><label class="flabel">Tipo de câmbio <span style="color:var(--dim);font-weight:500">· opcional</span></label>
+            <div class="cambio-cadastro" id="cCambioOpcoes">
+              <div class="radio" id="cCambioManual" onclick="escolherCambioCadastro('manual')"><span class="rb"></span><div><b>Manual</b></div></div>
+              <div class="radio" id="cCambioAutomatico" onclick="escolherCambioCadastro('automatico')"><span class="rb"></span><div><b>Automático</b></div></div>
+            </div>
+          </div>
         </div>
         <div id="cMsgOleo"></div>
       </div>
@@ -2386,7 +2402,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 
       <div class="section">
         <div class="card" style="background:rgba(58,159,240,.08);border-color:rgba(58,159,240,.3)">
-          <div style="font-size:15px;font-weight:700;margin-bottom:5px">O adesivo do para-brisa, sem o adesivo</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:5px">O adesivo do seu para-brisa online</div>
           <div style="font-size:12.5px;color:var(--muted);line-height:1.55">Aquele papelzinho colado no vidro desbota, cai e some. O TMy Car faz o mesmo trabalho: guarda o que foi trocado, quando, e avisa antes de vencer.</div>
         </div>
       </div>
@@ -2474,7 +2490,8 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div id="shFreio"></div>
       <div class="card" style="padding:4px 16px">
         <div id="shNaoSei"></div>
-        <div class="field ctr" id="shBoxKm"><label class="flabel">KM do carro na troca</label><input class="mono" id="shKm" inputmode="numeric"></div>
+        <div class="field ctr" id="shBoxKm"><label class="flabel">KM do carro na troca <span style="color:var(--dim);font-weight:500">· opcional</span></label><input class="mono" id="shKm" inputmode="numeric">
+          <p class="ajuda">Sem KM, o prazo será acompanhado somente pela data.</p></div>
         <div class="field ctr" id="shBoxData"><label class="flabel">Data</label><input class="mono" id="shData" type="date"></div>
         <div class="field frow">
           <div class="field" style="flex:1;padding:0" id="shBoxIntervalo">
@@ -2618,6 +2635,8 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 const DB = JSON.parse(document.getElementById('cat').textContent);
 const $ = i => document.getElementById(i);
 const fmt = n => Math.round(n).toLocaleString('pt-BR');
+const kmInformado = n => Number.isFinite(Number(n)) && Number(n) > 0;
+const textoKm = n => kmInformado(n) ? `${fmt(n)} km` : 'KM não informado';
 const soD = s => String(s).replace(/\D/g,'');
 /* texto livre (descrição do usuário) e texto de fora (FIPE) nunca entram crus na tela */
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
@@ -2703,6 +2722,7 @@ const modelo = (motor) => {
   }
   return it;
 };
+const cambioDoVeiculo = v => v && (v.cambio || (((v.itens||[]).find(i => i.id === 'cambio')||{}).tipo)) || null;
 
 /* ---------- estado ---------- */
 let PLANO = 'free';
@@ -2735,11 +2755,20 @@ function calc(it, km, ultKm, ultData, peca){
   const r = {};
   const cands = [];
   const janela = cr.ikm || 60000;
-  if(cr.ikm && ultKm != null){ r.proxKm = ultKm + cr.ikm; r.km = r.proxKm - km;
-    cands.push({q:'km', pct:1 - r.km/cr.ikm, venceu:r.km<=0, alerta:r.km <= Math.min(cr.ikm*.15,5000)}); }
-  else if(it.proxFixo){            /* o dono definiu a próxima troca; nada é deduzido */
-    r.proxKm = it.proxFixo; r.km = r.proxKm - km; r.definida = true;
-    cands.push({q:'km', pct:1 - r.km/janela, venceu:r.km<=0, alerta:r.km <= Math.min(janela*.15,5000)}); }
+  const temKmAtual = kmInformado(km);
+  if(cr.ikm && ultKm != null){
+    r.proxKm = ultKm + cr.ikm;
+    if(temKmAtual){
+      r.km = r.proxKm - Number(km);
+      cands.push({q:'km', pct:1 - r.km/cr.ikm, venceu:r.km<=0, alerta:r.km <= Math.min(cr.ikm*.15,5000)});
+    }
+  } else if(it.proxFixo){          /* o dono definiu a próxima troca; nada é deduzido */
+    r.proxKm = it.proxFixo; r.definida = true;
+    if(temKmAtual){
+      r.km = r.proxKm - Number(km);
+      cands.push({q:'km', pct:1 - r.km/janela, venceu:r.km<=0, alerta:r.km <= Math.min(janela*.15,5000)});
+    }
+  }
   if(cr.imes && ultData){ const d = new Date(ultData+'T00:00:00');
     r.proxData = somarMeses(d, cr.imes);
     r.dias = Math.round((r.proxData - HOJE)/DIA);
@@ -2872,7 +2901,7 @@ function pintarGaragem(){
         <div class="vname">${v.marca} ${v.modelo}</div>
         <div class="vmeta"><span class="vcolor" style="background:${v.cor}"></span>
           ${v.ano} · ${v.cilTxt} <span class="plate">${v.placa||'———'}</span></div>
-        <div class="vmeta mono vreadings" style="color:var(--dim)"><span>${fmt(v.km)} km</span>${FIPE_ATIVA && PLANO!=='free' && v.fipe && v.fipe.valor ? `<span>· FIPE ${esc(v.fipe.valor)}</span>` : ''}</div>
+        <div class="vmeta mono vreadings" style="color:var(--dim)"><span>${textoKm(v.km)}</span>${FIPE_ATIVA && PLANO!=='free' && v.fipe && v.fipe.valor ? `<span>· FIPE ${esc(v.fipe.valor)}</span>` : ''}</div>
       </div>
       <div class="vright">
         <span class="status ${pior.cl}">${pior.rot}</span>
@@ -2905,12 +2934,12 @@ function pintarGaragem(){
 }
 
 /* ================= CADASTRO ================= */
-let cMotor = null, cSincTocado = false, cOleoTocado = false, cProxTocado = false, cIntTocado = false, cCor = CORES[1][0];
+let cMotor = null, cSincTocado = false, cOleoTocado = false, cProxTocado = false, cIntTocado = false, cCor = CORES[1][0], cCambio = null;
 let editandoVeic = null;   /* índice quando está corrigindo um carro já cadastrado */
 
 function abrirCadastro(edit){
   editandoVeic = (typeof edit === 'number') ? edit : null;
-  cMotor=null; cSincTocado=false; cOleoTocado=false; cProxTocado=false; cIntTocado=false; cCor=CORES[1][0];
+  cMotor=null; cSincTocado=false; cOleoTocado=false; cProxTocado=false; cIntTocado=false; cCor=CORES[1][0]; cCambio=null;
   ['cAno','cMotor','cInt','cProx','cOleo','cKm','cPlaca'].forEach(i=>$(i).value='');
   $('cModelo').innerHTML='<option>Selecione a marca</option>'; $('cModelo').disabled=true;
   $('cAno').disabled=true; $('cMotor').disabled=true;
@@ -2932,10 +2961,11 @@ function abrirCadastro(edit){
     const m = String(v.cilTxt||'').match(/(\d\.\d)/);
     $('cMotor').value = m ? m[1] : '';
     $('cTurbo').classList.toggle('on', /turbo/i.test(v.cilTxt||''));
-    $('cKm').value = fmt(v.km);
+    $('cKm').value = kmInformado(v.km) ? fmt(v.km) : '';
     $('cOleo').value = v.oleo && v.oleo !== '—' ? v.oleo : '';  cOleoTocado = true;
     $('cPlaca').value = v.placa || '';
     cCor = v.cor || CORES[1][0];
+    cCambio = cambioDoVeiculo(v);
 
     const co = (v.itens||[]).find(i => i.id === 'correia');
     cSincTocado = true;
@@ -2948,11 +2978,19 @@ function abrirCadastro(edit){
     }
     resolver();
   }
-  pintarCores(); go('cadastro');
+  pintarCores(); pintarCambioCadastro(); go('cadastro');
 }
 function pintarCores(){
   $('cCores').innerHTML = CORES.map(([hex,nome])=>
     `<div class="sw ${hex===cCor?'sel':''}" style="background:${hex}" title="${nome}" onclick="cCor='${hex}';pintarCores();validarCad()"></div>`).join('');
+}
+function pintarCambioCadastro(){
+  $('cCambioManual').classList.toggle('sel', cCambio === 'manual');
+  $('cCambioAutomatico').classList.toggle('sel', cCambio === 'automatico');
+}
+function escolherCambioCadastro(tipo){
+  cCambio = cCambio === tipo ? null : tipo;
+  pintarCambioCadastro();
 }
 function msg(alvo, tipo, txt){
   /* a cor e a barra lateral já dizem o tom: sem símbolo colado no texto */
@@ -3132,9 +3170,9 @@ function validarCad(){
   const it = parseInt(soD($('cInt').value)||'0',10);
   /* correia sem histórico é a regra, não a exceção: quem compra usado não sabe
      quando trocaram. O que não pode é um valor inválido — em branco pode. */
-  const proxOk = !px || px > km;
+  const proxOk = !px || !km || px > km;
   const ok = $('cMarca').value && $('cModelo').value && $('cAno').value.length===4
-    && normCil($('cMotor').value) && km && s && proxOk;
+    && normCil($('cMotor').value) && s && proxOk;
   $('cSalvar').style.opacity = ok?1:.4;
   $('cSalvar').disabled = !ok;
   return ok;
@@ -3147,7 +3185,8 @@ function salvarVeiculo(){
                          : 'Você chegou aos 3 veículos do Premium.');
     return;
   }
-  const km = parseInt(soD($('cKm').value),10);
+  const kmLido = parseInt(soD($('cKm').value)||'0',10);
+  const km = kmInformado(kmLido) ? kmLido : null;
   const cil = normCil($('cMotor').value);
   const tb = $('cTurbo').classList.contains('on');
   const s = sincEscolhido();
@@ -3156,12 +3195,13 @@ function salvarVeiculo(){
   const v = {
     marca:$('cMarca').value, modelo:$('cModelo').value, ano:$('cAno').value,
     cilTxt: cil.toFixed(1)+(tb?' turbo':''), motorNome: cMotor?cMotor.n:'motor não identificado',
-    km, placa:$('cPlaca').value, cor:cCor, oleo:$('cOleo').value||'—',
+    km, placa:$('cPlaca').value, cor:cCor, oleo:$('cOleo').value||'—', cambio:cCambio,
     itens: modelo(s==='corrente' ? {d:'corrente'} : {d:'correia', km:intervalo})
   };
   /* só sabemos o que o usuário informou. Nada é deduzido por subtração:
      a próxima troca da correia é a que ele definiu, não uma conta reversa. */
   v.itens.forEach(i=>{
+    if(i.id==='cambio') i.tipo = cCambio;
     if(i.id==='correia'){
       i.ikm = intervalo || null;
       i.imes = null;                        // a data da última troca ele não informou
@@ -3224,7 +3264,9 @@ function pedirEditar(i){
 
 function salvarEdicao(){
   const v = VEIC[editandoVeic];
-  const km  = parseInt(soD($('cKm').value),10);
+  const cambioAnterior = v.cambio || ((v.itens||[]).find(i => i.id === 'cambio')||{}).tipo || null;
+  const kmLido = parseInt(soD($('cKm').value)||'0',10);
+  const km  = kmInformado(kmLido) ? kmLido : null;
   const cil = normCil($('cMotor').value);
   const tb  = $('cTurbo').classList.contains('on');
   const s   = sincEscolhido();
@@ -3239,8 +3281,11 @@ function salvarEdicao(){
       marca: $('cMarca').value, modelo: $('cModelo').value, ano: $('cAno').value,
       cilTxt: cil.toFixed(1) + (tb ? ' turbo' : ''),
       motorNome: cMotor ? cMotor.n : 'motor não identificado',
-      km, placa: $('cPlaca').value, cor: cCor, oleo: $('cOleo').value || '—'
+      km, placa: $('cPlaca').value, cor: cCor, oleo: $('cOleo').value || '—', cambio:cCambio
     });
+    const itemCambio = (v.itens||[]).find(i => i.id === 'cambio');
+    if(itemCambio) itemCambio.tipo = cCambio;
+    if(cambioAnterior !== cCambio) delete v.fipe;
 
     if(querCorreia && !tinhaCorreia){
       const novo = modelo({ d:'correia', km:intervalo || 60000 }).find(i => i.id === 'correia');
@@ -3287,7 +3332,7 @@ function pintarPainel(){
         <span style="font-size:12px;color:var(--muted)">${v.cilTxt}</span>
         <span class="plate">${v.placa||'———'}</span></div>
     </div>
-    <div style="text-align:right"><div class="mono" style="font-size:17px;font-weight:700">${fmt(v.km)}</div>
+    <div style="text-align:right"><div class="mono" style="font-size:17px;font-weight:700">${kmInformado(v.km)?fmt(v.km):'—'}</div>
       <div style="font-size:10px;color:var(--dim);letter-spacing:.1em">KM</div></div>
   </div>`;
 
@@ -3326,7 +3371,7 @@ function pintarPainel(){
                 </div>
                 <div class="fbody">
                   <span class="fnext-label">Próxima troca</span>
-                  <span class="fnext-value" style="color:${c.vazio?'var(--ink)':cor}">${prox.valor}</span>
+                  <span class="fnext-value" style="color:var(--ink)">${prox.valor}</span>
                   <span class="fnext-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
                 </div>
               </div>`;
@@ -3395,7 +3440,7 @@ const FIPE_SITE = 'https://veiculos.fipe.org.br/';   // endereço oficial da con
 const PLACA_API = null;   // ex.: 'https://seu-servidor/api/veiculo/placa'
 const PLACA_VALOR_EM_CENTAVOS = false;
 
-let fipeEtapa = 'buscando';   // buscando | modelos | anos | pronto | manual | erro
+let fipeEtapa = 'buscando';   // buscando | confirmar-ano | modelos | anos | pronto | manual | erro
 let fipeDados = { modelos:[], anos:[], filtro:'', erro:'' };
 let fipeFocoBusca = false;   /* só devolve o foco se a pessoa estava digitando */
 let fipeMarcas = null;
@@ -3484,6 +3529,25 @@ function fipeFalha(e){
   pintarFipe();
 }
 
+/* A FIPE informa o câmbio dentro do nome da versão, não em um campo separado.
+   Por isso o tipo escolhido serve para PRIORIZAR, nunca para esconder versões
+   cujo nome seja ambíguo. Assim um cadastro incompleto da tabela não some. */
+function cambioNoNomeFipe(nome){
+  const n = String(nome||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(/\b(aut|automatico|cvt|dsg|dct|tiptronic|steptronic|powershift|dual(?:ogic)?|easytronic|at)\b|i[- ]?motion|s[- ]?tronic/.test(n)) return 'automatico';
+  if(/\b(manual|mec|mecanico|mt)\b/.test(n)) return 'manual';
+  return null;
+}
+function notaCambioFipe(nome, tipo){
+  if(!tipo) return 0;
+  const detectado = cambioNoNomeFipe(nome);
+  return !detectado ? 0 : detectado === tipo ? 3 : -3;
+}
+function priorizarCambioFipe(itens, tipo){
+  return (itens||[]).map((item,ordem)=>({item,ordem,nota:notaCambioFipe(nomDe(item),tipo)}))
+    .sort((a,b)=>b.nota-a.nota || a.ordem-b.ordem).map(x=>x.item);
+}
+
 /* escolhe a versão que mais combina com o carro cadastrado */
 function melhorModelo(lista, v){
   const cil  = (v.cilTxt||'').match(/(\d\.\d)/);
@@ -3495,6 +3559,7 @@ function melhorModelo(lista, v){
     let p = 0;
     if(cil && n.includes(cil[1])) p += 10;                 // mesma cilindrada
     if(turbo === /turbo|tsi|tgdi|thp|tce/i.test(n)) p += 4; // turbo bate
+    p += notaCambioFipe(n, cambioDoVeiculo(v));             // desempata pelo câmbio
     p -= Math.abs(n.length - 28) / 40;                      // evita nomes exóticos
     return p;
   };
@@ -3509,6 +3574,52 @@ function melhorAno(anos, v){
   return pref || doAno[0];
 }
 
+/* O documento do carro pode trazer 2016/2017: fabricação 2016 e ano-modelo
+   2017. A FIPE consulta exclusivamente o ano-modelo. Tentamos o ano informado
+   primeiro e, somente se o modelo não existir nele, oferecemos o ano seguinte
+   para confirmação explícita — nunca escolhemos silenciosamente. */
+const anosFipeParaBusca = ano => {
+  const a = parseInt(String(ano || ''), 10);
+  return Number.isFinite(a) ? [a, a + 1] : [];
+};
+
+async function procurarModeloFipeNoAno(v, marcas, anoPesquisa){
+  let marcaTemAno = false;
+  for(const m of marcas){
+    const bId = codDe(m);
+    const anosMarca = lista(await fipeGet(`${FIPE}/brands/${bId}/years`));
+    const anos = anosMarca.filter(x => String(codDe(x)||'').startsWith(String(anoPesquisa) + '-'));
+    if(!anos.length) continue;
+    marcaTemAno = true;
+    const ordem = [...anos].sort((a,b) => {
+      const p = s => /flex/i.test(s) ? 0 : /gasolina/i.test(s) ? 1 : 2;
+      return p(nomDe(a)) - p(nomDe(b));
+    });
+    let vistosMarca = [];
+    for(const ano of ordem){
+      const mods = lista(await fipeGet(`${FIPE}/brands/${bId}/years/${codDe(ano)}/models`));
+      vistosMarca = vistosMarca.concat(mods);
+      const mod = melhorModelo(mods, v);
+      if(mod) return {
+        escolhido:mod, anoUsado:ano, vistos:vistosMarca, anos,
+        mUsada:m, anoPesquisa, marcaTemAno:true
+      };
+    }
+  }
+  return { escolhido:null, anoPesquisa, marcaTemAno };
+}
+
+function prepararModeloFipe(v, achado){
+  const bId = codDe(achado.mUsada);
+  v.fipe = Object.assign({}, v.fipe, {
+    marcaCod:bId, marcaNome:nomDe(achado.mUsada),
+    modeloCod:codDe(achado.escolhido), modeloNome:nomDe(achado.escolhido)
+  });
+  fipeDados.modelos = priorizarCambioFipe(achado.vistos, cambioDoVeiculo(v));
+  fipeDados.todos = priorizarCambioFipe(achado.vistos, cambioDoVeiculo(v));
+  fipeDados.anos = achado.anos;
+}
+
 async function fipeAutomatico(){
   const v = VEIC[ativo];
   fipeOcupado = true; fipeEtapa = 'buscando'; pintarFipe();
@@ -3520,47 +3631,33 @@ async function fipeAutomatico(){
 
     /* 2 e 3. tenta todos os cadastros possíveis da marca. Isso recupera, por
        exemplo, Tiggo 2/Arrizo 5 no código antigo da Chery e Towner na Hafei. */
-    let escolhido = null, anoUsado = null, vistos = [], doAno = [], mUsada = null;
-    let marcaTemAno = false;
-    for(const m of marcas){
-      const bId = codDe(m);
-      const anosMarca = lista(await fipeGet(`${FIPE}/brands/${bId}/years`));
-      const anos = anosMarca.filter(x => String(codDe(x)||'').startsWith(String(v.ano) + '-'));
-      if(!anos.length) continue;
-      marcaTemAno = true;
-      const ordem = [...anos].sort((a,b) => {
-        const p = s => /flex/i.test(s) ? 0 : /gasolina/i.test(s) ? 1 : 2;
-        return p(nomDe(a)) - p(nomDe(b));
-      });
-      let vistosMarca = [];
-      for(const ano of ordem){
-        const mods = lista(await fipeGet(`${FIPE}/brands/${bId}/years/${codDe(ano)}/models`));
-        vistosMarca = vistosMarca.concat(mods);
-        const mod = melhorModelo(mods, v);
-        if(mod){
-          escolhido = mod; anoUsado = ano; vistos = vistosMarca;
-          doAno = anos; mUsada = m; break;
-        }
+    const [anoInformado, anoSeguinte] = anosFipeParaBusca(v.ano);
+    const achado = await procurarModeloFipeNoAno(v, marcas, anoInformado);
+    if(!achado.escolhido){
+      const alternativo = await procurarModeloFipeNoAno(v, marcas, anoSeguinte);
+      if(alternativo.escolhido){
+        fipeOcupado = false;
+        fipeEtapa = 'confirmar-ano';
+        fipeDados.pendenteAno = alternativo;
+        pintarFipe();
+        return;
       }
-      if(escolhido) break;
-    }
-    if(!escolhido){
-      if(!marcaTemAno) throw new Error(`A ${v.marca} não tem veículos ${v.ano} na tabela.`);
+      if(!achado.marcaTemAno) throw new Error(`A ${v.marca} não tem veículos ${v.ano} na tabela.`);
       throw new Error(`A FIPE lista a marca, mas não encontrou ${v.modelo} no ano ${v.ano}. Confira o ano ou escolha a versão manualmente.`);
     }
-    const bId = codDe(mUsada);
-
-    v.fipe = Object.assign({}, v.fipe, {
-      marcaCod: bId, marcaNome: nomDe(mUsada),
-      modeloCod: codDe(escolhido), modeloNome: nomDe(escolhido)
-    });
-    /* guarda a lista do ano para o "não é essa versão" */
-    fipeDados.modelos = vistos; fipeDados.todos = vistos;
-    fipeDados.anos = doAno;
+    prepararModeloFipe(v, achado);
 
     /* 4. preço */
-    await fipeEscolherAno(codDe(anoUsado));
+    await fipeEscolherAno(codDe(achado.anoUsado));
   }catch(e){ fipeFalha(e); }
+}
+
+async function fipeConfirmarAnoModelo(){
+  const v = VEIC[ativo], achado = fipeDados.pendenteAno;
+  if(!v || !achado || !achado.escolhido || !achado.anoUsado) return fipeAutomatico();
+  prepararModeloFipe(v, achado);
+  fipeDados.pendenteAno = null;
+  await fipeEscolherAno(codDe(achado.anoUsado));
 }
 
 function abrirFipe(){
@@ -3592,8 +3689,8 @@ async function fipeBuscarModelos(){
     }
     v.fipe = Object.assign({}, v.fipe, { marcaCod:codDe(mUsada), marcaNome:nomDe(mUsada) });
     /* o app já sabe o modelo: mostra primeiro os que casam */
-    fipeDados.modelos = casam.length ? casam : todos;
-    fipeDados.todos = todos;
+    fipeDados.modelos = priorizarCambioFipe(casam.length ? casam : todos, cambioDoVeiculo(v));
+    fipeDados.todos = priorizarCambioFipe(todos, cambioDoVeiculo(v));
     fipeDados.filtrouSozinho = casam.length > 0;
     fipeOcupado = false; pintarFipe();
   }catch(e){ fipeFalha(e); }
@@ -3619,12 +3716,14 @@ async function fipeEscolherAno(cod){
   fipeOcupado = true; pintarFipe();
   try{
     const d = await fipeGet(`${FIPE}/brands/${v.fipe.marcaCod}/models/${v.fipe.modeloCod}/years/${cod}`);
+    const anoModeloResposta = d.modelYear ?? d.AnoModelo;
     v.fipe = Object.assign({}, v.fipe, {
       anoCod:cod,
       valor: d.price ?? d.Valor,
       marca: d.brand ?? d.Marca,
       modelo: d.model ?? d.Modelo,
-      anoModelo: d.modelYear ?? d.AnoModelo,
+      anoModelo: anoModeloResposta,
+      anoCadastro: String(anoModeloResposta) !== String(v.ano) ? v.ano : null,
       combustivel: d.fuel ?? d.Combustivel,
       codigo: d.codeFipe ?? d.CodigoFipe,
       mes: d.referenceMonth ?? d.MesReferencia,
@@ -3850,6 +3949,21 @@ function pintarFipe(){
   if(fipeOcupado){
     c = `<div class="section"><div class="card"><div class="carregando"><span class="spin"></span>Consultando a Tabela FIPE…</div></div></div>`;
   }
+  else if(fipeEtapa === 'confirmar-ano'){
+    const p = fipeDados.pendenteAno || {};
+    const anoModelo = p.anoPesquisa || ((Number(v.ano) || 0) + 1);
+    c = `<div class="section"><div class="card">
+      <div class="msgbox i" style="margin-top:0"><span><b>Ano-modelo diferente do ano informado.</b></span></div>
+      <div style="font-size:13.5px;color:var(--ink);line-height:1.55;margin-top:5px">
+        A FIPE não encontrou <b>${esc(v.marca)} ${esc(v.modelo)} ${esc(v.ano)}</b>, mas encontrou o veículo como
+        <b>${esc(v.ano)}/${esc(anoModelo)}</b>. Isso acontece quando o carro foi fabricado em ${esc(v.ano)} e registrado como ano-modelo ${esc(anoModelo)}.
+      </div>
+      <div class="odo-hint" style="text-align:left;margin-top:9px">Confira no documento do veículo. A cotação só será aberta depois da sua confirmação.</div>
+      <button class="cta" style="margin-top:13px" onclick="fipeConfirmarAnoModelo()">Confirmar ${esc(v.ano)}/${esc(anoModelo)}</button>
+      <button class="cta outline" style="margin-top:9px" onclick="fipeBuscarModelos()">Escolher a versão na lista</button>
+      <button class="cta outline" style="margin-top:9px" onclick="fipeManual()">Digitar o valor</button>
+    </div></div>`;
+  }
   else if(fipeEtapa === 'erro'){
     c = `<div class="section"><div class="card">
       <div class="msgbox w" style="margin-top:0"><span>${esc(fipeDados.erro)}</span></div>
@@ -3929,6 +4043,8 @@ function pintarFipe(){
       </div>
       <div class="fipe-val">${esc(f.valor)||'—'}</div>
       <div class="fipe-ref">Tabela de ${f.mes ? esc(f.mes.trim()) : '—'}${quando ? ' · ' + quando : ''}</div>
+      ${f.anoCadastro && String(f.anoModelo) !== String(f.anoCadastro) ? `<div class="msgbox i" style="margin-top:11px"><span>
+        Cadastro <b>${esc(f.anoCadastro)}</b> · ano-modelo FIPE <b>${esc(f.anoModelo)}</b>. Cotação confirmada como ${esc(f.anoCadastro)}/${esc(f.anoModelo)}.</span></div>` : ''}
       ${f.divergeAno ? `<div class="msgbox w" style="margin-top:11px"><span>Pela placa, o ano modelo é <b>${esc(f.divergeAno)}</b>, diferente do ${esc(v.ano)} que você cadastrou. Vale conferir.</span></div>` : ''}
       ${desatualizada ? `<div class="msgbox i" style="margin-top:11px"><span>A FIPE publica uma tabela nova todo mês. Esta é de ${f.mes ? esc(f.mes.trim()) : '—'} e já estamos em ${mesAtual}.</span></div>` : ''}
       <div style="margin-top:14px">
@@ -3985,7 +4101,7 @@ function abrirSheet(id){
   itAtual = (v.itens||[]).find(i=>i.id===id);
   if(!itAtual) return;
   $('shTitle').textContent = itAtual.partes ? 'Registrar troca de filtros' : itAtual.nome;
-  $('shKm').value = fmt(v.km); $('shData').value = iso(HOJE);
+  $('shKm').value = kmInformado(v.km) ? fmt(v.km) : ''; $('shData').value = iso(HOJE);
   $('shIkm').value = itAtual.ikm?fmt(itAtual.ikm):''; $('shImes').value = itAtual.imes||'';
   unidade($('shIkm'),'shUkm','km','km'); unidade($('shImes'),'shUmes','mês','meses');
 
@@ -4088,9 +4204,9 @@ function salvarTroca(){
   const ehCambio = itAtual.id === 'cambio';
 
   /* valida tudo ANTES de tocar nos dados, para não deixar o item pela metade */
-  const km = parseInt(soD($('shKm').value)||'0',10);
+  const kmLido = parseInt(soD($('shKm').value)||'0',10);
+  const km = kmInformado(kmLido) ? kmLido : null;
   if(ehCambio && !itAtual.tipo){ toast('Diga se o câmbio é automático ou manual.'); return; }
-  if(!km && !(ehCambio && shNaoSei)){ toast('Informe o KM da troca.'); return; }
   const data = $('shData').value || iso(HOJE);
 
   if(ehCambio && !itAtual.tipo){ toast('Diga se o câmbio é automático ou manual.'); return; }
@@ -4105,6 +4221,7 @@ function salvarTroca(){
       const ik = parseInt(soD(($('fi_'+p.id)||{}).value || '')||'0',10) || null;
       const im = parseInt(soD(($('fm_'+p.id)||{}).value || '')||'0',10) || null;
       if(!ik && !im){ toast(`Informe um intervalo para o filtro de ${p.nome.toLowerCase()} — em km ou em meses.`); return; }
+      if(!km && !im){ toast(`Sem KM informado, defina o intervalo em meses para o filtro de ${p.nome.toLowerCase()}.`); return; }
       /* grava explicitamente, inclusive o nulo: campo apagado fica apagado */
       novos[p.id] = { ikm:ik, imes:im };
     }
@@ -4115,11 +4232,18 @@ function salvarTroca(){
       toast('Informe pelo menos um intervalo — em km ou em meses.');
       return;
     }
+    if(!km && !nImes){
+      toast('Sem KM informado, defina um intervalo em meses para acompanhar pela data.');
+      return;
+    }
     novos = { __item: { ikm:nIkm, imes:nImes } };
   }
 
   /* daqui para baixo, só gravação */
   if(ehCambio){
+    const cambioAnterior = v.cambio || null;
+    v.cambio = itAtual.tipo;
+    if(cambioAnterior !== v.cambio) delete v.fipe;
     itAtual.oleo = ($('shOleoCambio') ? $('shOleoCambio').value : '').trim();
     itAtual.crit = itAtual.tipo === 'automatico' ? 'câmbio automático' : 'câmbio manual';
   }
@@ -4153,14 +4277,14 @@ function salvarTroca(){
   }
   /* Uma troca acima do odômetro salvo também representa uma leitura mais nova.
      Uma troca histórica abaixo do KM atual é guardada sem reduzir o odômetro. */
-  if(km && km > v.km) v.km = km;
+  if(km && (!kmInformado(v.km) || km > v.km)) v.km = km;
   varrerPrazos(); varrerPendencias(); persistir(); fecharSheet(); pintarPainel(); pintarSino();
 }
 function abrirOdo(){
   const v = VEIC[ativo];
   if(!v) return go('garagem');
-  $('odInput').value = fmt(v.km);
-  $('odHint').textContent = `Registrado hoje: ${fmt(v.km)} km`;
+  $('odInput').value = kmInformado(v.km) ? fmt(v.km) : '';
+  $('odHint').textContent = kmInformado(v.km) ? `Registrado hoje: ${fmt(v.km)} km` : 'Nenhuma quilometragem informada.';
   $('odMsg').innerHTML='';
   fecharFolhas();
   $('odBg').classList.add('on'); $('od').classList.add('on');
@@ -4170,7 +4294,7 @@ $('odInput').oninput = e => {
   const d = soD(e.target.value).slice(0,7);
   e.target.value = d ? parseInt(d,10).toLocaleString('pt-BR') : '';
   const n = parseInt(d||'0',10), v = VEIC[ativo];
-  $('odMsg').innerHTML = (n && v && n < v.km)
+  $('odMsg').innerHTML = (n && v && kmInformado(v.km) && n < v.km)
     ? `<div class="msgbox w"><span>Você informou <b>${fmt(n)} km</b>, menos que os ${fmt(v.km)} km já registrados. A quilometragem está certa?</span></div>` : '';
 };
 function salvarOdo(){
@@ -4227,7 +4351,7 @@ function pintarDowngrade(){
     <div class="radio ${i===dgEscolhido?'sel':''}" onclick="dgEscolhido=${i};pintarDowngrade()">
       <span class="rb"></span>
       <div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.cor};margin-right:7px"></span>${v.marca} ${v.modelo} ${v.ano}</b>
-      <small>${v.placa?v.placa+' · ':''}${fmt(v.km)} km</small></div>
+      <small>${v.placa?v.placa+' · ':''}${textoKm(v.km)}</small></div>
     </div>`).join('')}</div>`;
 }
 function fecharDowngrade(){ $('dgBg').classList.remove('on'); $('dg').classList.remove('on'); }
@@ -6288,7 +6412,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.66';
+const VERSAO_APP = '1.5.71';
 let ONBOARD = false;
 let carregado = false;
 
