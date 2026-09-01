@@ -899,6 +899,7 @@ textarea::placeholder{color:var(--dim)}
 .mtop{text-align:center}
 .mval{display:block;font-family:'IBM Plex Mono',monospace;font-size:23px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
 .mcar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);margin-top:6px}
+.mcar-name.is-maintenance{color:#18a9ff;text-shadow:0 0 9px rgba(0,169,255,.62)}
 .mplaca{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--dim)}
 .mdata{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:3px}
 .mdesc{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:12px;white-space:pre-wrap;text-align:center;padding:0 4px}
@@ -977,7 +978,7 @@ textarea::placeholder{color:var(--dim)}
 .next-value{display:block;margin-top:5px;font-family:'Inter',sans-serif;
   font-size:16px;font-weight:800;letter-spacing:.01em;color:var(--ink)}
 .next-hint{display:block;margin-top:5px;font-size:10.5px;line-height:1.4;color:var(--muted)}
-.next-maint.empty .next-value{color:var(--ink)}
+.next-maint.is-empty .next-value{color:var(--ink)}
 .next-hint.is-status,.fnext-hint.is-status{color:#20b7ff;font-weight:700;
   text-shadow:0 0 9px rgba(0,174,255,.58)}
 .fnext-label{margin-top:7px}
@@ -3391,7 +3392,7 @@ function pintarPainel(){
       h += `<div class="card" style="color:${corDe(c.cl)}">
         <div class="sp-top"><span style="color:var(--ink);font-size:15px;font-weight:700">${esc(it.nome)}</span>
           <span class="status ${c.cl}">${c.rot}</span></div>
-        <div class="next-maint ${c.vazio?'empty':''}">
+        <div class="next-maint ${c.vazio?'is-empty':''}">
           <span class="next-label">Próxima troca</span>
           ${utilizadoNaTroca ? `<span class="next-used">${esc(utilizadoNaTroca)}</span>` : ''}
           <span class="next-value">${prox.valor}</span>
@@ -4984,6 +4985,10 @@ function caixaVeiculo(){
         ${ativos().map(({v,i})=>`<option value="${i}" ${veicSel===i?'selected':''}>${v.marca} ${v.modelo}${v.placa?' · '+v.placa:''}</option>`).join('')}
       </select></div></div></div></div>`;
 }
+function filtroVeiculoGastos(){
+  return `<div class="section" style="padding-bottom:0"><div class="g-filter-title">${imgAsset('car')}<span>Filtrar por veículo</span></div></div>`
+    + caixaVeiculo();
+}
 
 let mesesAbertos = { manutencao:null, ipva:null, combustivel:null };
 function resetMesesAbertos(){
@@ -5001,17 +5006,18 @@ function mesesVisiveisNoAno(registros){
 function cardLancamento(r, pos = -1){
   const i = REGISTROS.indexOf(r);
   const v = VEIC[r.veic];
+  const tipo = tipoDoRegistro(r);
   const dt = new Date(r.data+'T00:00:00').toLocaleDateString('pt-BR');
   return `<div class="mcard ${pos===0?'is-highlight':''}">
     <div class="mcard-head">
       <div class="mtop">
         <div class="mvalue-row">
-          <div class="expense-kind kind-${tipoDoRegistro(r)}">${TIPOS_GASTO[tipoDoRegistro(r)].sigla}</div>
+          <div class="expense-kind kind-${tipo}">${TIPOS_GASTO[tipo].sigla}</div>
           <span class="mval">${brl(r.valor)}</span>
         </div>
         <span class="mcar">
           <span class="pt" style="width:8px;height:8px;border-radius:50%;background:${v?v.cor:'var(--dim)'};flex-shrink:0"></span>
-          ${v ? `${v.marca} ${v.modelo}` : 'veículo removido'}
+          ${v ? `<span class="mcar-name ${tipo==='manutencao'?'is-maintenance':''}">${esc(v.marca)} ${esc(v.modelo)}</span>` : 'veículo removido'}
           ${v && v.placa ? `<span class="mplaca">${v.placa}</span>` : ''}
         </span>
         <span class="mdata">${dt}${r.km ? ` · ${fmt(r.km)} km` : ''}</span>
@@ -5142,7 +5148,7 @@ function pintarGastos(){
   if(!regs.length){
     $('gtSub').textContent = 'Nada registrado ainda.';
     $('gtSub').className = 'gsub';
-    $('gtBody').innerHTML = atalhosGastos() + `<div class="empty" style="padding-top:32px;padding-bottom:6px">
+    $('gtBody').innerHTML = atalhosGastos() + filtroVeiculoGastos() + `<div class="empty" style="padding-top:32px;padding-bottom:6px">
       <div class="empty-title">Sem gastos registrados</div>
       <div class="empty-text">Registre uma manutenção, o IPVA ou um abastecimento para começar a acompanhar os custos.</div></div>`
       + `<div class="cta-wrap" style="padding-top:0"><button class="cta" onclick="abrirManual()">+ Adicionar manutenção</button></div>`
@@ -5206,8 +5212,7 @@ function pintarGastos(){
       <div class="odo-hint" style="text-align:left;margin-top:7px">Variação comparada ao ano anterior. Anos sem lançamento não aparecem.</div></div>`;
   }
 
-  h += `<div class="section" style="padding-bottom:0"><div class="g-filter-title">${imgAsset('car')}<span>Filtrar por veículo</span></div></div>`;
-  h += caixaVeiculo();
+  h += filtroVeiculoGastos();
   h += listaLancamentos(doAno);
   $('gtBody').innerHTML = h;
   $('fabGasto').classList.add('on');
@@ -6412,7 +6417,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.71';
+const VERSAO_APP = '1.5.73';
 let ONBOARD = false;
 let carregado = false;
 
