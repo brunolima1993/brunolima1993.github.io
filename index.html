@@ -1729,6 +1729,9 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 #s-conta-dados #cfSemConta:empty{display:none}
 #s-conta-dados .account-data-list{gap:10px}
 #s-conta-dados .account-data-list .item{min-height:68px}
+#s-documento-legal.screen.active{display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
+#s-documento-legal .topbar{flex:0 0 auto}
+#s-documento-legal .legal-frame{display:block;flex:1 1 auto;width:100%;min-height:0;border:0;background:#020711}
 /* Somente a página principal de Ajustes fica centralizada. As páginas abertas
    por suas opções mantêm o fluxo normal, começando na parte superior. */
 #s-config.screen.active{display:flex;flex-direction:column}
@@ -2361,19 +2364,14 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="section">
         <div id="cfSemConta"></div>
         <div class="list account-data-list">
-          <div class="item" onclick="location.href='./termos.html'">
+          <div class="item" onclick="abrirDocumentoLegal('./termos.html','Termos de Uso')">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg></div>
             <div class="ibody"><div class="ititle">Termos de Uso</div><div class="isub">Regras e condições para utilizar o TMy Car</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
-          <div class="item" onclick="location.href='./politica.html'">
+          <div class="item" onclick="abrirDocumentoLegal('./politica.html','Política de Privacidade')">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3Z"/></svg></div>
             <div class="ibody"><div class="ititle">Política de privacidade</div><div class="isub">Como protegemos e utilizamos seus dados</div></div>
-            <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
-          </div>
-          <div class="item" onclick="location.href='./excluir-conta.html'">
-            <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14"/></svg></div>
-            <div class="ibody"><div class="ititle">Como excluir a conta</div><div class="isub">Página pública e alternativa pelo suporte</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
           <div class="item" id="cdSair" onclick="confirmar('Sair da conta','Seus dados continuam salvos na sua conta. Ao entrar de novo, tudo volta.',sairDaConta,'Sair')">
@@ -2390,6 +2388,14 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         </div>
       </div>
       <div style="height:24px"></div>
+    </div>
+
+    <!-- ================= DOCUMENTO LEGAL DENTRO DO APP ================= -->
+    <div class="screen" id="s-documento-legal">
+      <div class="topbar">
+        <div class="topbar-left"><span class="back" onclick="fecharDocumentoLegal()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="title" id="legalTitulo">Documento</span></div>
+      </div>
+      <iframe class="legal-frame" id="legalFrame" title="Documento legal do TMy Car" src="about:blank" referrerpolicy="strict-origin-when-cross-origin"></iframe>
     </div>
 
     <!-- ================= PLANOS ================= -->
@@ -2817,6 +2823,22 @@ function resumoProxima(c){
 }
 
 /* ---------- navegação ---------- */
+let RETORNO_DOCUMENTO_LEGAL = 'conta-dados';
+function abrirDocumentoLegal(caminho, titulo){
+  RETORNO_DOCUMENTO_LEGAL = telaAtual() || 'conta-dados';
+  $('legalTitulo').textContent = titulo || 'Documento';
+  $('legalFrame').src = caminho + (caminho.includes('?') ? '&' : '?') + 'embutido=1';
+  go('documento-legal');
+}
+function fecharDocumentoLegal(){
+  $('legalFrame').src = 'about:blank';
+  go(RETORNO_DOCUMENTO_LEGAL === 'documento-legal' ? 'conta-dados' : RETORNO_DOCUMENTO_LEGAL);
+}
+window.addEventListener('message', evento => {
+  if(evento.origin === location.origin && evento.data === 'tmycar:fechar-documento')
+    fecharDocumentoLegal();
+});
+
 function go(t){
   fecharFolhas();
   conferirTeste();   /* o prazo pode ter estourado com o app em qualquer tela */
@@ -6424,7 +6446,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.79';
+const VERSAO_APP = '1.5.81';
 let ONBOARD = false;
 let carregado = false;
 

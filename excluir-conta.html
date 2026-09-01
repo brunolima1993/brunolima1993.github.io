@@ -47,6 +47,9 @@
 <script>
 function voltarAoApp(evento){
   try{
+    if(window.parent !== window){
+      evento.preventDefault(); window.parent.postMessage('tmycar:fechar-documento', location.origin); return false;
+    }
     if(window.opener && !window.opener.closed){
       evento.preventDefault(); window.opener.focus(); window.close(); return false;
     }
