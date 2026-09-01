@@ -25,7 +25,7 @@
     <h2>Exclusão imediata pelo aplicativo ou navegador</h2>
     <p>Entre na sua conta do TMy Car e siga:</p>
     <ol><li>Abra <strong>Ajustes</strong>.</li><li>Entre em <strong>Conta e dados</strong>.</li><li>Toque em <strong>Excluir minha conta</strong>.</li><li>Confirme sua identidade e a exclusão.</li></ol>
-    <div class="actions"><a class="btn danger" href="./index.html">Abrir o TMy Car para excluir</a></div>
+    <div class="actions"><a class="btn danger" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car para excluir</a></div>
 
     <h2>Não consegue acessar a conta?</h2>
     <div class="step"><b>Solicite pelo suporte</b>Envie a solicitação usando o mesmo e-mail cadastrado. Para proteger seus dados, poderemos pedir uma confirmação de titularidade antes da exclusão.</div>
@@ -40,9 +40,23 @@
 
     <p class="warning"><strong>Atenção à assinatura:</strong> excluir a conta do TMy Car não cancela uma assinatura da Google Play. Cancele a renovação na área de assinaturas da loja. Se o teste gratuito ainda estiver válido e a conta for recriada com o mesmo e-mail confirmado, somente os dias restantes poderão ser restaurados.</p>
 
-    <div class="actions"><a class="btn alt" href="./politica.html">Ler a Política de Privacidade</a><a class="btn alt" href="./termos.html">Termos de Uso</a><a class="btn alt" href="./index.html">Voltar ao TMy Car</a></div>
+    <div class="actions"><a class="btn alt" href="./politica.html">Ler a Política de Privacidade</a><a class="btn alt" href="./termos.html">Termos de Uso</a><a class="btn alt" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a></div>
   </article>
   <footer>Última atualização: 1º de setembro de 2026 · TMy Car</footer>
 </main>
+<script>
+function voltarAoApp(evento){
+  try{
+    if(window.opener && !window.opener.closed){
+      evento.preventDefault(); window.opener.focus(); window.close(); return false;
+    }
+    const anterior = document.referrer ? new URL(document.referrer, location.href) : null;
+    if(anterior && anterior.origin === location.origin && history.length > 1){
+      evento.preventDefault(); history.back(); return false;
+    }
+  }catch(e){}
+  return true;
+}
+</script>
 </body>
 </html>

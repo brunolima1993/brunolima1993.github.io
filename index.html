@@ -2091,7 +2091,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <div class="card terms-consent-card">
           <div class="swrow terms-consent-row" onclick="obTogTermos()">
             <div class="terms-consent-copy"><b>Tenho 18 anos ou mais e aceito os termos</b>
-              <small style="margin-top:4px">Declaro ser maior de idade e aceitar os termos de uso e a política de privacidade. <span style="color:var(--blue);text-decoration:underline" onclick="event.stopPropagation();window.open('./termos.html','_blank','noopener')">Ler os documentos</span></small></div>
+              <small style="margin-top:4px">Declaro ser maior de idade e aceitar os termos de uso e a política de privacidade. <span style="color:var(--blue);text-decoration:underline" onclick="event.stopPropagation();window.open('./termos.html','tmycar-documentos')">Ler os documentos</span></small></div>
             <div class="sw-toggle" id="obTermos"></div>
           </div>
         </div>
@@ -2361,17 +2361,17 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="section">
         <div id="cfSemConta"></div>
         <div class="list account-data-list">
-          <div class="item" onclick="window.open('./termos.html','_blank','noopener')">
+          <div class="item" onclick="location.href='./termos.html'">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg></div>
             <div class="ibody"><div class="ititle">Termos de Uso</div><div class="isub">Regras e condições para utilizar o TMy Car</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
-          <div class="item" onclick="window.open('./politica.html','_blank','noopener')">
+          <div class="item" onclick="location.href='./politica.html'">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3Z"/></svg></div>
             <div class="ibody"><div class="ititle">Política de privacidade</div><div class="isub">Como protegemos e utilizamos seus dados</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
-          <div class="item" onclick="window.open('./excluir-conta.html','_blank','noopener')">
+          <div class="item" onclick="location.href='./excluir-conta.html'">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14"/></svg></div>
             <div class="ibody"><div class="ititle">Como excluir a conta</div><div class="isub">Página pública e alternativa pelo suporte</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
@@ -5251,6 +5251,7 @@ let AUTH = null, NUVEM = null, FUNCTIONS = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
+let PERSISTENCIA_AUTH = Promise.resolve(false);
 let PARAR_OUVINTE_NUVEM = null, OUVINTE_NUVEM_UID = null;
 let PARAR_OUVINTE_ASSINATURA = null, OUVINTE_ASSINATURA_UID = null;
 let ASSINATURA_IMPRESSAO = '';
@@ -5439,6 +5440,49 @@ function iniciarAppCheck(){
   }
 }
 
+async function tratarEstadoAuth(u){
+  await PERSISTENCIA_NUVEM;
+  if(u){
+    if(contaPrecisaVerificacao(u)){
+      pararOuvinteNuvem();
+      UID = null;
+      CONTA = { email:u.email || null, local:false };
+      EMAIL_VERIFICACAO_PENDENTE = u.email || null;
+      SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
+      if(carregado && telaAtual() !== 'criar-conta') mostrarVerificacaoEmail(u.email);
+    }else{
+      const entrada = await sincronizarContaAutenticada(u);
+      if(carregado){
+        const atual = telaAtual();
+        if(entrada && entrada.perfilConcluido &&
+           ['bemvindo','conta','criar-conta','verificar-email'].includes(atual))
+          go('garagem');
+        else if(entrada && !entrada.perfilConcluido && atual === 'bemvindo')
+          go('identidade');
+        if(entrada && entrada.importacaoDisponivel)
+          setTimeout(oferecerImportacaoAnonima, 180);
+      }
+    }
+  }else{
+    pararOuvinteNuvem();
+    await ativarContextoAnonimo();
+    UID = null;
+    CONTA = { email:null, local:true };
+    EMAIL_VERIFICACAO_PENDENTE = null;
+    SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
+  }
+  /* Uma conta ainda não verificada não deve carimbar seu e-mail no espaço
+     anônimo nem provocar gravações antes de receber autorização. */
+  if(!EXCLUINDO_CONTA && !IMPORTACAO_ANONIMA_DISPONIVEL &&
+     (!u || !contaPrecisaVerificacao(u))) persistirLocal(false);
+  if(carregado){
+    atualizarNav();
+    const atual = telaAtual();
+    if(atual==='config') pintarConfig();
+    if(atual==='conta-dados') pintarContaDados();
+  }
+}
+
 function iniciarFirebase(){
   if(!FIREBASE_CONFIG || typeof firebase === 'undefined') return false;
   try{
@@ -5460,51 +5504,24 @@ function iniciarFirebase(){
         if(!c.includes('failed-precondition') && !c.includes('unimplemented'))
           console.warn('Persistência offline do Firestore indisponível.', e);
         return false;
-      });
-    AUTH.languageCode = 'pt-BR';
-    AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);   /* continua logado */
-    AUTH.onAuthStateChanged(async u => {
-      await PERSISTENCIA_NUVEM;
-      if(u){
-        if(contaPrecisaVerificacao(u)){
-          pararOuvinteNuvem();
-          UID = null;
-          CONTA = { email:u.email || null, local:false };
-          EMAIL_VERIFICACAO_PENDENTE = u.email || null;
-          SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
-          if(carregado && telaAtual() !== 'criar-conta') mostrarVerificacaoEmail(u.email);
-        }else{
-          const entrada = await sincronizarContaAutenticada(u);
-          if(carregado){
-            const atual = telaAtual();
-            if(entrada && entrada.perfilConcluido &&
-               ['bemvindo','conta','criar-conta','verificar-email'].includes(atual))
-              go('garagem');
-            else if(entrada && !entrada.perfilConcluido && atual === 'bemvindo')
-              go('identidade');
-            if(entrada && entrada.importacaoDisponivel)
-              setTimeout(oferecerImportacaoAnonima, 180);
-          }
-        }
-      }else{
-        pararOuvinteNuvem();
-        await ativarContextoAnonimo();
-        UID = null;
-        CONTA = { email:null, local:true };
-        EMAIL_VERIFICACAO_PENDENTE = null;
-        SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
-      }
-      /* Uma conta ainda não verificada não deve carimbar seu e-mail no espaço
-         anônimo nem provocar gravações antes de receber autorização. */
-      if(!EXCLUINDO_CONTA && !IMPORTACAO_ANONIMA_DISPONIVEL &&
-         (!u || !contaPrecisaVerificacao(u))) persistirLocal(false);
-      if(carregado){
-        atualizarNav();
-        const atual = telaAtual();
-        if(atual==='config') pintarConfig();
-        if(atual==='conta-dados') pintarContaDados();
-      }
     });
+    AUTH.languageCode = 'pt-BR';
+    /* Espera a persistência ser confirmada antes de observar ou iniciar uma
+       sessão. No Safari/iPhone, a corrida entre essas duas etapas podia fazer
+       uma atualização parecer um novo acesso. Se LOCAL não estiver disponível,
+       SESSION ainda preserva o login durante recargas da mesma sessão. */
+    PERSISTENCIA_AUTH = AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => 'local')
+      .catch(async erroLocal => {
+        try{
+          await AUTH.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+          return 'session';
+        }catch(erroSessao){
+          console.warn('Persistência do login indisponível.', erroLocal, erroSessao);
+          return false;
+        }
+      });
+    PERSISTENCIA_AUTH.then(() => AUTH.onAuthStateChanged(tratarEstadoAuth));
     return true;
   }catch(e){ return false; }
 }
@@ -5721,6 +5738,7 @@ async function entrarComGoogle(origem='conta'){
   bt.disabled = true; bt.setAttribute('aria-busy','true');
   obMsg(alvo,'');
   try{
+    await PERSISTENCIA_AUTH;
     const provedor = new firebase.auth.GoogleAuthProvider();
     provedor.setCustomParameters({ prompt:'select_account' });
     const cred = await AUTH.signInWithPopup(provedor);
@@ -5744,6 +5762,7 @@ async function entrarConta(){
   origemIdentidade = 'conta';
   if(!AUTH) return temFirebase('obMsgConta');
   try{
+    await PERSISTENCIA_AUTH;
     const cred = await AUTH.signInWithEmailAndPassword(e, s);
     if(contaPrecisaVerificacao(cred.user)){
       obMsg('obMsgConta','');
@@ -5770,6 +5789,7 @@ async function criarConta(){
   const bt = $('btCriarConta');
   bt.disabled = true; bt.textContent = 'Criando…';
   try{
+    await PERSISTENCIA_AUTH;
     const cred = await AUTH.createUserWithEmailAndPassword(e, s);
     obMsg('obMsgCriar','');
     mostrarVerificacaoEmail(cred.user.email);
@@ -6404,7 +6424,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.77';
+const VERSAO_APP = '1.5.78';
 let ONBOARD = false;
 let carregado = false;
 

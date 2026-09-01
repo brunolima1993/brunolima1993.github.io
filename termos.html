@@ -63,9 +63,23 @@
     <h2>12. Lei aplicável e contato</h2>
     <p>Estes termos são interpretados conforme a legislação brasileira, preservadas as normas de proteção de dados e defesa do consumidor. Dúvidas, solicitações ou problemas podem ser enviados para <a href="mailto:suportetmycar@gmail.com">suportetmycar@gmail.com</a>.</p>
 
-    <div class="actions"><a class="btn" href="./index.html">Abrir o TMy Car</a><a class="btn alt" href="./politica.html">Política de Privacidade</a><a class="btn alt" href="./excluir-conta.html">Excluir conta e dados</a></div>
+    <div class="actions"><a class="btn" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a><a class="btn alt" href="./politica.html">Política de Privacidade</a><a class="btn alt" href="./excluir-conta.html">Excluir conta e dados</a></div>
   </article>
   <footer>© 2026 TMy Car · Williams Bruno Teles Lima</footer>
 </main>
+<script>
+function voltarAoApp(evento){
+  try{
+    if(window.opener && !window.opener.closed){
+      evento.preventDefault(); window.opener.focus(); window.close(); return false;
+    }
+    const anterior = document.referrer ? new URL(document.referrer, location.href) : null;
+    if(anterior && anterior.origin === location.origin && history.length > 1){
+      evento.preventDefault(); history.back(); return false;
+    }
+  }catch(e){}
+  return true;
+}
+</script>
 </body>
 </html>

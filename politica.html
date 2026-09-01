@@ -73,9 +73,23 @@
     <h2>12. Alterações</h2>
     <p>Esta política poderá ser atualizada para acompanhar mudanças no aplicativo ou em requisitos legais. Alterações relevantes serão comunicadas no aplicativo ou nesta página.</p>
 
-    <div class="actions"><a class="btn" href="./excluir-conta.html">Solicitar exclusão da conta</a><a class="btn alt" href="./termos.html">Termos de Uso</a><a class="btn alt" href="./index.html">Voltar ao TMy Car</a></div>
+    <div class="actions"><a class="btn" href="./excluir-conta.html">Solicitar exclusão da conta</a><a class="btn alt" href="./termos.html">Termos de Uso</a><a class="btn alt" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a></div>
   </article>
   <footer>© 2026 TMy Car · Manutenção na palma da mão</footer>
 </main>
+<script>
+function voltarAoApp(evento){
+  try{
+    if(window.opener && !window.opener.closed){
+      evento.preventDefault(); window.opener.focus(); window.close(); return false;
+    }
+    const anterior = document.referrer ? new URL(document.referrer, location.href) : null;
+    if(anterior && anterior.origin === location.origin && history.length > 1){
+      evento.preventDefault(); history.back(); return false;
+    }
+  }catch(e){}
+  return true;
+}
+</script>
 </body>
 </html>
