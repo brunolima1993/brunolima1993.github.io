@@ -2091,7 +2091,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <div class="card terms-consent-card">
           <div class="swrow terms-consent-row" onclick="obTogTermos()">
             <div class="terms-consent-copy"><b>Tenho 18 anos ou mais e aceito os termos</b>
-              <small style="margin-top:4px">Declaro ser maior de idade e aceitar os termos de uso e a política de privacidade. <span style="color:var(--blue);text-decoration:underline" onclick="event.stopPropagation();abrirTexto('Termos e privacidade', TXT_TERMOS)">Ler os documentos</span></small></div>
+              <small style="margin-top:4px">Declaro ser maior de idade e aceitar os termos de uso e a política de privacidade. <span style="color:var(--blue);text-decoration:underline" onclick="event.stopPropagation();window.open('./termos.html','_blank','noopener')">Ler os documentos</span></small></div>
             <div class="sw-toggle" id="obTermos"></div>
           </div>
         </div>
@@ -2361,6 +2361,11 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="section">
         <div id="cfSemConta"></div>
         <div class="list account-data-list">
+          <div class="item" onclick="window.open('./termos.html','_blank','noopener')">
+            <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg></div>
+            <div class="ibody"><div class="ititle">Termos de Uso</div><div class="isub">Regras e condições para utilizar o TMy Car</div></div>
+            <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
+          </div>
           <div class="item" onclick="window.open('./politica.html','_blank','noopener')">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3Z"/></svg></div>
             <div class="ibody"><div class="ititle">Política de privacidade</div><div class="isub">Como protegemos e utilizamos seus dados</div></div>
@@ -4632,34 +4637,6 @@ function abrirTexto(titulo, corpo){
   fecharFolhas();
   $('cfBg').classList.add('on'); $('cf').classList.add('on');
 }
-const T_ = (t, c) => `<b style="color:var(--ink)">${t}</b><br>${c}<br><br>`;
-const TXT_TERMOS =
-  T_('1. Quem pode usar',
-     'O TMy Car é para maiores de 18 anos. O app oferece assinatura paga, e contratar exige maioridade. Ao aceitar, você declara ter 18 anos completos. Se soubermos que uma conta pertence a menor de idade, ela será encerrada e os dados apagados.')
-+ T_('2. O que o app faz',
-     'Organiza a manutenção do seu carro a partir do que você informa: quilometragem, datas e trocas realizadas. Ele calcula quando cada item vence e avisa antes.')
-+ T_('3. Caso seu carro seja 100% elétrico',
-     'Esta versão do TMy Car foi desenvolvida para veículos a combustão e para híbridos que também possuem motor a combustão. O catálogo, os alertas e as recomendações de correia, corrente e óleo não foram projetados para veículos 100% elétricos. Por isso, o cadastro e o uso do app para um veículo totalmente elétrico podem gerar informações incompletas ou inadequadas. <b style="color:var(--ink)">Não use os avisos do app para planejar a manutenção de sistemas de alta tensão, bateria de tração, motor elétrico ou recarga</b>; siga o manual e a assistência técnica do fabricante.')
-+ T_('4. O que ele não faz',
-     'Não substitui o manual do fabricante nem a avaliação de um mecânico. Os intervalos sugeridos são referência de planejamento — <b style="color:var(--ink)">quando o manual do seu carro disser outra coisa, siga o manual</b>. O app não se responsabiliza por danos decorrentes de manutenção não feita, feita fora do prazo, ou baseada em informação cadastrada de forma incorreta.')
-+ T_('5. Seus dados',
-     'Veículos, manutenções, gastos e preferências ficam guardados no seu aparelho. Se você criar uma conta, guardamos seu nome e e-mail para identificar você e permitir recuperar seus dados em outro aparelho. Não vendemos seus dados.')
-+ T_('6. Tabela FIPE',
-     'Os valores vêm de serviço público de consulta e são média de mercado — não são avaliação do seu carro nem proposta de compra. Estado de conservação, quilometragem e histórico mudam bastante o preço real. O TMy Car não tem relação com a Fundação Instituto de Pesquisas Econômicas.')
-+ T_('7. Anúncios',
-     'O plano grátis exibe anúncios <b style="color:var(--ink)">não personalizados</b>: eles não usam o identificador de publicidade do seu aparelho para inferir seus interesses. O Premium não exibe anúncio nenhum.')
-+ T_('8. Assinatura',
-     'Premium por R$ 3,99 ao mês ou R$ 29,99 ao ano, com 14 dias grátis no primeiro acesso. A cobrança, a renovação e o cancelamento são feitos pela loja de aplicativos, não por nós. Cancelando, você continua com o Premium até o fim do período já pago.')
-+ T_('9. Direito de arrependimento',
-     'Você pode desistir da assinatura em até 7 dias, conforme o Código de Defesa do Consumidor. O pedido é feito na loja onde a compra aconteceu.')
-+ T_('10. Seus direitos sobre os dados',
-     'Você pode pedir acesso, correção, exclusão ou uma cópia dos seus dados, e saber com quem foram compartilhados. Escreva para <b style="color:var(--ink)">suportetmycar@gmail.com</b> e respondemos em até 15 dias. A política completa está em <b style="color:var(--ink)">www.tmycar.com.br/politica.html</b>.')
-+ T_('11. Excluir a conta',
-     'A exclusão remove a conta e os dados associados, de forma imediata e definitiva. Não há como recuperar depois — se mudar de ideia, será preciso criar uma conta nova. Para impedir a repetição indevida do teste, pode permanecer um identificador irreversível derivado do e-mail, sem guardar o endereço em texto. A exclusão não cancela a assinatura, que pertence à loja de aplicativos. A página pública está em <b style="color:var(--ink)">www.tmycar.com.br/excluir-conta.html</b>.')
-+ T_('12. Dados guardados apenas no aparelho',
-     'Sem uma conta, tudo fica gravado somente no seu celular. Limpeza de cache, desinstalação, perda ou troca de aparelho podem apagar seus dados, e <b style="color:var(--ink)">sem conta não temos como recuperar</b> — não guardamos cópia em servidor. Criar uma conta é o que permite recuperar o histórico em outro aparelho.')
-+ `<b style="color:var(--ink)">13. Mudanças nestes termos</b><br>Se algo mudar, avisamos dentro do app antes de a mudança passar a valer.`;
-
 const TXT_SUPORTE = `Dúvidas, erro no catálogo de motores ou sugestão?<br><br>
 Escreva para <b style="color:var(--ink)">suportetmycar@gmail.com</b>.<br><br>
 Se for erro de catálogo, conte a marca, o modelo, o ano e a motorização — ajuda a corrigir para todo mundo.`;
@@ -6427,7 +6404,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.75';
+const VERSAO_APP = '1.5.77';
 let ONBOARD = false;
 let carregado = false;
 

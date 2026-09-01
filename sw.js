@@ -1,9 +1,10 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.75';
+const CACHE_APP = 'tmycar-pwa-v1.5.77';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
   INICIO,
   HTML_PRINCIPAL,
+  new URL('./termos.html', self.registration.scope).href,
   new URL('./politica.html', self.registration.scope).href,
   new URL('./excluir-conta.html', self.registration.scope).href,
   new URL('./manifest.webmanifest', self.registration.scope).href,
@@ -47,11 +48,11 @@ self.addEventListener('fetch', evento => {
         const resposta = await fetch(pedido);
         if(resposta.ok){
           const cache = await caches.open(CACHE_APP);
-          cache.put(HTML_PRINCIPAL, resposta.clone());
+          cache.put(pedido, resposta.clone());
         }
         return resposta;
       }catch(e){
-        return (await caches.match(HTML_PRINCIPAL)) || (await caches.match(INICIO));
+        return (await caches.match(pedido)) || (await caches.match(HTML_PRINCIPAL)) || (await caches.match(INICIO));
       }
     })());
     return;
