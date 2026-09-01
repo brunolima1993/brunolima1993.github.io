@@ -4774,14 +4774,16 @@ async function iniciarTesteGratis(){
   const bt = $('ofBotao');
   if(bt){ bt.disabled = true; bt.textContent = 'Ativando…'; }
   try{
-    await chamarAtivacaoTeste();
+    const ativacao = await chamarAtivacaoTeste();
     await puxarAssinatura();
     const restaurados = promoverGuardados();
     corrigirAtivo();
     await persistirLocal(false);
     atualizarNav(); fecharOferta();
     go(restaurados ? 'garagem' : (ofTelaAnterior || 'garagem'));
-    toast('Premium liberado por 14 dias.');
+    toast(ativacao && ativacao.restaurado
+      ? 'Teste Premium restaurado com os dias restantes.'
+      : 'Premium liberado por 14 dias.');
   }catch(e){
     const c = String(e && e.code || '');
     if(c.includes('already-exists') || c.includes('failed-precondition')){
@@ -5862,7 +5864,10 @@ function abrirExclusaoConta(){
     $('cfOk').textContent = 'Apagar dados deste aparelho';
     $('cfOk').onclick = excluirConta;
   }else{
-    $('cfTexto').textContent = 'A conta, os veículos e todo o histórico salvo na nuvem serão excluídos definitivamente. Não será possível recuperar depois.';
+    const avisoPlano = emTeste()
+      ? ' Se você criar outra conta com o mesmo e-mail confirmado antes do fim do teste, somente os dias restantes serão restaurados.'
+      : (PLANO === 'premium' ? ' A exclusão da conta não cancela uma assinatura feita pela loja de aplicativos.' : '');
+    $('cfTexto').textContent = 'A conta, os veículos e todo o histórico salvo na nuvem serão excluídos definitivamente. Não será possível recuperar depois.' + avisoPlano;
     if(usaSenha){
       $('cfExtra').innerHTML = `<label class="flabel" for="cfSenhaExcluir">Confirme sua senha atual</label>
         <input id="cfSenhaExcluir" type="password" autocomplete="current-password" placeholder="Sua senha" onkeydown="if(event.key==='Enter') excluirConta()">`;
@@ -6417,7 +6422,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.73';
+const VERSAO_APP = '1.5.74';
 let ONBOARD = false;
 let carregado = false;
 
