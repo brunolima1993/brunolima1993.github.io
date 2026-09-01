@@ -50,12 +50,8 @@ function voltarAoApp(evento){
     if(window.opener && !window.opener.closed){
       evento.preventDefault(); window.opener.focus(); window.close(); return false;
     }
-    const anterior = document.referrer ? new URL(document.referrer, location.href) : null;
-    if(anterior && anterior.origin === location.origin && history.length > 1){
-      evento.preventDefault(); history.back(); return false;
-    }
   }catch(e){}
-  return true;
+  evento.preventDefault(); location.replace('./index.html'); return false;
 }
 </script>
 </body>
