@@ -1,9 +1,11 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.74';
+const CACHE_APP = 'tmycar-pwa-v1.5.75';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
   INICIO,
   HTML_PRINCIPAL,
+  new URL('./politica.html', self.registration.scope).href,
+  new URL('./excluir-conta.html', self.registration.scope).href,
   new URL('./manifest.webmanifest', self.registration.scope).href,
   new URL('./icons/icon-192.png', self.registration.scope).href,
   new URL('./icons/icon-512.png', self.registration.scope).href,

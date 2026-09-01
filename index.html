@@ -2361,9 +2361,14 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="section">
         <div id="cfSemConta"></div>
         <div class="list account-data-list">
-          <div class="item" onclick="abrirTexto('Termos e privacidade', TXT_TERMOS)">
+          <div class="item" onclick="window.open('./politica.html','_blank','noopener')">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3Z"/></svg></div>
-            <div class="ibody"><div class="ititle">Termos e privacidade</div></div>
+            <div class="ibody"><div class="ititle">Política de privacidade</div><div class="isub">Como protegemos e utilizamos seus dados</div></div>
+            <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
+          </div>
+          <div class="item" onclick="window.open('./excluir-conta.html','_blank','noopener')">
+            <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14"/></svg></div>
+            <div class="ibody"><div class="ititle">Como excluir a conta</div><div class="isub">Página pública e alternativa pelo suporte</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
           <div class="item" id="cdSair" onclick="confirmar('Sair da conta','Seus dados continuam salvos na sua conta. Ao entrar de novo, tudo volta.',sairDaConta,'Sair')">
@@ -4648,9 +4653,9 @@ const TXT_TERMOS =
 + T_('9. Direito de arrependimento',
      'Você pode desistir da assinatura em até 7 dias, conforme o Código de Defesa do Consumidor. O pedido é feito na loja onde a compra aconteceu.')
 + T_('10. Seus direitos sobre os dados',
-     'Você pode pedir acesso, correção, exclusão ou uma cópia dos seus dados, e saber com quem foram compartilhados. Escreva para <b style="color:var(--ink)">suportetmycar@gmail.com</b> e respondemos em até 15 dias.')
+     'Você pode pedir acesso, correção, exclusão ou uma cópia dos seus dados, e saber com quem foram compartilhados. Escreva para <b style="color:var(--ink)">suportetmycar@gmail.com</b> e respondemos em até 15 dias. A política completa está em <b style="color:var(--ink)">www.tmycar.com.br/politica.html</b>.')
 + T_('11. Excluir a conta',
-     'A exclusão remove a conta e todos os dados salvos, de forma imediata e definitiva. Não há como recuperar depois — se mudar de ideia, será preciso criar uma conta nova. A exclusão não cancela a assinatura, que pertence à loja de aplicativos.')
+     'A exclusão remove a conta e os dados associados, de forma imediata e definitiva. Não há como recuperar depois — se mudar de ideia, será preciso criar uma conta nova. Para impedir a repetição indevida do teste, pode permanecer um identificador irreversível derivado do e-mail, sem guardar o endereço em texto. A exclusão não cancela a assinatura, que pertence à loja de aplicativos. A página pública está em <b style="color:var(--ink)">www.tmycar.com.br/excluir-conta.html</b>.')
 + T_('12. Dados guardados apenas no aparelho',
      'Sem uma conta, tudo fica gravado somente no seu celular. Limpeza de cache, desinstalação, perda ou troca de aparelho podem apagar seus dados, e <b style="color:var(--ink)">sem conta não temos como recuperar</b> — não guardamos cópia em servidor. Criar uma conta é o que permite recuperar o histórico em outro aparelho.')
 + `<b style="color:var(--ink)">13. Mudanças nestes termos</b><br>Se algo mudar, avisamos dentro do app antes de a mudança passar a valer.`;
@@ -6422,7 +6427,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.74';
+const VERSAO_APP = '1.5.75';
 let ONBOARD = false;
 let carregado = false;
 
