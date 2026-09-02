@@ -1912,7 +1912,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         </div>
       </div>
       <div class="cta-wrap">
-        <p style="margin:0 0 14px;text-align:center;color:var(--dim);font-size:11.5px;font-weight:400;line-height:1.45;letter-spacing:.01em">
+        <p style="margin:0 0 14px;text-align:center;color:#19a7ff;font-size:11.5px;font-weight:400;line-height:1.45;letter-spacing:.01em;text-shadow:0 0 10px rgba(0,153,255,.48)">
           O histórico do seu carro a um clique.</p>
         <button class="cta" onclick="go('conta')">Começar</button>
       </div>
@@ -1989,15 +1989,15 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <div class="field"><label class="flabel">E-mail</label>
             <input id="obEmailCriar" type="email" inputmode="email" placeholder="voce@email.com" autocomplete="email"></div>
           <div class="field"><label class="flabel">Senha</label>
-            <input id="obSenhaCriar" type="password" placeholder="Use 12 ou mais caracteres" autocomplete="new-password"
-              minlength="12" maxlength="128" oninput="atualizarForcaSenha()">
+            <input id="obSenhaCriar" type="password" placeholder="Use 8 ou mais caracteres" autocomplete="new-password"
+              minlength="8" maxlength="128" oninput="atualizarForcaSenha()">
             <div class="password-strength" id="forcaSenha" aria-live="polite" data-nivel="vazia">
               <div class="password-strength-track" aria-hidden="true"><span id="forcaSenhaBar"></span></div>
               <span id="forcaSenhaTexto">Frases e espaços são permitidos.</span>
             </div></div>
           <div class="field"><label class="flabel">Confirmar senha</label>
             <input id="obSenhaConfirmar" type="password" placeholder="Digite a senha novamente" autocomplete="new-password"
-              minlength="12" maxlength="128" onkeydown="if(event.key==='Enter') criarConta()"></div>
+              minlength="8" maxlength="128" onkeydown="if(event.key==='Enter') criarConta()"></div>
         </div>
         <div class="auth-helper">Ao continuar, você seguirá para o cadastro do seu nome e para os termos de uso.</div>
         <div id="obMsgCriar"></div>
@@ -2506,7 +2506,6 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div id="shOleoMotor"></div>
       <div id="shFreio"></div>
       <div class="card" style="padding:4px 16px">
-        <div id="shNaoSei"></div>
         <div class="field ctr" id="shBoxKm"><label class="flabel">KM do carro na troca <span style="color:var(--dim);font-weight:500">· opcional</span></label><input class="mono" id="shKm" inputmode="numeric">
           <p class="ajuda">Sem KM, o prazo será acompanhado somente pela data.</p></div>
         <div class="field ctr" id="shBoxData"><label class="flabel">Data</label><input class="mono" id="shData" type="date"></div>
@@ -4145,7 +4144,6 @@ function abrirSheet(id){
   const ehCambio = itAtual.id === 'cambio';
   const ehOleoMotor = itAtual.id === 'oleo';
   const ehFreio = itAtual.id === 'freio';
-  shNaoSei = false;
   $('shCambio').innerHTML = ehCambio ? `
     <div class="card" style="margin-bottom:12px">
       <div class="section-title" style="margin:0 0 10px">Tipo de câmbio</div>
@@ -4190,12 +4188,6 @@ function abrirSheet(id){
       </div>
     </div>` : '';
 
-  $('shNaoSei').innerHTML = ehCambio ? `
-    <div class="swrow" style="border:0;background:none;padding:12px 0;align-items:flex-start" onclick="togNaoSei()">
-      <div style="flex:1"><b>Programar troca</b>
-        <small style="margin-top:3px">Para quem ainda não sabe quando foi a última. Guarda o tipo, o intervalo e o óleo, e você registra a troca quando ela acontecer.</small></div>
-      <div class="sw-toggle" id="shSwNaoSei" style="margin-top:2px"></div>
-    </div>` : '';
   $('shBoxKm').style.display = ''; $('shBoxData').style.display = '';
   $('shPartes').innerHTML = itAtual.partes
     ? `<div class="odo-hint" style="margin-bottom:12px">Marque o que você trocou agora. O intervalo de cada filtro é salvo mesmo sem marcar.</div>
@@ -4215,19 +4207,11 @@ function abrirSheet(id){
   fecharFolhas();
   $('shBg').classList.add('on'); $('sh').classList.add('on');
 }
-let shNaoSei = false;
 function escolherCambio(t){
   if(!itAtual) return;
   itAtual.tipo = t;
   document.querySelectorAll('#shCambio .radio').forEach((el,i)=>
     el.classList.toggle('sel', (i===0) === (t==='automatico')));
-}
-function togNaoSei(){
-  shNaoSei = !shNaoSei;
-  $('shSwNaoSei').classList.toggle('on', shNaoSei);
-  /* sem a data da última troca, os campos de km e data não fazem sentido */
-  $('shBoxKm').style.display  = shNaoSei ? 'none' : '';
-  $('shBoxData').style.display = shNaoSei ? 'none' : '';
 }
 function fecharSheet(){ $('shBg').classList.remove('on'); $('sh').classList.remove('on'); itAtual=null; }
 function salvarTroca(){
@@ -4298,12 +4282,7 @@ function salvarTroca(){
       if(marc.includes(p.id)){ p.ultKm = km; p.ultData = data; }
     });
   } else {
-    if(ehCambio && shNaoSei){
-      /* o dono não sabe a data: guarda a configuração e deixa o registro em aberto */
-      itAtual.ultKm = null; itAtual.ultData = null;
-    } else {
-      itAtual.ultKm = km; itAtual.ultData = data; delete itAtual.proxFixo;
-    }
+    itAtual.ultKm = km; itAtual.ultData = data; delete itAtual.proxFixo;
     /* o intervalo vale nos dois casos */
     itAtual.ikm  = novos.__item.ikm;
     itAtual.imes = novos.__item.imes;
@@ -5274,6 +5253,7 @@ let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
 let PERSISTENCIA_AUTH = Promise.resolve(false);
+let PRIMEIRO_ESTADO_AUTH = Promise.resolve(null);
 let PARAR_OUVINTE_NUVEM = null, OUVINTE_NUVEM_UID = null;
 let PARAR_OUVINTE_ASSINATURA = null, OUVINTE_ASSINATURA_UID = null;
 let ASSINATURA_IMPRESSAO = '';
@@ -5543,9 +5523,39 @@ function iniciarFirebase(){
           return false;
         }
       });
-    PERSISTENCIA_AUTH.then(() => AUTH.onAuthStateChanged(tratarEstadoAuth));
+    /* A restauração do usuário é assíncrona. Guardar a primeira passagem do
+       observador impede que carregar() mostre "Entrar" enquanto o Firebase
+       ainda está recuperando uma sessão LOCAL válida do aparelho. */
+    PRIMEIRO_ESTADO_AUTH = new Promise(resolve => {
+      let primeiro = true;
+      PERSISTENCIA_AUTH.then(() => AUTH.onAuthStateChanged(
+        u => {
+          const processamento = Promise.resolve(tratarEstadoAuth(u));
+          if(primeiro){
+            primeiro = false;
+            processamento.then(() => resolve(u || null), () => resolve(u || null));
+          }
+        },
+        erro => {
+          console.warn('Não foi possível restaurar o estado do login.', erro);
+          if(primeiro){ primeiro = false; resolve(null); }
+        }
+      ));
+    });
     return true;
   }catch(e){ return false; }
+}
+
+async function aguardarRestauracaoAuth(limiteMs=8000){
+  let temporizador;
+  try{
+    return await Promise.race([
+      PRIMEIRO_ESTADO_AUTH,
+      new Promise(resolve => { temporizador = setTimeout(() => resolve(AUTH && AUTH.currentUser || null), limiteMs); })
+    ]);
+  }finally{
+    if(temporizador) clearTimeout(temporizador);
+  }
 }
 const telaAtual = () => { const a = document.querySelector('.screen.active'); return a ? a.id.replace('s-','') : ''; };
 
@@ -5563,7 +5573,7 @@ function erroAuth(e){
     return 'Não foi possível criar a conta com esses dados. Tente entrar ou recuperar sua senha.';
   if(c.includes('invalid-email'))        return 'Confira o e-mail — parece incompleto.';
   if(c.includes('missing-password'))     return 'Digite sua senha.';
-  if(c.includes('weak-password'))        return 'Use uma senha com pelo menos 12 caracteres.';
+  if(c.includes('weak-password'))        return 'Use uma senha com pelo menos 8 caracteres.';
   if(c.includes('user-not-found') || c.includes('wrong-password') || c.includes('invalid-credential'))
     return 'E-mail ou senha não conferem.';
   if(c.includes('user-disabled'))        return 'Esta conta está desativada. Fale com o suporte.';
@@ -5597,7 +5607,7 @@ function ambientePermiteLoginGoogle(alvo){
 }
 
 const emailValido = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
-const TAMANHO_MINIMO_NOVA_SENHA = 12;
+const TAMANHO_MINIMO_NOVA_SENHA = 8;
 let origemIdentidade = 'criar-conta';
 
 function atualizarForcaSenha(){
@@ -6446,7 +6456,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.81';
+const VERSAO_APP = '1.5.83';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6642,20 +6652,29 @@ async function carregar(){
     ['nGeral','nData','nKm'].forEach(k => $(k) && $(k).classList.toggle('on', !!NOTIF[k]));
   }catch(e){ /* primeira abertura ou storage indisponível */ }
   carregado = true;
-  iniciarFirebase();
+  const firebaseAtivo = iniciarFirebase();
   migrarItens();
   corrigirAtivo();
   atualizarNav();
   varrerPrazos();
   varrerPendencias();
   pintarSino();
-  if(ONBOARD) go('garagem'); else pintarGaragem();
+  pintarGaragem();
   pintarRelogio();
+  /* Não decide entre Garagem e Entrar antes de o Auth consultar o estado
+     persistido. Atualizar a página deve manter a mesma conta e a mesma tela. */
+  if(firebaseAtivo) await aguardarRestauracaoAuth();
+  const usuarioRestaurado = AUTH && AUTH.currentUser;
   const modoAplicativo = window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true || window.innerWidth <= 520;
   if(modoAplicativo){
     $('home').classList.add('off');
-    go(ONBOARD ? 'garagem' : 'bemvindo');
+    if(usuarioRestaurado && contaPrecisaVerificacao(usuarioRestaurado))
+      mostrarVerificacaoEmail(usuarioRestaurado.email);
+    else if(usuarioRestaurado)
+      go(ONBOARD ? 'garagem' : 'identidade');
+    else
+      go(ONBOARD ? 'garagem' : 'bemvindo');
   }else{
     $('home').classList.remove('off');   /* no computador, mantém a demonstração do celular */
   }
