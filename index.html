@@ -5252,7 +5252,10 @@ let AUTH = null, NUVEM = null, FUNCTIONS = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
-let PERSISTENCIA_AUTH = Promise.resolve(false);
+/* O Auth Web já inicia com uma hierarquia persistente: IndexedDB e, quando
+   necessário, localStorage. Não forçamos SESSION como alternativa, porque no
+   iPhone essa alternativa desaparece ao fechar o app instalado. */
+let PERSISTENCIA_AUTH = Promise.resolve('automatica');
 let PRIMEIRO_ESTADO_AUTH = Promise.resolve(null);
 let PARAR_OUVINTE_NUVEM = null, OUVINTE_NUVEM_UID = null;
 let PARAR_OUVINTE_ASSINATURA = null, OUVINTE_ASSINATURA_UID = null;
@@ -5508,27 +5511,17 @@ function iniciarFirebase(){
         return false;
     });
     AUTH.languageCode = 'pt-BR';
-    /* Espera a persistência ser confirmada antes de observar ou iniciar uma
-       sessão. No Safari/iPhone, a corrida entre essas duas etapas podia fazer
-       uma atualização parecer um novo acesso. Se LOCAL não estiver disponível,
-       SESSION ainda preserva o login durante recargas da mesma sessão. */
-    PERSISTENCIA_AUTH = AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-      .then(() => 'local')
-      .catch(async erroLocal => {
-        try{
-          await AUTH.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-          return 'session';
-        }catch(erroSessao){
-          console.warn('Persistência do login indisponível.', erroLocal, erroSessao);
-          return false;
-        }
-      });
+    /* O Firebase seleciona automaticamente o primeiro armazenamento permanente
+       aceito neste navegador. Forçar LOCAL aqui fazia o compat escolher apenas
+       uma implementação; se ela falhasse, a versão anterior mudava para SESSION
+       e o iOS apagava o login ao encerrar o ícone instalado. */
+    PERSISTENCIA_AUTH = Promise.resolve('automatica');
     /* A restauração do usuário é assíncrona. Guardar a primeira passagem do
        observador impede que carregar() mostre "Entrar" enquanto o Firebase
        ainda está recuperando uma sessão LOCAL válida do aparelho. */
     PRIMEIRO_ESTADO_AUTH = new Promise(resolve => {
       let primeiro = true;
-      PERSISTENCIA_AUTH.then(() => AUTH.onAuthStateChanged(
+      AUTH.onAuthStateChanged(
         u => {
           const processamento = Promise.resolve(tratarEstadoAuth(u));
           if(primeiro){
@@ -5540,7 +5533,7 @@ function iniciarFirebase(){
           console.warn('Não foi possível restaurar o estado do login.', erro);
           if(primeiro){ primeiro = false; resolve(null); }
         }
-      ));
+      );
     });
     return true;
   }catch(e){ return false; }
@@ -6456,7 +6449,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.83';
+const VERSAO_APP = '1.5.85';
 let ONBOARD = false;
 let carregado = false;
 
