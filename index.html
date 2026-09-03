@@ -5487,68 +5487,15 @@ async function tratarEstadoAuth(u){
   }
 }
 
-/* O SDK compatível prioriza IndexedDB. Alguns WebViews do iPhone anunciam essa
-   API como disponível, mas não recuperam seu conteúdo depois que o ícone é
-   encerrado. Esta implementação usa o outro armazenamento LOCAL oficialmente
-   suportado pelo Auth: o localStorage da origem atual. Ela guarda exatamente o
-   mesmo objeto gerenciado pelo Firebase — nunca senha ou dado criado pelo app. */
-const OUVINTES_AUTH_LOCAL = new Map();
-const PERSISTENCIA_AUTH_LOCAL = {
-  type:'LOCAL',
-  _shouldAllowMigration:true,
-  async _isAvailable(){
-    const chave = `tmycar:teste-auth:${Date.now()}`;
-    try{
-      localStorage.setItem(chave, '1');
-      return localStorage.getItem(chave) === '1';
-    }catch(e){
-      return false;
-    }finally{
-      try{ localStorage.removeItem(chave); }catch(e){}
-    }
-  },
-  async _set(chave, valor){ localStorage.setItem(chave, JSON.stringify(valor)); },
-  async _get(chave){
-    const valor = localStorage.getItem(chave);
-    return valor ? JSON.parse(valor) : null;
-  },
-  async _remove(chave){ localStorage.removeItem(chave); },
-  _addListener(chave, ouvinte){
-    const handler = evento => {
-      if(evento.storageArea !== localStorage || evento.key !== chave) return;
-      try{ ouvinte(evento.newValue ? JSON.parse(evento.newValue) : null); }
-      catch(e){ ouvinte(null); }
-    };
-    if(!OUVINTES_AUTH_LOCAL.has(chave)) OUVINTES_AUTH_LOCAL.set(chave, new Map());
-    OUVINTES_AUTH_LOCAL.get(chave).set(ouvinte, handler);
-    window.addEventListener('storage', handler);
-  },
-  _removeListener(chave, ouvinte){
-    const mapa = OUVINTES_AUTH_LOCAL.get(chave);
-    const handler = mapa && mapa.get(ouvinte);
-    if(handler) window.removeEventListener('storage', handler);
-    if(mapa){
-      mapa.delete(ouvinte);
-      if(!mapa.size) OUVINTES_AUTH_LOCAL.delete(chave);
-    }
-  }
-};
-
 async function prepararPersistenciaAuth(){
-  if(!await PERSISTENCIA_AUTH_LOCAL._isAvailable()){
-    const erro = new Error('O armazenamento local permanente está indisponível.');
-    erro.code = 'auth/unsupported-persistence-type';
-    throw erro;
-  }
-  /* A versão do Firebase está fixada e testada. Usar o delegado aqui permite
-     selecionar localStorage diretamente, sem a migração automática para IDB. */
-  if(AUTH && AUTH._delegate && typeof AUTH._delegate.setPersistence === 'function')
-    await AUTH._delegate.setPersistence(PERSISTENCIA_AUTH_LOCAL);
-  else
-    await AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  /* Usa a persistência LOCAL pública do Firebase. O SDK escolhe e migra o
+     armazenamento compatível com o navegador antes de qualquer novo login.
+     Não use um adaptador privado aqui: no F5 ele seria instalado somente após
+     a restauração inicial e poderia substituir uma sessão válida por null. */
+  await AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   if(navigator.storage && typeof navigator.storage.persist === 'function')
     navigator.storage.persist().catch(() => false);
-  return 'localStorage';
+  return 'firebase-local';
 }
 
 function iniciarFirebase(){
@@ -6514,7 +6461,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.86';
+const VERSAO_APP = '1.5.87';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6725,14 +6672,17 @@ async function carregar(){
   const usuarioRestaurado = AUTH && AUTH.currentUser;
   const modoAplicativo = window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true || window.innerWidth <= 520;
-  if(modoAplicativo){
+  /* Uma conta restaurada sempre entra no app, inclusive no computador. Antes,
+     o ramo desktop mantinha a tela Começar ativa mesmo com currentUser válido. */
+  if(usuarioRestaurado){
     $('home').classList.add('off');
-    if(usuarioRestaurado && contaPrecisaVerificacao(usuarioRestaurado))
+    if(contaPrecisaVerificacao(usuarioRestaurado))
       mostrarVerificacaoEmail(usuarioRestaurado.email);
-    else if(usuarioRestaurado)
-      go(ONBOARD ? 'garagem' : 'identidade');
     else
-      go(ONBOARD ? 'garagem' : 'bemvindo');
+      go(ONBOARD ? 'garagem' : 'identidade');
+  }else if(modoAplicativo){
+    $('home').classList.add('off');
+    go(ONBOARD ? 'garagem' : 'bemvindo');
   }else{
     $('home').classList.remove('off');   /* no computador, mantém a demonstração do celular */
   }
