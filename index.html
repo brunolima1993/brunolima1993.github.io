@@ -5252,10 +5252,9 @@ let AUTH = null, NUVEM = null, FUNCTIONS = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
-/* O Auth Web já inicia com uma hierarquia persistente: IndexedDB e, quando
-   necessário, localStorage. Não forçamos SESSION como alternativa, porque no
-   iPhone essa alternativa desaparece ao fechar o app instalado. */
-let PERSISTENCIA_AUTH = Promise.resolve('automatica');
+/* A credencial continua pertencendo ao Firebase; esta promessa apenas garante
+   que ele terminou de escolher o armazenamento antes de entrar ou restaurar. */
+let PERSISTENCIA_AUTH = Promise.resolve('pendente');
 let PRIMEIRO_ESTADO_AUTH = Promise.resolve(null);
 let PARAR_OUVINTE_NUVEM = null, OUVINTE_NUVEM_UID = null;
 let PARAR_OUVINTE_ASSINATURA = null, OUVINTE_ASSINATURA_UID = null;
@@ -5488,6 +5487,70 @@ async function tratarEstadoAuth(u){
   }
 }
 
+/* O SDK compatível prioriza IndexedDB. Alguns WebViews do iPhone anunciam essa
+   API como disponível, mas não recuperam seu conteúdo depois que o ícone é
+   encerrado. Esta implementação usa o outro armazenamento LOCAL oficialmente
+   suportado pelo Auth: o localStorage da origem atual. Ela guarda exatamente o
+   mesmo objeto gerenciado pelo Firebase — nunca senha ou dado criado pelo app. */
+const OUVINTES_AUTH_LOCAL = new Map();
+const PERSISTENCIA_AUTH_LOCAL = {
+  type:'LOCAL',
+  _shouldAllowMigration:true,
+  async _isAvailable(){
+    const chave = `tmycar:teste-auth:${Date.now()}`;
+    try{
+      localStorage.setItem(chave, '1');
+      return localStorage.getItem(chave) === '1';
+    }catch(e){
+      return false;
+    }finally{
+      try{ localStorage.removeItem(chave); }catch(e){}
+    }
+  },
+  async _set(chave, valor){ localStorage.setItem(chave, JSON.stringify(valor)); },
+  async _get(chave){
+    const valor = localStorage.getItem(chave);
+    return valor ? JSON.parse(valor) : null;
+  },
+  async _remove(chave){ localStorage.removeItem(chave); },
+  _addListener(chave, ouvinte){
+    const handler = evento => {
+      if(evento.storageArea !== localStorage || evento.key !== chave) return;
+      try{ ouvinte(evento.newValue ? JSON.parse(evento.newValue) : null); }
+      catch(e){ ouvinte(null); }
+    };
+    if(!OUVINTES_AUTH_LOCAL.has(chave)) OUVINTES_AUTH_LOCAL.set(chave, new Map());
+    OUVINTES_AUTH_LOCAL.get(chave).set(ouvinte, handler);
+    window.addEventListener('storage', handler);
+  },
+  _removeListener(chave, ouvinte){
+    const mapa = OUVINTES_AUTH_LOCAL.get(chave);
+    const handler = mapa && mapa.get(ouvinte);
+    if(handler) window.removeEventListener('storage', handler);
+    if(mapa){
+      mapa.delete(ouvinte);
+      if(!mapa.size) OUVINTES_AUTH_LOCAL.delete(chave);
+    }
+  }
+};
+
+async function prepararPersistenciaAuth(){
+  if(!await PERSISTENCIA_AUTH_LOCAL._isAvailable()){
+    const erro = new Error('O armazenamento local permanente está indisponível.');
+    erro.code = 'auth/unsupported-persistence-type';
+    throw erro;
+  }
+  /* A versão do Firebase está fixada e testada. Usar o delegado aqui permite
+     selecionar localStorage diretamente, sem a migração automática para IDB. */
+  if(AUTH && AUTH._delegate && typeof AUTH._delegate.setPersistence === 'function')
+    await AUTH._delegate.setPersistence(PERSISTENCIA_AUTH_LOCAL);
+  else
+    await AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  if(navigator.storage && typeof navigator.storage.persist === 'function')
+    navigator.storage.persist().catch(() => false);
+  return 'localStorage';
+}
+
 function iniciarFirebase(){
   if(!FIREBASE_CONFIG || typeof firebase === 'undefined') return false;
   try{
@@ -5511,29 +5574,29 @@ function iniciarFirebase(){
         return false;
     });
     AUTH.languageCode = 'pt-BR';
-    /* O Firebase seleciona automaticamente o primeiro armazenamento permanente
-       aceito neste navegador. Forçar LOCAL aqui fazia o compat escolher apenas
-       uma implementação; se ela falhasse, a versão anterior mudava para SESSION
-       e o iOS apagava o login ao encerrar o ícone instalado. */
-    PERSISTENCIA_AUTH = Promise.resolve('automatica');
+    PERSISTENCIA_AUTH = prepararPersistenciaAuth();
     /* A restauração do usuário é assíncrona. Guardar a primeira passagem do
        observador impede que carregar() mostre "Entrar" enquanto o Firebase
        ainda está recuperando uma sessão LOCAL válida do aparelho. */
     PRIMEIRO_ESTADO_AUTH = new Promise(resolve => {
       let primeiro = true;
-      AUTH.onAuthStateChanged(
-        u => {
-          const processamento = Promise.resolve(tratarEstadoAuth(u));
-          if(primeiro){
-            primeiro = false;
-            processamento.then(() => resolve(u || null), () => resolve(u || null));
+      PERSISTENCIA_AUTH.then(() => AUTH.onAuthStateChanged(
+          u => {
+            const processamento = Promise.resolve(tratarEstadoAuth(u));
+            if(primeiro){
+              primeiro = false;
+              processamento.then(() => resolve(u || null), () => resolve(u || null));
+            }
+          },
+          erro => {
+            console.warn('Não foi possível restaurar o estado do login.', erro);
+            if(primeiro){ primeiro = false; resolve(null); }
           }
-        },
-        erro => {
-          console.warn('Não foi possível restaurar o estado do login.', erro);
-          if(primeiro){ primeiro = false; resolve(null); }
-        }
-      );
+        )
+      ).catch(erro => {
+        console.warn('Persistência permanente do login indisponível.', erro);
+        if(primeiro){ primeiro = false; resolve(null); }
+      });
     });
     return true;
   }catch(e){ return false; }
@@ -5575,6 +5638,8 @@ function erroAuth(e){
   if(c.includes('popup-blocked'))        return 'Seu navegador bloqueou a janela do Google. Libere as janelas pop-up e tente de novo.';
   if(c.includes('operation-not-supported-in-this-environment'))
     return 'O Google não permite login com o HTML aberto diretamente como arquivo. Abra o TMy Car pelo iniciador de teste local.';
+  if(c.includes('unsupported-persistence-type'))
+    return 'Este navegador bloqueou o armazenamento permanente do login. Saia do modo privado ou reinstale o ícone pela opção “Adicionar à Tela de Início”.';
   if(c.includes('unauthorized-domain'))  return 'O endereço usado para abrir o app ainda não foi autorizado no Firebase. Confira os domínios autorizados do Authentication.';
   if(c.includes('operation-not-allowed'))return 'Esse jeito de entrar ainda não está disponível.';
   if(c.includes('account-exists-with-different-credential'))
@@ -6449,7 +6514,7 @@ let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.85';
+const VERSAO_APP = '1.5.86';
 let ONBOARD = false;
 let carregado = false;
 
