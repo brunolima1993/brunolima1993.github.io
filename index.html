@@ -1879,6 +1879,18 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 }
 #shBoxKm .flabel{text-align:center!important}
 #shBoxKm input{text-align:center!important}
+
+/* Centralizacao pontual dos formularios solicitados. Mantem os demais
+   campos do aplicativo no alinhamento definido pelo design system. */
+#sh #shTitle{text-align:center!important}
+#shOleoMotor .flabel,
+#shFreio .flabel,
+#shCambio .field .flabel{text-align:center!important}
+#shCambio .section-title{text-align:center!important}
+.gasto-category-screen .category-months>.section-title{text-align:center!important}
+#s-gastos .g-filter-title{justify-content:center!important;margin-left:0!important;margin-right:0!important;text-align:center!important}
+#s-gastos .selw select{text-align:center!important;text-align-last:center!important;padding-left:32px!important}
+#s-gastos .selw select option{text-align:center!important}
 /* ================= FIM DO FLUXO DE ACESSO ================= */
 </style>
 </head>
@@ -4605,7 +4617,7 @@ function pintarNotificacoes(){
 }
 
 function pintarContaDados(){
-  const local = CONTA.local;
+  const local = contextoAnonimoAtivo();
   $('cdSair').style.display = local ? 'none' : '';
   $('cdExcluirTitulo').textContent = local ? 'Apagar dados deste aparelho' : 'Excluir minha conta';
   $('cdExcluirSub').textContent = local
@@ -5251,6 +5263,9 @@ const FIREBASE_CONFIG = {
 let AUTH = null, NUVEM = null, FUNCTIONS = null, UID = null, APP_CHECK = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
+/* Guarda o que a pessoa confirmou ao abrir a janela. O tipo da exclusão não
+   pode mudar depois por causa de uma restauração tardia do Firebase Auth. */
+let PEDIDO_EXCLUSAO = null;
 let PERSISTENCIA_NUVEM = Promise.resolve(false);
 /* A credencial continua pertencendo ao Firebase; esta promessa apenas garante
    que ele terminou de escolher o armazenamento antes de entrar ou restaurar. */
@@ -5286,6 +5301,9 @@ function sincronizarContaAutenticada(u){
   SINCRONIZACAO_UID = u.uid;
   SINCRONIZACAO_CONTA = (async() => {
     await ativarContextoUsuario(u);
+    const atualAposTroca = AUTH && AUTH.currentUser;
+    if(!atualAposTroca || atualAposTroca.uid !== u.uid || !contextoDeUsuarioAtivo(u.uid))
+      return { existe:false, perfilConcluido:false, descartado:true };
     EMAIL_VERIFICACAO_PENDENTE = null;
     UID = u.uid;
     CONTA = { email:u.email || null, local:false };
@@ -5293,7 +5311,9 @@ function sincronizarContaAutenticada(u){
     /* Primeiro chegam os veículos; só depois o plano pode reativar os que
        estavam guardados. A ordem evita que um cache antigo substitua a nuvem. */
     const resultado = await puxarDaNuvem();
+    if(!contextoDeUsuarioAtivo(u.uid)) return { ...resultado, descartado:true };
     await puxarAssinatura();
+    if(!contextoDeUsuarioAtivo(u.uid)) return { ...resultado, descartado:true };
     iniciarOuvinteNuvem(u.uid);
     iniciarOuvinteAssinatura(u.uid);
     return resultado;
@@ -5322,7 +5342,8 @@ function iniciarOuvinteNuvem(uidConta){
   PARAR_OUVINTE_NUVEM = NUVEM.collection('usuarios').doc(uidConta).onSnapshot(
     { includeMetadataChanges:true },
     doc => {
-      if(UID !== uidConta || !doc.exists || doc.metadata.hasPendingWrites || doc.metadata.fromCache) return;
+      if(!contextoDeUsuarioAtivo(uidConta) || !doc.exists ||
+         doc.metadata.hasPendingWrites || doc.metadata.fromCache) return;
       const d = doc.data() || {};
       const remotoEm = Number(d.em) || 0;
       if(remotoEm <= (ULTIMA_GRAVACAO || 0)) return;
@@ -5392,9 +5413,15 @@ function aplicarAssinatura(d, avisar=false){
 }
 
 async function puxarAssinatura(){
-  if(!NUVEM || !UID){ aplicarAssinatura(null); return { existe:false }; }
+  if(!NUVEM || !UID || !contextoDeUsuarioAtivo(UID)){
+    aplicarAssinatura(null); return { existe:false };
+  }
+  const uidConsulta = UID;
   try{
-    const doc = await NUVEM.collection('assinaturas').doc(UID).get();
+    const doc = await NUVEM.collection('assinaturas').doc(uidConsulta).get();
+    const atual = AUTH && AUTH.currentUser;
+    if(!atual || atual.uid !== uidConsulta || !contextoDeUsuarioAtivo(uidConsulta))
+      return { existe:false, descartado:true };
     aplicarAssinatura(doc.exists ? doc.data() : null);
     return { existe:doc.exists };
   }catch(e){
@@ -5412,7 +5439,7 @@ function iniciarOuvinteAssinatura(uidConta){
   PARAR_OUVINTE_ASSINATURA = NUVEM.collection('assinaturas').doc(uidConta).onSnapshot(
     { includeMetadataChanges:true },
     doc => {
-      if(UID !== uidConta || doc.metadata.hasPendingWrites) return;
+      if(!contextoDeUsuarioAtivo(uidConta) || doc.metadata.hasPendingWrites) return;
       aplicarAssinatura(doc.exists ? doc.data() : null, !doc.metadata.fromCache);
     },
     e => console.warn('Não foi possível acompanhar a assinatura.', e)
@@ -5449,6 +5476,7 @@ async function tratarEstadoAuth(u){
   if(u){
     if(contaPrecisaVerificacao(u)){
       pararOuvinteNuvem();
+      await ativarContextoAnonimo();
       UID = null;
       CONTA = { email:u.email || null, local:false };
       EMAIL_VERIFICACAO_PENDENTE = u.email || null;
@@ -5456,6 +5484,7 @@ async function tratarEstadoAuth(u){
       if(carregado && telaAtual() !== 'criar-conta') mostrarVerificacaoEmail(u.email);
     }else{
       const entrada = await sincronizarContaAutenticada(u);
+      if(!contextoDeUsuarioAtivo(u.uid)) return;
       if(carregado){
         const atual = telaAtual();
         if(entrada && entrada.perfilConcluido &&
@@ -5864,14 +5893,16 @@ async function recuperarSenha(){
 async function sairDaConta(){
   /* Salva somente no espaço desta conta. A troca para o espaço anônimo ocorre
      antes de qualquer nova renderização, evitando resíduos no aparelho. */
-  if(UID) await persistirLocal(false);
-  if(UID) await salvarNaNuvemAgora();
+  const uidSaindo = UID;
+  if(contextoDeUsuarioAtivo(uidSaindo)) await persistirLocal(false);
+  if(contextoDeUsuarioAtivo(uidSaindo)) await salvarNaNuvemAgora();
   if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
+  SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
   await ativarContextoAnonimo();
   CONTA = { email:null, local:true }; UID = null;
   EMAIL_VERIFICACAO_PENDENTE = null;
-  SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
-  persistir(); go('bemvindo');
+  await persistirLocal(false);
+  go('bemvindo');
 }
 
 function provedoresDaConta(u){
@@ -5884,21 +5915,28 @@ function mensagemExclusao(txt){
 }
 
 function abrirExclusaoConta(){
-  const u = AUTH && AUTH.currentUser;
+  const modoLocal = contextoAnonimoAtivo();
+  const uidConta = modoLocal ? null : UID;
+  const candidato = AUTH && AUTH.currentUser;
+  const u = !modoLocal && contextoDeUsuarioAtivo(uidConta) &&
+    candidato && candidato.uid === uidConta ? candidato : null;
   const provedores = provedoresDaConta(u);
   const usaSenha = provedores.includes('password');
   const usaGoogle = provedores.includes('google.com');
+  PEDIDO_EXCLUSAO = modoLocal
+    ? { tipo:'aparelho' }
+    : (u ? { tipo:'conta', uid:u.uid } : { tipo:'sessao-invalida', uid:uidConta });
 
-  $('cfTitulo').textContent = 'Excluir minha conta';
+  $('cfTitulo').textContent = modoLocal ? 'Apagar dados deste aparelho' : 'Excluir minha conta';
   $('cfExtra').innerHTML = '';
   mensagemExclusao('');
   $('cfOk').disabled = false;
 
-  if(!u && !CONTA.local){
+  if(!modoLocal && !u){
     $('cfTexto').textContent = 'Sua sessão terminou. Entre novamente para confirmar sua identidade e excluir a conta de verdade.';
     $('cfOk').textContent = 'Entrar novamente';
     $('cfOk').onclick = () => { fecharConfirma(); go('conta'); };
-  }else if(!u){
+  }else if(modoLocal){
     $('cfTexto').textContent = 'Você está usando o modo sem conta. Os dados guardados somente neste aparelho serão apagados e não poderão ser recuperados.';
     $('cfOk').textContent = 'Apagar dados deste aparelho';
     $('cfOk').onclick = excluirConta;
@@ -5922,34 +5960,79 @@ function abrirExclusaoConta(){
   if(usaSenha && $('cfSenhaExcluir')) setTimeout(() => $('cfSenhaExcluir').focus(), 120);
 }
 
-async function limparDadosLocaisDaConta(uidExcluir=null){
-  FILA_NUVEM = Promise.resolve(false);
-  const uidAlvo = uidExcluir || UID || (AUTH && AUTH.currentUser && AUTH.currentUser.uid) || null;
-  resetarEstadoEmMemoria();
+async function apagarDadosAnonimosDesteAparelho(){
+  /* Esta função não aceita UID de propósito: assim ela é incapaz de apagar o
+     cache de uma conta, mesmo que o Auth restaure uma sessão no mesmo instante. */
+  return enfileirarMudancaContexto(async() => {
+    if(!contextoAnonimoAtivo()) return false;
+    const legado = await lerEstadoLocal(CHAVE_LEGADA);
+    try{
+      await ARMAZEM.delete(CHAVE_ANONIMA);
+      if(!legado || !legado.CONTA || legado.CONTA.local !== false)
+        await ARMAZEM.delete(CHAVE_LEGADA);
+    }catch(e){}
+    resetarEstadoEmMemoria();
+    UID = null;
+    EMAIL_VERIFICACAO_PENDENTE = null;
+    IMPORTACAO_ANONIMA_DISPONIVEL = false;
+    SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
+    CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
+    atualizarNav(); pintarSino();
+    return true;
+  });
+}
+
+async function limparDadosLocaisDaConta(uidExcluir){
+  /* A exclusão da conta limpa só o espaço desse UID. Dados criados no modo
+     sem conta continuam no aparelho e não são misturados nem descartados. */
+  if(!uidExcluir) return apagarDadosAnonimosDesteAparelho();
+  const emailExcluir = String(CONTA.email || '').trim().toLowerCase();
+  await FILA_CONTEXTO_LOCAL.catch(() => false);
+  try{
+    await ARMAZEM.delete(chaveDoUsuario(uidExcluir));
+    const legado = await lerEstadoLocal(CHAVE_LEGADA);
+    const emailLegado = legado && legado.CONTA && legado.CONTA.local === false
+      ? String(legado.CONTA.email || '').trim().toLowerCase() : '';
+    if(emailExcluir && emailLegado === emailExcluir) await ARMAZEM.delete(CHAVE_LEGADA);
+  }catch(e){}
+  const anonimo = await lerEstadoLocal(CHAVE_ANONIMA);
+  CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
+  aplicarEstadoLocalCompleto(anonimo);
   UID = null;
+  CONTA = { email:null, local:true };
   EMAIL_VERIFICACAO_PENDENTE = null;
   IMPORTACAO_ANONIMA_DISPONIVEL = false;
   SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
-  try{
-    await ARMAZEM.delete(uidAlvo ? chaveDoUsuario(uidAlvo) : CHAVE_ANONIMA);
-    /* Na exclusão de uma conta, também remove sobras locais antigas desse
-       aparelho. A ação já foi confirmada como exclusão definitiva. */
-    if(uidAlvo) await ARMAZEM.delete(CHAVE_ANONIMA);
-    await ARMAZEM.delete(CHAVE_LEGADA);
-  }catch(e){}
-  CHAVE_ATIVA = CHAVE_ANONIMA; CONTEXTO_LOCAL = 'anon';
   atualizarNav(); pintarSino();
 }
 
 async function excluirConta(){
   const bt = $('cfOk');
+  const pedido = PEDIDO_EXCLUSAO;
+  PEDIDO_EXCLUSAO = null;
   const u = AUTH && AUTH.currentUser;
 
-  if(!u){
-    if(!CONTA.local){ mensagemExclusao('Entre novamente para confirmar a exclusão da conta.'); return; }
+  if(pedido && pedido.tipo === 'aparelho'){
+    if(!contextoAnonimoAtivo()){
+      mensagemExclusao('O modo de acesso mudou. Abra esta opção novamente para confirmar com segurança.');
+      return;
+    }
     bt.disabled = true; bt.textContent = 'Apagando…';
-    await limparDadosLocaisDaConta();
+    if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
+    SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
+    const apagado = await apagarDadosAnonimosDesteAparelho();
+    if(!apagado){
+      bt.disabled = false; bt.textContent = 'Apagar dados deste aparelho';
+      mensagemExclusao('O modo de acesso mudou. Abra esta opção novamente para confirmar com segurança.');
+      return;
+    }
     fecharConfirma(); go('bemvindo'); toast('Dados deste aparelho apagados.');
+    return;
+  }
+
+  if(!pedido || pedido.tipo !== 'conta' || !u || u.uid !== pedido.uid ||
+     !contextoDeUsuarioAtivo(pedido.uid)){
+    mensagemExclusao('Entre novamente para confirmar a exclusão da conta.');
     return;
   }
 
@@ -6039,10 +6122,12 @@ function enfileirarNaNuvem(uidDestino, pacote){
      que uma resposta antiga termine por último e substitua uma mudança nova. */
   const tarefa = FILA_NUVEM.catch(() => false).then(async() => {
     const atual = AUTH && AUTH.currentUser;
-    if(!NUVEM || !atual || atual.uid !== uidDestino || EXCLUINDO_CONTA) return false;
+    if(!NUVEM || !atual || atual.uid !== uidDestino || EXCLUINDO_CONTA ||
+       !contextoDeUsuarioAtivo(uidDestino)) return false;
     await NUVEM.collection('usuarios').doc(uidDestino).set(pacote, { merge:false });
     ERRO_NUVEM_AVISADO = false;
-    if(Number(pacote.em) >= (ULTIMA_GRAVACAO || 0)){
+    if(contextoDeUsuarioAtivo(uidDestino) &&
+       Number(pacote.em) >= (ULTIMA_GRAVACAO || 0)){
       ALTERACOES_PENDENTES = false;
       await persistirLocal(false);
     }
@@ -6056,7 +6141,7 @@ function enfileirarNaNuvem(uidDestino, pacote){
 }
 
 function salvarNaNuvemAgora(){
-  if(!NUVEM || !UID) return Promise.resolve(false);
+  if(!NUVEM || !UID || !contextoDeUsuarioAtivo(UID)) return Promise.resolve(false);
   const uidDestino = UID;
   const pacote = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
   return enfileirarNaNuvem(uidDestino, pacote);
@@ -6069,10 +6154,17 @@ function mandarParaNuvem(){
 let IMPORTACAO_ANONIMA_DISPONIVEL = false;
 
 async function puxarDaNuvem(){
-  if(!NUVEM || !UID) return { existe:false, perfilConcluido:!!ONBOARD };
+  if(!NUVEM || !UID || !contextoDeUsuarioAtivo(UID))
+    return { existe:false, perfilConcluido:!!ONBOARD };
+  const uidConsulta = UID;
   IMPORTACAO_ANONIMA_DISPONIVEL = false;
   try{
-    const doc = await NUVEM.collection('usuarios').doc(UID).get();
+    const doc = await NUVEM.collection('usuarios').doc(uidConsulta).get();
+    const atual = AUTH && AUTH.currentUser;
+    /* Uma resposta de outra sessão nunca pode ser aplicada depois que a pessoa
+       saiu, entrou sem conta ou trocou de usuário. */
+    if(!atual || atual.uid !== uidConsulta || !contextoDeUsuarioAtivo(uidConsulta))
+      return { existe:false, perfilConcluido:!!ONBOARD, descartado:true };
     if(!doc.exists){
       const temCacheDaConta = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length) || ONBOARD;
       if(temCacheDaConta){
@@ -6182,10 +6274,26 @@ async function importarDadosAnonimosNaConta(){
 }
 
 
+async function entrarSemContaNesteAparelho(){
+  /* Mesmo que uma sessão tenha sido restaurada ao fundo, entrar sem conta
+     primeiro a encerra e só então abre o armazenamento anônimo. */
+  const uidSaindo = UID;
+  if(contextoDeUsuarioAtivo(uidSaindo)) await persistirLocal(false);
+  if(contextoDeUsuarioAtivo(uidSaindo)) await salvarNaNuvemAgora();
+  if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
+  SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
+  await ativarContextoAnonimo();
+  UID = null; CONTA = { email:null, local:true };
+  EMAIL_VERIFICACAO_PENDENTE = null;
+  obMsg('obMsgConta','');
+  await persistirLocal(false);
+  go(ONBOARD ? 'garagem' : 'identidade');
+}
+
 function obPular(){
   confirmar('Continuar sem conta?',
     'Seus dados vão ficar guardados só neste aparelho. Se você limpar o cache, desinstalar o app ou trocar de celular, o histórico se perde e não temos como recuperar. Você pode criar a conta depois, em Ajustes.',
-    () => { CONTA = { email:null, local:true }; obMsg('obMsgConta',''); go('identidade'); },
+    () => entrarSemContaNesteAparelho(),
     'Continuar sem conta');
 }
 function obNomeOk(){
@@ -6444,7 +6552,10 @@ function confirmar(titulo, texto, acao, rotulo){
   fecharFolhas();
   $('cfBg').classList.add('on'); $('cf').classList.add('on');
 }
-function fecharConfirma(){ $('cfBg').classList.remove('on'); $('cf').classList.remove('on'); }
+function fecharConfirma(){
+  PEDIDO_EXCLUSAO = null;
+  $('cfBg').classList.remove('on'); $('cf').classList.remove('on');
+}
 
 /* só uma folha por vez, e nenhuma sobrevive à troca de tela */
 const FOLHAS = ['sh','mn','od','of','cf','dg','ay'];
@@ -6459,6 +6570,26 @@ const CHAVE_ANONIMA = `${PREFIXO_CHAVE}:anonimo`;
 const chaveDoUsuario = uid => `${PREFIXO_CHAVE}:usuario:${uid}`;
 let CHAVE_ATIVA = CHAVE_ANONIMA;
 let CONTEXTO_LOCAL = 'anon';
+let FILA_CONTEXTO_LOCAL = Promise.resolve();
+
+function contextoAnonimoAtivo(){
+  return CONTEXTO_LOCAL === 'anon' && CHAVE_ATIVA === CHAVE_ANONIMA &&
+    CONTA.local === true;
+}
+
+function contextoDeUsuarioAtivo(uid){
+  return !!uid && CONTEXTO_LOCAL === `uid:${uid}` &&
+    CHAVE_ATIVA === chaveDoUsuario(uid) && UID === uid && CONTA.local === false;
+}
+
+function enfileirarMudancaContexto(acao){
+  const execucao = FILA_CONTEXTO_LOCAL.catch(() => false).then(acao);
+  FILA_CONTEXTO_LOCAL = execucao.catch(e => {
+    console.warn('Não foi possível trocar o espaço local de dados.', e);
+    return false;
+  });
+  return execucao;
+}
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
 const VERSAO_APP = '1.5.87';
@@ -6528,54 +6659,59 @@ function aplicarEstadoLocalCompleto(d){
 
 async function ativarContextoUsuario(u){
   if(!u || !u.uid) return;
-  const contexto = `uid:${u.uid}`;
-  if(CONTEXTO_LOCAL === contexto){
+  return enfileirarMudancaContexto(async() => {
+    const contexto = `uid:${u.uid}`;
+    if(CONTEXTO_LOCAL === contexto){
+      UID = u.uid;
+      CONTA = { email:u.email || null, local:false };
+      return;
+    }
+
+    if(carregado && !EXCLUINDO_CONTA) await persistirLocal(false);
+    const chave = chaveDoUsuario(u.uid);
+    let d = await lerEstadoLocal(chave);
+
+    /* Migração segura da versão antiga: só associa o cache legado quando o
+       e-mail salvo nele coincide com a identidade confirmada pelo Firebase. */
+    if(!d){
+      const legado = await lerEstadoLocal(CHAVE_LEGADA);
+      const emailLegado = legado && legado.CONTA && legado.CONTA.local === false
+        ? String(legado.CONTA.email || '').trim().toLowerCase() : '';
+      const emailAtual = String(u.email || '').trim().toLowerCase();
+      if(emailLegado && emailLegado === emailAtual){
+        d = legado;
+        try{
+          await ARMAZEM.set(chave, JSON.stringify(d));
+          await ARMAZEM.delete(CHAVE_LEGADA);
+        }catch(e){}
+      }
+    }
+
+    CHAVE_ATIVA = chave;
+    CONTEXTO_LOCAL = contexto;
+    aplicarEstadoLocalCompleto(d);
     UID = u.uid;
     CONTA = { email:u.email || null, local:false };
-    return;
-  }
-
-  if(carregado && !EXCLUINDO_CONTA) await persistirLocal(false);
-  const chave = chaveDoUsuario(u.uid);
-  let d = await lerEstadoLocal(chave);
-
-  /* Migração segura da versão antiga: só associa o cache legado quando o
-     e-mail salvo nele coincide com a identidade confirmada pelo Firebase. */
-  if(!d){
-    const legado = await lerEstadoLocal(CHAVE_LEGADA);
-    const emailLegado = legado && legado.CONTA && legado.CONTA.local === false
-      ? String(legado.CONTA.email || '').trim().toLowerCase() : '';
-    const emailAtual = String(u.email || '').trim().toLowerCase();
-    if(emailLegado && emailLegado === emailAtual){
-      d = legado;
-      try{
-        await ARMAZEM.set(chave, JSON.stringify(d));
-        await ARMAZEM.delete(CHAVE_LEGADA);
-      }catch(e){}
-    }
-  }
-
-  CHAVE_ATIVA = chave;
-  CONTEXTO_LOCAL = contexto;
-  aplicarEstadoLocalCompleto(d);
-  UID = u.uid;
-  CONTA = { email:u.email || null, local:false };
+  });
 }
 
 async function ativarContextoAnonimo(){
-  IMPORTACAO_ANONIMA_DISPONIVEL = false;
-  if(CONTEXTO_LOCAL === 'anon'){
+  return enfileirarMudancaContexto(async() => {
+    IMPORTACAO_ANONIMA_DISPONIVEL = false;
+    if(CONTEXTO_LOCAL === 'anon'){
+      CHAVE_ATIVA = CHAVE_ANONIMA;
+      UID = null;
+      CONTA = { email:null, local:true };
+      return;
+    }
+    if(carregado && !EXCLUINDO_CONTA) await persistirLocal(false);
+    const d = await lerEstadoLocal(CHAVE_ANONIMA);
+    CHAVE_ATIVA = CHAVE_ANONIMA;
+    CONTEXTO_LOCAL = 'anon';
+    aplicarEstadoLocalCompleto(d);
     UID = null;
     CONTA = { email:null, local:true };
-    return;
-  }
-  if(carregado && !EXCLUINDO_CONTA) await persistirLocal(false);
-  const d = await lerEstadoLocal(CHAVE_ANONIMA);
-  CHAVE_ATIVA = CHAVE_ANONIMA;
-  CONTEXTO_LOCAL = 'anon';
-  aplicarEstadoLocalCompleto(d);
-  UID = null;
-  CONTA = { email:null, local:true };
+  });
 }
 
 async function persistir(){
@@ -6616,7 +6752,8 @@ function repintarDadosSincronizados(){
 
 let ULTIMA_CONSULTA_AO_RETORNAR = 0;
 async function sincronizarAoRetomar(){
-  if(!UID || !NUVEM || !AUTH || !AUTH.currentUser || document.visibilityState === 'hidden') return;
+  if(!UID || !NUVEM || !AUTH || !AUTH.currentUser ||
+     !contextoDeUsuarioAtivo(UID) || document.visibilityState === 'hidden') return;
   const agora = Date.now();
   if(agora - ULTIMA_CONSULTA_AO_RETORNAR < 3000) return;
   ULTIMA_CONSULTA_AO_RETORNAR = agora;
