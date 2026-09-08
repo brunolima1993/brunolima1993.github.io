@@ -1891,6 +1891,30 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 #s-gastos .g-filter-title{justify-content:center!important;margin-left:0!important;margin-right:0!important;text-align:center!important}
 #s-gastos .selw select{text-align:center!important;text-align-last:center!important;padding-left:32px!important}
 #s-gastos .selw select option{text-align:center!important}
+
+/* Cadastro e edicao usam o mesmo formulario. Estes seletores alteram somente
+   o alinhamento visual, sem interferir na busca FIPE ou nos valores salvos. */
+#s-cadastro .cadastro-carro-title{
+  color:#20b7ff!important;font-size:14px!important;font-weight:700!important;
+  letter-spacing:.13em!important;text-shadow:0 0 10px rgba(0,174,255,.68)
+}
+#s-cadastro>.section>.section-title{text-align:center!important}
+#s-cadastro .field:has(#cMarca)>.flabel,
+#s-cadastro .field:has(#cModelo)>.flabel,
+#s-cadastro .field:has(#cAno)>.flabel,
+#s-cadastro .field:has(#cMotor)>.flabel,
+#s-cadastro .field:has(#cKm)>.flabel,
+#s-cadastro .field:has(#cOleo)>.flabel,
+#s-cadastro .field:has(#cPlaca)>.flabel{display:block!important;text-align:center!important}
+#s-cadastro #cMarca,
+#s-cadastro #cModelo{text-align:center!important;text-align-last:center!important;padding-left:32px!important}
+#s-cadastro #cMarca option,
+#s-cadastro #cModelo option{text-align:center!important}
+#s-cadastro #cAno,
+#s-cadastro #cMotor,
+#s-cadastro #cKm,
+#s-cadastro #cOleo,
+#s-cadastro #cPlaca{text-align:center!important}
 /* ================= FIM DO FLUXO DE ACESSO ================= */
 </style>
 </head>
@@ -2157,7 +2181,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       </div>
 
       <div class="section">
-        <div class="section-title">O carro</div>
+        <div class="section-title cadastro-carro-title">O carro</div>
         <div class="odo-hint" style="text-align:left;margin-bottom:10px"><b style="color:var(--ink)">Compatibilidade:</b> esta versão é voltada a veículos a combustão e híbridos com motor a combustão. Veículos 100% elétricos ainda não são compatíveis.</div>
         <div class="card" style="padding:4px 16px">
           <div class="field"><label class="flabel">Marca</label>
