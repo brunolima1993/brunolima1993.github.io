@@ -1832,6 +1832,17 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 .password-strength[data-nivel="valida"] .password-strength-track span{background:#159dff;box-shadow:0 0 8px rgba(21,157,255,.45)}
 .password-strength[data-nivel="forte"]{color:#75dfb2}
 .password-strength[data-nivel="forte"] .password-strength-track span{background:#36d58f;box-shadow:0 0 8px rgba(54,213,143,.42)}
+.password-input-wrap{position:relative;display:flex;align-items:center;width:100%}
+.password-input-wrap input{width:100%;padding-right:48px!important}
+.password-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:2;
+  display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin:0;padding:0;
+  border:0;border-radius:10px;background:transparent;color:#7f96b6;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.password-toggle:hover,.password-toggle:focus-visible{color:#2ab9ff;background:rgba(0,136,255,.10)}
+.password-toggle:focus-visible{outline:2px solid rgba(42,185,255,.55);outline-offset:1px}
+.password-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.password-toggle .eye-off{display:none}
+.password-toggle[aria-pressed="true"] .eye-on{display:none}
+.password-toggle[aria-pressed="true"] .eye-off{display:block}
 .auth-actions-row{margin-top:15px;padding-top:14px;border-top:1px solid var(--line);
   display:flex;align-items:center;justify-content:center;gap:13px;white-space:nowrap}
 .auth-signup-prompt{display:flex;align-items:center;gap:4px;font-size:11.2px;color:var(--muted)}
@@ -1981,7 +1992,13 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <div class="field"><label class="flabel">E-mail</label>
             <input id="obEmail" type="email" inputmode="email" placeholder="voce@email.com" autocomplete="email"></div>
           <div class="field"><label class="flabel">Senha</label>
-            <input id="obSenha" type="password" placeholder="Sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') entrarConta()"></div>
+            <div class="password-input-wrap">
+              <input id="obSenha" type="password" placeholder="Sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') entrarConta()">
+              <button class="password-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha" onclick="alternarVisibilidadeSenha('obSenha',this)">
+                <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+                <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 6.1A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a16.6 16.6 0 0 1-2.2 2.9M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.6 0 3-.4 4.2-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+              </button>
+            </div></div>
         </div>
         <div id="obMsgConta"></div>
 
@@ -2025,15 +2042,27 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <div class="field"><label class="flabel">E-mail</label>
             <input id="obEmailCriar" type="email" inputmode="email" placeholder="voce@email.com" autocomplete="email"></div>
           <div class="field"><label class="flabel">Senha</label>
-            <input id="obSenhaCriar" type="password" placeholder="Use 8 ou mais caracteres" autocomplete="new-password"
-              minlength="8" maxlength="128" oninput="atualizarForcaSenha()">
+            <div class="password-input-wrap">
+              <input id="obSenhaCriar" type="password" placeholder="Use 8 ou mais caracteres" autocomplete="new-password"
+                minlength="8" maxlength="128" oninput="atualizarForcaSenha()">
+              <button class="password-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha" onclick="alternarVisibilidadeSenha('obSenhaCriar',this)">
+                <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+                <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 6.1A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a16.6 16.6 0 0 1-2.2 2.9M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.6 0 3-.4 4.2-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+              </button>
+            </div>
             <div class="password-strength" id="forcaSenha" aria-live="polite" data-nivel="vazia">
               <div class="password-strength-track" aria-hidden="true"><span id="forcaSenhaBar"></span></div>
               <span id="forcaSenhaTexto">Frases e espaços são permitidos.</span>
             </div></div>
           <div class="field"><label class="flabel">Confirmar senha</label>
-            <input id="obSenhaConfirmar" type="password" placeholder="Digite a senha novamente" autocomplete="new-password"
-              minlength="8" maxlength="128" onkeydown="if(event.key==='Enter') criarConta()"></div>
+            <div class="password-input-wrap">
+              <input id="obSenhaConfirmar" type="password" placeholder="Digite a senha novamente" autocomplete="new-password"
+                minlength="8" maxlength="128" onkeydown="if(event.key==='Enter') criarConta()">
+              <button class="password-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha" onclick="alternarVisibilidadeSenha('obSenhaConfirmar',this)">
+                <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+                <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 6.1A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a16.6 16.6 0 0 1-2.2 2.9M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.6 0 3-.4 4.2-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+              </button>
+            </div></div>
         </div>
         <div class="auth-helper">Ao continuar, você seguirá para o cadastro do seu nome e para os termos de uso.</div>
         <div id="obMsgCriar"></div>
@@ -5668,6 +5697,25 @@ const emailValido = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
 const TAMANHO_MINIMO_NOVA_SENHA = 8;
 let origemIdentidade = 'criar-conta';
 
+function alternarVisibilidadeSenha(idCampo, botao){
+  const campo = document.getElementById(idCampo);
+  if(!campo || !botao) return;
+  const mostrar = campo.type === 'password';
+  const inicio = campo.selectionStart;
+  const fim = campo.selectionEnd;
+  campo.type = mostrar ? 'text' : 'password';
+  const acao = mostrar ? 'Ocultar senha' : 'Mostrar senha';
+  botao.setAttribute('aria-pressed', String(mostrar));
+  botao.setAttribute('aria-label', acao);
+  botao.setAttribute('title', acao);
+  try{
+    campo.focus({preventScroll:true});
+    if(inicio != null && fim != null) campo.setSelectionRange(inicio,fim);
+  }catch(e){
+    campo.focus();
+  }
+}
+
 function atualizarForcaSenha(){
   const campo = $('obSenhaCriar');
   const caixa = $('forcaSenha');
@@ -5971,7 +6019,13 @@ function abrirExclusaoConta(){
     $('cfTexto').textContent = 'A conta, os veículos e todo o histórico salvo na nuvem serão excluídos definitivamente. Não será possível recuperar depois.' + avisoPlano;
     if(usaSenha){
       $('cfExtra').innerHTML = `<label class="flabel" for="cfSenhaExcluir">Confirme sua senha atual</label>
-        <input id="cfSenhaExcluir" type="password" autocomplete="current-password" placeholder="Sua senha" onkeydown="if(event.key==='Enter') excluirConta()">`;
+        <div class="password-input-wrap">
+          <input id="cfSenhaExcluir" type="password" autocomplete="current-password" placeholder="Sua senha" onkeydown="if(event.key==='Enter') excluirConta()">
+          <button class="password-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha" onclick="alternarVisibilidadeSenha('cfSenhaExcluir',this)">
+            <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+            <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 6.1A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a16.6 16.6 0 0 1-2.2 2.9M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.6 0 3-.4 4.2-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+          </button>
+        </div>`;
     }else if(usaGoogle){
       $('cfExtra').innerHTML = '<div class="odo-hint" style="text-align:left">O Google abrirá uma confirmação de identidade antes da exclusão.</div>';
     }
