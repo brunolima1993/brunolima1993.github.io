@@ -1,4 +1,4 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.87-password-eye-1';
+const CACHE_APP = 'tmycar-pwa-v1.5.88-inicio-login-icone-1';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [

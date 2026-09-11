@@ -1287,12 +1287,12 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   backdrop-filter:blur(22px) saturate(140%);
   -webkit-backdrop-filter:blur(22px) saturate(140%);
 }
-.nitem{position:relative;border-radius:0!important;padding:7px 0 6px;background:transparent!important;color:#607493;gap:5px;transition:color .16s}
+.nitem{position:relative;border-radius:0!important;padding:7px 0 6px;background:transparent!important;color:#A8B8CF;gap:5px;transition:color .16s}
 .nitem::before{content:"";position:absolute;top:-9px;left:29%;right:29%;height:3px;border-radius:0 0 6px 6px;background:transparent;box-shadow:none}
 .nitem.active{color:var(--blue-2)!important}
 .nitem.active::before{background:linear-gradient(90deg,#087eff,#4ab8ff);box-shadow:0 0 12px rgba(7,140,255,.85)}
 .nitem.active .ic{filter:drop-shadow(0 0 7px rgba(7,140,255,.72))}
-.nitem span{font-size:9.5px}
+.nitem span{font-size:10px;font-weight:600;color:inherit;opacity:1;text-shadow:0 1px 5px rgba(0,0,0,.55)}
 
 /* Sheets e modais */
 .sheet,.modal{
@@ -1346,7 +1346,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   border-radius:50%;
   filter:drop-shadow(0 9px 18px rgba(0,136,255,.34));
 }
-.nitem .asset-icon{filter:brightness(.72) saturate(.72)}
+.nitem .asset-icon{filter:brightness(.94) saturate(.82)}
 .nitem.active .asset-icon{
   filter:brightness(1.18) saturate(1.2) drop-shadow(0 0 7px rgba(7,140,255,.75))!important;
 }
@@ -2525,7 +2525,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   </div>
 
 
-  <div class="home" id="home">
+  <div class="home off" id="home" aria-hidden="true">
     <div class="relogio"><div class="hh" id="hhRelogio">9:41</div><div class="dd" id="ddRelogio"></div></div>
     <div class="grade"><button class="app " onclick="toast('Este é um atalho de exemplo — só o TMy Car abre.')">
       <span class="quad"><svg viewBox="0 0 24 24"><path d="M6.2 3.6h3.1l1.5 3.9-2 1.4a12 12 0 0 0 6.3 6.3l1.4-2 3.9 1.5v3.1a1.6 1.6 0 0 1-1.7 1.6C10.4 18.7 5.3 13.6 4.6 5.3A1.6 1.6 0 0 1 6.2 3.6"/></svg></span><span>Telefone</span></button><button class="app " onclick="toast('Este é um atalho de exemplo — só o TMy Car abre.')">
@@ -5574,10 +5574,18 @@ async function prepararPersistenciaAuth(){
      armazenamento compatível com o navegador antes de qualquer novo login.
      Não use um adaptador privado aqui: no F5 ele seria instalado somente após
      a restauração inicial e poderia substituir uma sessão válida por null. */
-  await AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-  if(navigator.storage && typeof navigator.storage.persist === 'function')
-    navigator.storage.persist().catch(() => false);
-  return 'firebase-local';
+  try{
+    await AUTH.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    if(navigator.storage && typeof navigator.storage.persist === 'function')
+      navigator.storage.persist().catch(() => false);
+    return 'firebase-local';
+  }catch(e){
+    /* O Firebase usa persistência local por padrão. Se um navegador não aceitar
+       a troca explícita, o login ainda pode continuar e restaurar pelo mecanismo
+       compatível disponível, em vez de tornar toda tentativa de entrada inválida. */
+    console.warn('O navegador não confirmou a persistência explícita do login.', e);
+    return 'firebase-default';
+  }
 }
 
 function iniciarFirebase(){
@@ -5631,7 +5639,7 @@ function iniciarFirebase(){
   }catch(e){ return false; }
 }
 
-async function aguardarRestauracaoAuth(limiteMs=8000){
+async function aguardarRestauracaoAuth(limiteMs=15000){
   let temporizador;
   try{
     return await Promise.race([
@@ -5879,6 +5887,14 @@ async function entrarComGoogle(origem='conta'){
     await PERSISTENCIA_AUTH;
     const provedor = new firebase.auth.GoogleAuthProvider();
     provedor.setCustomParameters({ prompt:'select_account' });
+    /* No Android instalado, o redirecionamento é mais estável que uma janela
+       sobre a TWA e conserva a sessão no mesmo contexto do aplicativo. */
+    const androidInstalado = /Android/i.test(navigator.userAgent);
+    if(androidInstalado){
+      sessionStorage.setItem('tmycar:retorno-google', origem);
+      await AUTH.signInWithRedirect(provedor);
+      return;
+    }
     const cred = await AUTH.signInWithPopup(provedor);
     const entrada = await sincronizarContaAutenticada(cred.user);
     obMsg(alvo,'');
@@ -6408,8 +6424,10 @@ function pintarRelogio(){
 }
 function irParaHome(){
   fecharFolhas();
-  pintarRelogio();
-  $('home').classList.remove('off');
+  $('home').classList.add('off');
+  const u = AUTH && AUTH.currentUser;
+  if(u && contaPrecisaVerificacao(u)) mostrarVerificacaoEmail(u.email);
+  else go(ONBOARD ? 'garagem' : (u ? 'identidade' : 'bemvindo'));
 }
 function abrirApp(){
   $('splash').classList.add('on');
@@ -6417,6 +6435,7 @@ function abrirApp(){
   setTimeout(()=>{
     $('splash').classList.remove('on');
     if(EMAIL_VERIFICACAO_PENDENTE) mostrarVerificacaoEmail(EMAIL_VERIFICACAO_PENDENTE);
+    else if(AUTH && AUTH.currentUser) go(ONBOARD ? 'garagem' : 'identidade');
     else go(ONBOARD ? 'garagem' : 'bemvindo');
   }, 950);
 }
@@ -6670,7 +6689,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.87';
+const VERSAO_APP = '1.5.88';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6885,21 +6904,16 @@ async function carregar(){
      persistido. Atualizar a página deve manter a mesma conta e a mesma tela. */
   if(firebaseAtivo) await aguardarRestauracaoAuth();
   const usuarioRestaurado = AUTH && AUTH.currentUser;
-  const modoAplicativo = window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true || window.innerWidth <= 520;
-  /* Uma conta restaurada sempre entra no app, inclusive no computador. Antes,
-     o ramo desktop mantinha a tela Começar ativa mesmo com currentUser válido. */
+  /* A demonstração do celular não faz parte do produto publicado. A primeira
+     visita abre em Começar; uma conta restaurada abre direto na Garagem. */
+  $('home').classList.add('off');
   if(usuarioRestaurado){
-    $('home').classList.add('off');
     if(contaPrecisaVerificacao(usuarioRestaurado))
       mostrarVerificacaoEmail(usuarioRestaurado.email);
     else
       go(ONBOARD ? 'garagem' : 'identidade');
-  }else if(modoAplicativo){
-    $('home').classList.add('off');
-    go(ONBOARD ? 'garagem' : 'bemvindo');
   }else{
-    $('home').classList.remove('off');   /* no computador, mantém a demonstração do celular */
+    go(ONBOARD ? 'garagem' : 'bemvindo');
   }
 }
 
