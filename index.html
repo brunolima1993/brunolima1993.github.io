@@ -5627,8 +5627,6 @@ function iniciarFirebase(){
     iniciarAppCheck();
     AUTH  = firebase.auth();
     NUVEM = firebase.firestore();
-    FUNCTIONS = typeof firebase.functions === 'function'
-      ? firebase.functions('southamerica-east1') : null;
     /* No navegador o cache persistente vem desligado. Ativá-lo faz Safari,
        Chrome e Firefox guardarem também as gravações ainda não confirmadas e
        enviarem tudo quando a conexão voltar. */
@@ -5642,6 +5640,17 @@ function iniciarFirebase(){
     });
     AUTH.languageCode = 'pt-BR';
     PERSISTENCIA_AUTH = prepararPersistenciaAuth();
+    /* No SDK compat 12, a região pertence à instância do app. A forma antiga
+       firebase.functions('região') lança uma exceção e interrompia justamente
+       a configuração de persistência e o observador do login. Functions é um
+       recurso auxiliar: uma falha nele nunca pode derrubar Authentication. */
+    try{
+      FUNCTIONS = typeof firebase.functions === 'function'
+        ? firebase.app().functions('southamerica-east1') : null;
+    }catch(erroFunctions){
+      FUNCTIONS = null;
+      console.warn('Cloud Functions indisponível; o login continuará funcionando.', erroFunctions);
+    }
     /* A restauração do usuário é assíncrona. Guardar a primeira passagem do
        observador impede que carregar() mostre "Entrar" enquanto o Firebase
        ainda está recuperando uma sessão LOCAL válida do aparelho. */
@@ -5666,7 +5675,10 @@ function iniciarFirebase(){
       });
     });
     return true;
-  }catch(e){ return false; }
+  }catch(e){
+    console.warn('Não foi possível iniciar os serviços do Firebase.', e);
+    return false;
+  }
 }
 
 async function aguardarRestauracaoAuth(limiteMs=15000){
@@ -5702,6 +5714,8 @@ function erroAuth(e){
   if(c.includes('user-disabled'))        return 'Esta conta está desativada. Fale com o suporte.';
   if(c.includes('too-many-requests'))    return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.';
   if(c.includes('network'))              return 'Sem conexão com a internet. Verifique e tente de novo.';
+  if(c.includes('firebase-app-check-token-is-invalid') || c.includes('app-check-token-is-invalid'))
+    return 'O login está temporariamente bloqueado pela verificação de segurança do app. Entre em contato com o suporte.';
   if(c.includes('popup-blocked'))        return 'Seu navegador bloqueou a janela do Google. Libere as janelas pop-up e tente de novo.';
   if(c.includes('operation-not-supported-in-this-environment'))
     return 'O Google não permite login com o HTML aberto diretamente como arquivo. Abra o TMy Car pelo iniciador de teste local.';
@@ -6723,7 +6737,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.90';
+const VERSAO_APP = '1.5.91';
 let ONBOARD = false;
 let carregado = false;
 
