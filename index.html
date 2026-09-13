@@ -12,25 +12,12 @@
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <title>TMy Car — Manutenção na palma da mão</title>
-<!-- Fundo crítico aplicado antes de fontes, CSS completo e JavaScript externo.
-     Evita qualquer quadro branco durante a abertura fria. -->
-<style id="abertura-critica">html,body{margin:0;min-height:100%;background:#020712}</style>
-<script>
-(() => {
-  const CHAVE_SESSAO = 'tmycar:splash:exibida';
-  const CHAVE_RETORNO_GOOGLE = 'tmycar:splash:retorno-google';
-  let mostrar = true;
-  try {
-    const jaExibida = sessionStorage.getItem(CHAVE_SESSAO) === '1';
-    const validadeGoogle = Number(localStorage.getItem(CHAVE_RETORNO_GOOGLE) || 0);
-    localStorage.removeItem(CHAVE_RETORNO_GOOGLE);
-    mostrar = !jaExibida && validadeGoogle <= Date.now();
-    if (mostrar) sessionStorage.setItem(CHAVE_SESSAO, '1');
-  } catch (e) {}
-  window.__TMYCAR_SPLASH__ = { decidido:true, mostrar };
-  document.documentElement.classList.add(mostrar ? 'tmycar-splash' : 'tmycar-sem-splash');
-})();
-</script>
+  <!-- O preto é pintado pelo navegador antes de qualquer outro recurso. A tela
+       azul estática entra logo depois, sem o quadro branco da abertura antiga. -->
+  <style id="abertura-critica">html,body{margin:0;min-height:100%;background:#000}</style>
+  <script>
+document.documentElement.classList.add('tmycar-splash');
+  </script>
 <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
 
 :root{
@@ -821,13 +808,17 @@ select option{background:#0B1A33;color:#E8EDF5}
 
 /* ---------- splash ---------- */
 .splash{position:absolute;inset:0;z-index:55;display:none;align-items:center;justify-content:center;
- overflow:hidden;background:#020712;animation:splash-limite 0s 6s forwards}
+ overflow:hidden;background:radial-gradient(circle at 50% 34%,#0A2446 0%,#061A35 58%,#020712 100%)}
 .tmycar-splash .splash,
 .splash.on{display:flex}
-.splash img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
-.splash.saindo{opacity:0;transition:opacity .18s ease;pointer-events:none}
-@keyframes splash-limite{to{visibility:hidden;pointer-events:none}}
-@media(prefers-reduced-motion:reduce){.splash img{display:none}.splash.saindo{transition:none}}
+.splash-logo{display:flex;align-items:baseline;justify-content:center;color:#E8EDF5;
+  font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:clamp(48px,14vw,78px);
+  font-weight:800;letter-spacing:-.055em;line-height:1;white-space:nowrap;
+  transform:translateY(-1vh);text-rendering:geometricPrecision}
+.splash-logo .my{color:#0088ff;text-shadow:0 0 10px rgba(0,136,255,.68),0 0 24px rgba(0,136,255,.32)}
+.splash-logo .car{margin-left:.14em}
+.splash.saindo{opacity:0;transition:opacity .14s ease;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.splash.saindo{transition:none}}
 @keyframes sobe{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 
 /* ---------- barra de início ---------- */
@@ -1959,7 +1950,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   <!-- Declarado antes do restante da interface para a tela Começar jamais ser
        pintada por baixo durante a leitura inicial do documento. -->
   <div class="splash" id="splash" role="status" aria-label="Abrindo TMy Car">
-    <img id="splashImage" alt="" aria-hidden="true">
+    <div class="splash-logo" aria-hidden="true"><span>T</span><span class="my">My</span><span class="car">Car</span></div>
   </div>
   <script src="./assets/splash.js"></script>
   <noscript><style>.splash{display:none!important}</style></noscript>
@@ -5391,14 +5382,24 @@ function sincronizarContaAutenticada(u){
     UID = u.uid;
     CONTA = { email:u.email || null, local:false };
     if(u.displayName && !USUARIO.nome) USUARIO.nome = u.displayName.split(' ')[0];
+    /* Se este aparelho já tem o espaço local confirmado desta mesma conta,
+       não deixa a pessoa parada na tela de entrada enquanto a nuvem atualiza.
+       O UID continua isolando os dados; nada anônimo é misturado aqui. */
+    if(carregado && ONBOARD){
+      pintarGaragem();
+      const atual = telaAtual();
+      if(['bemvindo','conta','criar-conta','verificar-email'].includes(atual)) go('garagem');
+      window.dispatchEvent(new Event('tmycar:rota-pronta'));
+    }
     /* Primeiro chegam os veículos; só depois o plano pode reativar os que
        estavam guardados. A ordem evita que um cache antigo substitua a nuvem. */
     const resultado = await puxarDaNuvem();
     if(!contextoDeUsuarioAtivo(u.uid)) return { ...resultado, descartado:true };
-    await puxarAssinatura();
-    if(!contextoDeUsuarioAtivo(u.uid)) return { ...resultado, descartado:true };
     iniciarOuvinteNuvem(u.uid);
     iniciarOuvinteAssinatura(u.uid);
+    /* A assinatura atualiza logo depois, mas não segura a entrada na Garagem.
+       Isso elimina uma segunda espera de rede após o retorno do Google. */
+    puxarAssinatura().catch(() => false);
     return resultado;
   })();
   return SINCRONIZACAO_CONTA;
@@ -5531,6 +5532,7 @@ function iniciarOuvinteAssinatura(uidConta){
 
 function navegarDepoisDaAutenticacao(entrada){
   go(entrada && entrada.perfilConcluido ? 'garagem' : 'identidade');
+  window.dispatchEvent(new Event('tmycar:rota-pronta'));
   if(entrada && entrada.importacaoDisponivel)
     setTimeout(oferecerImportacaoAnonima, 180);
 }
@@ -5936,15 +5938,7 @@ async function entrarComGoogle(origem='conta'){
     const androidInstalado = /Android/i.test(navigator.userAgent);
     if(androidInstalado){
       sessionStorage.setItem('tmycar:retorno-google', origem);
-      /* Uma TWA pode recriar a página ao voltar do Google. Esse marcador de
-         uso único impede que a tela de abertura seja reproduzida no retorno. */
-      try{
-        localStorage.setItem('tmycar:splash:retorno-google', String(Date.now() + 10 * 60 * 1000));
-        await AUTH.signInWithRedirect(provedor);
-      }catch(erroRedirect){
-        try{ localStorage.removeItem('tmycar:splash:retorno-google'); }catch(e){}
-        throw erroRedirect;
-      }
+      await AUTH.signInWithRedirect(provedor);
       return;
     }
     const cred = await AUTH.signInWithPopup(provedor);
@@ -6737,7 +6731,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.91';
+const VERSAO_APP = '1.5.92';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6963,6 +6957,7 @@ async function carregar(){
   }else{
     go(ONBOARD ? 'garagem' : 'bemvindo');
   }
+  window.dispatchEvent(new Event('tmycar:rota-pronta'));
   window.dispatchEvent(new Event('tmycar:pronto'));
 }
 
