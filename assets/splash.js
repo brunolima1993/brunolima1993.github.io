@@ -4,18 +4,11 @@
   if (!splash) return;
 
   const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const inicio = performance.now();
-  const minimoVisivel = reduzirMovimento ? 0 : 550;
   let fechada = false;
   let limiteAbertura;
 
   function fechar() {
     if (fechada) return;
-    const restante = minimoVisivel - (performance.now() - inicio);
-    if (restante > 0) {
-      setTimeout(fechar, restante);
-      return;
-    }
     fechada = true;
     clearTimeout(limiteAbertura);
     splash.setAttribute('aria-hidden', 'true');
