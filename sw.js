@@ -1,4 +1,4 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.93-splash-nativa-sem-espera';
+const CACHE_APP = 'tmycar-pwa-v1.5.94-notificacoes-e-correcoes';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -68,5 +68,20 @@ self.addEventListener('fetch', evento => {
       cache.put(pedido, resposta.clone());
     }
     return resposta;
+  })());
+});
+
+self.addEventListener('notificationclick', evento => {
+  evento.notification.close();
+  const destino = new URL((evento.notification.data && evento.notification.data.url) || './?abrir=avisos', self.registration.scope).href;
+  evento.waitUntil((async()=>{
+    const janelas = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
+    const aberta = janelas.find(cliente => new URL(cliente.url).origin === self.location.origin);
+    if(aberta){
+      await aberta.focus();
+      aberta.postMessage({ tipo:'tmycar:abrir-avisos' });
+      return;
+    }
+    await self.clients.openWindow(destino);
   })());
 });

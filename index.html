@@ -1898,9 +1898,18 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   .device::before,.device::after{display:none}
   .viewport{border-radius:0}
   .screens{padding-top:env(safe-area-inset-top)}
-  .nav{padding-bottom:max(6px,env(safe-area-inset-bottom))!important}
+  .nav{min-height:72px;padding:6px 8px max(9px,env(safe-area-inset-bottom))!important}
   .toast{bottom:calc(72px + env(safe-area-inset-bottom))}
 }
+#nav .nitem{color:#d5e5f8!important}
+#nav .nitem>span:not(.cad){font-size:11px!important;font-weight:750!important;line-height:1.2!important;opacity:1!important;text-shadow:0 1px 5px rgba(0,0,0,.72)}
+#nav .nitem.active{color:#2ab9ff!important}
+.garage-alert{position:relative;padding-right:45px}
+.garage-alert-close{position:absolute;right:8px;top:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(2,7,15,.34);color:#fff;font:700 20px/1 sans-serif;cursor:pointer}
+.garage-alert-close:active{transform:scale(.94)}
+#shPartes .pfil:not(.selected) .pfil-int{opacity:.42}
+#shPartes .pfil input:disabled{cursor:not-allowed}
 #shBoxKm .flabel{text-align:center!important}
 #shBoxKm input{text-align:center!important}
 
@@ -2239,7 +2248,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <div class="field"><label class="flabel">Modelo</label>
             <div class="selw"><select id="cModelo" disabled><option>Selecione a marca</option></select></div></div>
           <div class="field frow">
-            <div class="field" style="flex:1;padding:0"><label class="flabel">Ano</label>
+            <div class="field" style="flex:1;padding:0"><label class="flabel">Ano <span style="color:var(--dim);font-weight:500">· opcional</span></label>
               <input class="mono" id="cAno" inputmode="numeric" maxlength="4" placeholder="2016" disabled></div>
             <div class="field" style="flex:1;padding:0"><label class="flabel">Motorização</label>
               <input class="mono" id="cMotor" inputmode="decimal" maxlength="5" placeholder="1.4" disabled></div>
@@ -2303,7 +2312,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <div class="section-title">Para reconhecer na garagem</div>
         <div class="card" style="padding:4px 16px">
           <div class="field"><label class="flabel">Placa</label>
-            <input class="mono" id="cPlaca" maxlength="7" placeholder="ABC1D23" style="text-transform:uppercase"></div>
+            <input class="mono" id="cPlaca" maxlength="7" size="7" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC1D23" style="text-transform:uppercase"></div>
           <div class="field"><label class="flabel">Cor</label><div class="swatch" id="cCores"></div></div>
         </div>
         <div id="cMsgPlaca"></div>
@@ -2437,7 +2446,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
             <div class="sw-toggle on" id="nKm"></div>
           </div>
         </div>
-        <div class="security-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 19 6v5c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6l7-3Z"/><path d="M9.5 12.2 11.2 14l3.7-4"/></svg><span>Suas preferências ficam salvas automaticamente.</span></div>
+        <div class="security-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 19 6v5c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6l7-3Z"/><path d="M9.5 12.2 11.2 14l3.7-4"/></svg><span id="nPermissaoStatus">Suas preferências ficam salvas automaticamente.</span></div>
       </div>
       <div style="height:24px"></div>
     </div>
@@ -2938,7 +2947,10 @@ function go(t){
   document.querySelectorAll('.nitem').forEach(n=>n.classList.toggle('active', n.dataset.n===t));
   document.querySelector('.screen.active').scrollTop = 0;
   if(['bemvindo','conta','criar-conta','verificar-email','recuperar-senha','recuperacao-enviada','identidade','termos'].includes(t)) zerarOnboarding();
-  if(t==='garagem') pintarGaragem();
+  if(t==='garagem'){
+    pintarGaragem();
+    setTimeout(mostrarPedidoNotificacaoNaEntrada, 700);
+  }
   if(t==='painel') pintarPainel();
   $('fabGasto').classList.remove('on');
   if(t==='avisos') pintarAvisos();
@@ -2955,6 +2967,9 @@ function go(t){
 
 /* ================= GARAGEM ================= */
 const USUARIO = { nome:'Rafael' };
+/* O aviso pode ser fechado durante esta abertura. Ele não vai para o storage:
+   ao encerrar e abrir o app de novo, volta a lembrar a pessoa. */
+let ALERTA_VENCIDOS_FECHADO = false;
 function saudacao(agora = new Date()){
   const minutos = agora.getHours() * 60 + agora.getMinutes();
   if(minutos >= 18 * 60 || minutos <= 3 * 60) return 'Boa noite';
@@ -2968,7 +2983,7 @@ function pintarGaragem(){
   if(conferirTeste()) toast('Seu teste de 14 dias terminou.');
   /* Acima do limite o app volta a pedir a escolha toda vez. Sem isso, fechar a
      folha uma vez deixava a pessoa com mais carros do que o plano permite. */
-  if(ativos().length > LIMITE()) setTimeout(abrirDowngrade, 400);
+  exigirEscolha();
   const limite = LIMITE();
   const lista = ativos();
   $('s-garagem').classList.toggle('garage-is-empty', !lista.length);
@@ -3002,9 +3017,10 @@ function pintarGaragem(){
   $('gSub').textContent = venc ? 'Tem coisa vencida esperando você.' : 'Tudo em dia por aqui.';
   $('gSub').className = venc ? 'gsub alerta' : 'gsub';
 
-  let h = venc ? `<div class="section"><div class="alert"><span class="ic">⚠</span>
+  let h = venc && !ALERTA_VENCIDOS_FECHADO ? `<div class="section"><div class="alert garage-alert"><span class="ic">⚠</span>
     <div><b style="color:#fff">${venc===1?'Um item venceu.':venc+' itens venceram.'}</b>
-    <div style="font-size:11.5px;color:#FFCFCF;margin-top:2px">Abra o veículo para ver o que precisa de atenção.</div></div></div></div>` : '';
+    <div style="font-size:11.5px;color:#FFCFCF;margin-top:2px">Abra o veículo para ver o que precisa de atenção.</div></div>
+    <button class="garage-alert-close" type="button" aria-label="Fechar este aviso" onclick="event.stopPropagation();fecharAlertaVencidos()">×</button></div></div>` : '';
 
   h += `<div class="section" style="padding-top:14px"><div class="section-title">Meus veículos · ${lista.length} de ${limite}</div><div class="vlist">`;
   lista.forEach(({v, i:idx}) => {
@@ -3018,7 +3034,7 @@ function pintarGaragem(){
       <div class="vinfo">
         <div class="vname">${v.marca} ${v.modelo}</div>
         <div class="vmeta"><span class="vcolor" style="background:${v.cor}"></span>
-          ${v.ano} · ${v.cilTxt} <span class="plate">${v.placa||'———'}</span></div>
+          ${v.ano || 'ano não informado'} · ${v.cilTxt} <span class="plate">${v.placa||'———'}</span></div>
         <div class="vmeta mono vreadings" style="color:var(--dim)"><span>${textoKm(v.km)}</span>${FIPE_ATIVA && PLANO!=='free' && v.fipe && v.fipe.valor ? `<span>· FIPE ${esc(v.fipe.valor)}</span>` : ''}</div>
       </div>
       <div class="vright">
@@ -3050,6 +3066,10 @@ function pintarGaragem(){
   h += `</div><div style="height:16px"></div>`;
   $('gBody').innerHTML = h;
 }
+function fecharAlertaVencidos(){
+  ALERTA_VENCIDOS_FECHADO = true;
+  pintarGaragem();
+}
 
 /* ================= CADASTRO ================= */
 let cMotor = null, cSincTocado = false, cOleoTocado = false, cProxTocado = false, cIntTocado = false, cCor = CORES[1][0], cCambio = null;
@@ -3075,7 +3095,7 @@ function abrirCadastro(edit){
     $('cMarca').value = v.marca; $('cMarca').disabled = true;
     $('cMarca').onchange();
     $('cModelo').value = v.modelo; $('cModelo').onchange();
-    $('cAno').value = String(v.ano); $('cMotor').disabled = false; $('cTurbo').disabled = false;
+    $('cAno').value = v.ano ? String(v.ano) : ''; $('cMotor').disabled = false; $('cTurbo').disabled = false;
     const m = String(v.cilTxt||'').match(/(\d\.\d)/);
     $('cMotor').value = m ? m[1] : '';
     $('cTurbo').classList.toggle('on', /turbo/i.test(v.cilTxt||''));
@@ -3134,9 +3154,14 @@ $('cMarca').onchange = () => {
   $('cAno').disabled=true; $('cMotor').disabled=true; $('cAno').value=''; $('cMotor').value='';
   resolver();
 };
-$('cModelo').onchange = () => { $('cAno').disabled = !$('cModelo').value; resolver(); };
+$('cModelo').onchange = () => {
+  const temModelo = !!$('cModelo').value;
+  $('cAno').disabled = !temModelo;
+  $('cMotor').disabled = !temModelo;
+  resolver();
+};
 $('cAno').oninput = e => { e.target.value = soD(e.target.value).slice(0,4);
-  const ok = e.target.value.length===4; $('cMotor').disabled=!ok; resolver(); };
+  $('cMotor').disabled=!$('cModelo').value; resolver(); };
 $('cMotor').oninput = e => { e.target.value = e.target.value.replace(/[^\d.,]/g,'').slice(0,5); resolver(); };
 $('cMotor').onblur = e => { const c = normCil(e.target.value); if(c) e.target.value = c.toFixed(1); };
 function toggleTurbo(){ $('cTurbo').classList.toggle('on'); resolver(); }
@@ -3164,7 +3189,15 @@ function resolver(){
   const ano=parseInt($('cAno').value,10), cil=normCil($('cMotor').value);
   const tb=$('cTurbo').classList.contains('on');
   cMotor=null;
-  if(!ma||!mo||!ano||!cil){ msg('cMsgMotor',null,''); aplicarSinc(); validarCad(); return; }
+  if(!ma||!mo||!cil){ msg('cMsgMotor',null,''); aplicarSinc(); validarCad(); return; }
+  if($('cAno').value && $('cAno').value.length !== 4){
+    msg('cMsgMotor','e','Informe o ano com 4 números ou deixe o campo em branco.');
+    aplicarSinc(); validarCad(); return;
+  }
+  if(!ano){
+    msg('cMsgMotor','i','Ano não informado. Você pode salvar o veículo; preencha o sincronismo e o óleo usando o manual.');
+    aplicarSinc(); aplicarOleo(); sugerirProx(); validarCad(); return;
+  }
 
   const lista = DB.carros[ma][mo]||[];
   const porAno = lista.filter(x=>(!x.a0||ano>=x.a0)&&(!x.a1||ano<=x.a1));
@@ -3289,7 +3322,8 @@ function validarCad(){
   /* correia sem histórico é a regra, não a exceção: quem compra usado não sabe
      quando trocaram. O que não pode é um valor inválido — em branco pode. */
   const proxOk = !px || !km || px > km;
-  const ok = $('cMarca').value && $('cModelo').value && $('cAno').value.length===4
+  const anoValido = !$('cAno').value || $('cAno').value.length===4;
+  const ok = $('cMarca').value && $('cModelo').value && anoValido
     && normCil($('cMotor').value) && s && proxOk;
   $('cSalvar').style.opacity = ok?1:.4;
   $('cSalvar').disabled = !ok;
@@ -3311,7 +3345,7 @@ function salvarVeiculo(){
   const prox = parseInt(soD($('cProx').value)||'0',10);
   const intervalo = parseInt(soD($('cInt').value)||'0',10);
   const v = {
-    marca:$('cMarca').value, modelo:$('cModelo').value, ano:$('cAno').value,
+    marca:$('cMarca').value, modelo:$('cModelo').value, ano:$('cAno').value || '',
     cilTxt: cil.toFixed(1)+(tb?' turbo':''), motorNome: cMotor?cMotor.n:'motor não identificado',
     km, placa:$('cPlaca').value, cor:cCor, oleo:$('cOleo').value||'—', cambio:cCambio,
     itens: modelo(s==='corrente' ? {d:'corrente'} : {d:'correia', km:intervalo})
@@ -3396,7 +3430,7 @@ function salvarEdicao(){
 
   const aplicar = () => {
     Object.assign(v, {
-      marca: $('cMarca').value, modelo: $('cModelo').value, ano: $('cAno').value,
+      marca: $('cMarca').value, modelo: $('cModelo').value, ano: $('cAno').value || '',
       cilTxt: cil.toFixed(1) + (tb ? ' turbo' : ''),
       motorNome: cMotor ? cMotor.n : 'motor não identificado',
       km, placa: $('cPlaca').value, cor: cCor, oleo: $('cOleo').value || '—', cambio:cCambio
@@ -3445,7 +3479,7 @@ function pintarPainel(){
   const v = VEIC[ativo]; if(!v) return go('garagem');
   let h = `<div class="vheader">
     <div style="flex:1;min-width:0">
-      <div style="font-size:16px;font-weight:700">${v.marca} ${v.modelo} ${v.ano}</div>
+      <div style="font-size:16px;font-weight:700">${v.marca} ${v.modelo}${v.ano ? ' ' + v.ano : ''}</div>
       <div class="vtags"><span class="vcolor" style="background:${v.cor}"></span>
         <span style="font-size:12px;color:var(--muted)">${v.cilTxt}</span>
         <span class="plate">${v.placa||'———'}</span></div>
@@ -3783,9 +3817,14 @@ function abrirFipe(){
   const v = VEIC[ativo];
   fipeDados = { modelos:[], anos:[], filtro:'', erro:'', aviso:'' };
   const temValor = v && v.fipe && v.fipe.valor;
-  fipeEtapa = temValor ? 'pronto' : 'buscando';
+  fipeEtapa = temValor ? 'pronto' : (v && v.ano ? 'buscando' : 'modelos');
   go('fipe');
-  if(!temValor) fipeAutomatico();   /* o app já tem marca, modelo e ano: busca sozinho */
+  if(!temValor){
+    /* Sem ano, não há como adivinhar a cotação. Ainda assim a pessoa pode
+       escolher a versão e depois o ano diretamente na lista da FIPE. */
+    if(v && v.ano) fipeAutomatico();
+    else fipeBuscarModelos();
+  }
 }
 
 /* 1. marca do catálogo -> marca da FIPE */
@@ -3899,7 +3938,13 @@ async function fipeHistorico(){
     pintarFipe();
   }
 }
-function fipeTrocarVersao(){ fipeDados.filtro=''; fipeBuscarModelos(); }
+function fipeTrocarVersao(){
+  /* Mantém explicitamente a rota da FIPE. Assim uma resposta/repaint atrasado
+     do painel de manutenção não consegue roubar a navegação. */
+  fipeDados.filtro=''; fipeEtapa='modelos';
+  if(!$('s-fipe').classList.contains('active')) go('fipe');
+  fipeBuscarModelos();
+}
 /* Busca por termos soltos: "1.0 turbo" acha "1.0 Turbo 12V Flex" e também
    "Turbo 1.0", porque cada palavra é procurada separadamente. */
 function combinaVersao(nome, termos){
@@ -4057,7 +4102,7 @@ function pintarFipe(){
   if(!v) return go('garagem');
   const topo = `<div class="vheader">
     <div style="flex:1">
-      <div style="font-size:15px;font-weight:700">${v.marca} ${v.modelo} ${v.ano}</div>
+      <div style="font-size:15px;font-weight:700">${v.marca} ${v.modelo}${v.ano ? ' ' + v.ano : ''}</div>
       <div class="vtags"><span class="vcolor" style="background:${v.cor}"></span>
         <span style="font-size:12px;color:var(--muted)">${v.cilTxt}</span>
         ${v.placa?`<span class="plate">${v.placa}</span>`:''}</div>
@@ -4128,7 +4173,9 @@ function pintarFipe(){
   }
   else if(fipeEtapa === 'anos'){
     const anos = fipeDados.anos || [];
-    const provavel = anos.filter(x => String(nomDe(x)||'').startsWith(String(v.ano)));
+    const provavel = v.ano
+      ? anos.filter(x => String(nomDe(x)||'').startsWith(String(v.ano)))
+      : [];
     const ordem = [...provavel, ...anos.filter(x=>!provavel.includes(x))];
     c = `<div class="section">
       <div class="section-title">Ano e combustível</div>
@@ -4187,7 +4234,7 @@ function pintarFipe(){
       <div class="odo-hint" style="text-align:left;margin-top:9px">Queda de preço aparece em vermelho, alta em verde — do ponto de vista de quem vende o carro.</div>
       </div>` : `<button class="cta outline" style="margin-top:12px" onclick="fipeHistorico()">${fipeDados.carregandoHist ? 'Buscando…' : 'Ver variação dos últimos meses'}</button>`}
     <button class="cta outline" style="margin-top:12px" onclick="fipeAtualizar()">Atualizar cotação</button>
-    <button class="cta outline" style="margin-top:9px" onclick="fipeTrocarVersao()">Não é essa versão</button>
+    <button class="cta outline" style="margin-top:9px" onclick="event.stopPropagation();fipeTrocarVersao()">Não é essa versão</button>
     </div>`;
   }
   if(!c){   /* estado inesperado: melhor oferecer a busca do que uma tela em branco */
@@ -4276,22 +4323,31 @@ function abrirSheet(id){
 
   $('shBoxKm').style.display = ''; $('shBoxData').style.display = '';
   $('shPartes').innerHTML = itAtual.partes
-    ? `<div class="odo-hint" style="margin-bottom:12px">Marque o que você trocou agora. O intervalo de cada filtro é salvo mesmo sem marcar.</div>
+    ? `<div class="odo-hint" style="margin-bottom:12px">Escolha o filtro que você trocou e defina somente o intervalo dele. Os outros permanecem como estavam.</div>
        ${itAtual.partes.map(p => `
         <div class="pfil" data-p="${p.id}">
-          <div class="chk checked" onclick="this.classList.toggle('checked');this.querySelector('.box').textContent=this.classList.contains('checked')?'✓':''">
-            <span class="box">✓</span>${p.nome}</div>
+          <div class="chk" onclick="alternarFiltroTroca(this)">
+            <span class="box"></span>${p.nome}</div>
           <div class="pfil-lab">Trocar a cada</div>
           <div class="pfil-int">
             <span class="sufixo"><input class="mono" id="fi_${p.id}" inputmode="numeric" placeholder="0"
-              value="${p.ikm?fmt(p.ikm):''}" oninput="maskKm(this);unidade(this,'fu_${p.id}','km','km')"><span id="fu_${p.id}">km</span></span>
+              value="${p.ikm?fmt(p.ikm):''}" disabled oninput="maskKm(this);unidade(this,'fu_${p.id}','km','km')"><span id="fu_${p.id}">km</span></span>
             <span class="ou">ou</span>
             <span class="sufixo"><input class="mono" id="fm_${p.id}" inputmode="numeric" placeholder="0"
-              value="${p.imes||''}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,3);unidade(this,'fn_${p.id}','mês','meses')"><span id="fn_${p.id}">${p.imes===1?'mês':'meses'}</span></span>
+              value="${p.imes||''}" disabled oninput="this.value=this.value.replace(/\\D/g,'').slice(0,3);unidade(this,'fn_${p.id}','mês','meses')"><span id="fn_${p.id}">${p.imes===1?'mês':'meses'}</span></span>
           </div>
         </div>`).join('')}` : '';
   fecharFolhas();
   $('shBg').classList.add('on'); $('sh').classList.add('on');
+}
+function alternarFiltroTroca(chk){
+  const card = chk && chk.closest('.pfil');
+  if(!card) return;
+  const ligado = !chk.classList.contains('checked');
+  chk.classList.toggle('checked', ligado);
+  chk.querySelector('.box').textContent = ligado ? '✓' : '';
+  card.classList.toggle('selected', ligado);
+  card.querySelectorAll('input').forEach(input => input.disabled = !ligado);
 }
 function escolherCambio(t){
   if(!itAtual) return;
@@ -4318,9 +4374,9 @@ function salvarTroca(){
     marc = [...document.querySelectorAll('#shPartes .pfil .chk.checked')]
              .map(c => c.parentElement.dataset.p);
     if(!marc.length){ toast('Marque pelo menos um filtro.'); return; }
-    /* cada filtro tem o próprio intervalo: nenhum pode ficar sem critério */
+    /* Cada filtro é independente: só valida e altera os que a pessoa marcou. */
     novos = {};
-    for(const p of itAtual.partes){
+    for(const p of itAtual.partes.filter(p => marc.includes(p.id))){
       const ik = parseInt(soD(($('fi_'+p.id)||{}).value || '')||'0',10) || null;
       const im = parseInt(soD(($('fm_'+p.id)||{}).value || '')||'0',10) || null;
       if(!ik && !im){ toast(`Informe um intervalo para o filtro de ${p.nome.toLowerCase()} — em km ou em meses.`); return; }
@@ -4362,10 +4418,10 @@ function salvarTroca(){
   }
   if(marc){
     itAtual.partes.forEach(p => {
-      /* o intervalo vale para todos; a troca, só para os marcados */
+      if(!marc.includes(p.id)) return;
       p.ikm  = novos[p.id].ikm;
       p.imes = novos[p.id].imes;
-      if(marc.includes(p.id)){ p.ultKm = km; p.ultData = data; }
+      p.ultKm = km; p.ultData = data;
     });
   } else {
     itAtual.ultKm = km; itAtual.ultData = data; delete itAtual.proxFixo;
@@ -4406,6 +4462,65 @@ function salvarOdo(){
 
 /* ================= AJUSTES ================= */
 const NOTIF = { nGeral:true, nData:true, nKm:true };
+let PEDIDO_NOTIFICACAO_NESTA_SESSAO = false;
+const CHAVE_CONVITE_NOTIFICACAO = 'tmycar:notificacoes:convite:v1';
+function conviteNotificacaoJaMostrado(){
+  try{ return localStorage.getItem(CHAVE_CONVITE_NOTIFICACAO) === '1'; }catch(e){ return false; }
+}
+function marcarConviteNotificacaoMostrado(){
+  try{ localStorage.setItem(CHAVE_CONVITE_NOTIFICACAO, '1'); }catch(e){}
+}
+const notificacaoDisponivel = () => typeof Notification !== 'undefined';
+function estadoPermissaoNotificacao(){
+  return notificacaoDisponivel() ? Notification.permission : 'unsupported';
+}
+async function notificarNoCelular(aviso){
+  if(!aviso || !NOTIF.nGeral || estadoPermissaoNotificacao() !== 'granted') return false;
+  const opcoes = {
+    body:aviso.texto || 'Abra o TMy Car para conferir.',
+    icon:'./icons/icon-192.png', badge:'./icons/icon-192.png',
+    tag:`tmycar-${aviso.k || 'aviso'}`, renotify:false,
+    data:{ url:'./?abrir=avisos' }
+  };
+  try{
+    if('serviceWorker' in navigator){
+      const registro = await navigator.serviceWorker.ready;
+      await registro.showNotification(aviso.titulo || 'TMy Car', opcoes);
+    }else{
+      new Notification(aviso.titulo || 'TMy Car', opcoes);
+    }
+    return true;
+  }catch(e){ return false; }
+}
+async function pedirPermissaoNotificacoes(){
+  if(!notificacaoDisponivel()){
+    toast('Este aparelho não oferece notificações pelo navegador. Os avisos continuam dentro do app.');
+    pintarNotificacoes(); return 'unsupported';
+  }
+  let permissao = Notification.permission;
+  if(permissao === 'default'){
+    try{ permissao = await Notification.requestPermission(); }catch(e){ permissao = 'denied'; }
+  }
+  if(permissao === 'granted'){
+    const pendente = AVISOS.find(a => !a.lido && a.tipo !== 'pendencia');
+    if(pendente) notificarNoCelular(pendente);
+    else notificarNoCelular({ k:'permissao', titulo:'Notificações ativadas', texto:'O TMy Car poderá avisar quando uma manutenção precisar de atenção.' });
+    toast('Notificações do celular ativadas.');
+  }else{
+    toast('Permissão não concedida. Os avisos continuam disponíveis dentro do app.');
+  }
+  pintarNotificacoes();
+  return permissao;
+}
+function mostrarPedidoNotificacaoNaEntrada(){
+  if(PEDIDO_NOTIFICACAO_NESTA_SESSAO || !ONBOARD || telaAtual() !== 'garagem' ||
+     conviteNotificacaoJaMostrado() || !NOTIF.nGeral || estadoPermissaoNotificacao() !== 'default') return;
+  PEDIDO_NOTIFICACAO_NESTA_SESSAO = true;
+  marcarConviteNotificacaoMostrado();
+  confirmar('Receber avisos no celular?',
+    'Permita as notificações para o TMy Car avisar quando uma manutenção estiver perto do prazo ou passar da quilometragem. Você pode mudar isso depois em Ajustes.',
+    pedirPermissaoNotificacoes, 'Permitir notificações');
+}
 function sincronizarNotifUI(){
   ['nGeral','nData','nKm'].forEach(k=>{
     const el=$(k); if(!el) return;
@@ -4417,8 +4532,16 @@ function sincronizarNotifUI(){
   if($('cfNotifResumo')) $('cfNotifResumo').textContent = ligadas === 3
     ? 'As 3 opções estão ativas'
     : ligadas === 0 ? 'Notificações desativadas' : `${ligadas} de 3 opções ativas`;
+  const status = $('nPermissaoStatus');
+  if(status){
+    const p = estadoPermissaoNotificacao();
+    status.textContent = p === 'granted' ? 'Autorizado a enviar avisos para este celular.'
+      : p === 'denied' ? 'O celular bloqueou os avisos. Libere nas configurações do app ou do site.'
+      : p === 'default' ? 'Ao ativar, o celular pedirá sua autorização.'
+      : 'Os avisos continuam disponíveis dentro do aplicativo.';
+  }
 }
-function togNotif(id){
+async function togNotif(id){
   if(!Object.prototype.hasOwnProperty.call(NOTIF,id)) return;
   if(id==='nGeral'){
     const novo=!NOTIF.nGeral;
@@ -4432,13 +4555,19 @@ function togNotif(id){
   }
   sincronizarNotifUI();
   varrerPrazos(); varrerPendencias(); persistir(); pintarSino();
+  if(NOTIF.nGeral && estadoPermissaoNotificacao() === 'default') await pedirPermissaoNotificacoes();
 }
 /* veículos guardados continuam no banco, só saem de circulação */
 const ativos = () => VEIC.map((v,i)=>({v,i})).filter(x=>!x.v.inativo);
 const LIMITE = () => PLANO==='free' ? 1 : 3;
+let TIMER_DOWNGRADE = null;
+const planoDaContaPendente = () => !CONTA.local && !!UID && !ASSINATURA_CARREGADA;
 
 let dgEscolhido = 0;
 function abrirDowngrade(){
+  /* Um timer criado pela conta anterior ou enquanto a assinatura carregava não
+     pode impor o limite grátis à conta que está ativa agora. */
+  if(planoDaContaPendente() || ativos().length <= LIMITE()) return;
   dgEscolhido = ativos()[0].i;
   pintarDowngrade();
   fecharFolhas();
@@ -4448,7 +4577,7 @@ function pintarDowngrade(){
   $('dgLista').innerHTML = `<div class="radios">${ativos().map(({v,i})=>`
     <div class="radio ${i===dgEscolhido?'sel':''}" onclick="dgEscolhido=${i};pintarDowngrade()">
       <span class="rb"></span>
-      <div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.cor};margin-right:7px"></span>${v.marca} ${v.modelo} ${v.ano}</b>
+      <div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.cor};margin-right:7px"></span>${v.marca} ${v.modelo}${v.ano ? ' ' + v.ano : ''}</b>
       <small>${v.placa?v.placa+' · ':''}${textoKm(v.km)}</small></div>
     </div>`).join('')}</div>`;
 }
@@ -4528,6 +4657,9 @@ function atualizarResumoPlano(){
 /* Vencido o teste, o app volta ao grátis. Se sobrar mais carro do que o plano
    grátis comporta, a pessoa escolhe qual fica — nada é apagado. */
 function conferirTeste(){
+  /* A assinatura é por UID. Durante a troca de conta, não conclui vencimento
+     usando o estado temporário "free" antes de o documento atual chegar. */
+  if(planoDaContaPendente()) return false;
   conferirPeriodo();   /* o período pago pode ter vencido também */
   if(!emTeste() || !TRIAL.fim || Date.now() < TRIAL.fim) return false;
   PLANO = 'free'; CICLO = 'anual';
@@ -4536,7 +4668,15 @@ function conferirTeste(){
 }
 /* o downgrade é obrigatório: fechar a folha só adia, não resolve */
 function exigirEscolha(){
-  if(carregado && ativos().length > LIMITE()) setTimeout(abrirDowngrade, 400);
+  clearTimeout(TIMER_DOWNGRADE);
+  if(!carregado || planoDaContaPendente() || ativos().length <= LIMITE()) return;
+  const uidEsperado = UID;
+  const contextoEsperado = CONTEXTO_LOCAL;
+  TIMER_DOWNGRADE = setTimeout(() => {
+    if(uidEsperado !== UID || contextoEsperado !== CONTEXTO_LOCAL ||
+       planoDaContaPendente() || ativos().length <= LIMITE()) return;
+    abrirDowngrade();
+  }, 400);
 }
 
 /* ---------- período pago e mudanças agendadas ---------- */
@@ -5477,7 +5617,11 @@ function normalizarAssinatura(d){
   };
 }
 
-function aplicarAssinatura(d, avisar=false){
+function aplicarAssinatura(d, avisar=false, uidOrigem=null){
+  if(uidOrigem){
+    const atual = AUTH && AUTH.currentUser;
+    if(!atual || atual.uid !== uidOrigem || !contextoDeUsuarioAtivo(uidOrigem)) return false;
+  }
   const a = normalizarAssinatura(d);
   const impressao = JSON.stringify(a);
   const mudou = ASSINATURA_IMPRESSAO && ASSINATURA_IMPRESSAO !== impressao;
@@ -5494,11 +5638,13 @@ function aplicarAssinatura(d, avisar=false){
   if(carregado) repintarDadosSincronizados();
   if(avisar && mudou) toast('Seu plano foi atualizado.');
   exigirEscolha();
+  return true;
 }
 
 async function puxarAssinatura(){
   if(!NUVEM || !UID || !contextoDeUsuarioAtivo(UID)){
-    aplicarAssinatura(null); return { existe:false };
+    if(CONTA.local) aplicarAssinatura(null);
+    return { existe:false };
   }
   const uidConsulta = UID;
   try{
@@ -5506,12 +5652,13 @@ async function puxarAssinatura(){
     const atual = AUTH && AUTH.currentUser;
     if(!atual || atual.uid !== uidConsulta || !contextoDeUsuarioAtivo(uidConsulta))
       return { existe:false, descartado:true };
-    aplicarAssinatura(doc.exists ? doc.data() : null);
+    aplicarAssinatura(doc.exists ? doc.data() : null, false, uidConsulta);
     return { existe:doc.exists };
   }catch(e){
     /* Sem cache e sem rede, permanece no plano grátis. Um plano pago nunca é
        inventado a partir de valores antigos do localStorage. */
-    if(!ASSINATURA_CARREGADA) aplicarAssinatura(null);
+    if(!ASSINATURA_CARREGADA && contextoDeUsuarioAtivo(uidConsulta))
+      aplicarAssinatura(null, false, uidConsulta);
     return { existe:false, erro:true };
   }
 }
@@ -5524,7 +5671,7 @@ function iniciarOuvinteAssinatura(uidConta){
     { includeMetadataChanges:true },
     doc => {
       if(!contextoDeUsuarioAtivo(uidConta) || doc.metadata.hasPendingWrites) return;
-      aplicarAssinatura(doc.exists ? doc.data() : null, !doc.metadata.fromCache);
+      aplicarAssinatura(doc.exists ? doc.data() : null, !doc.metadata.fromCache, uidConta);
     },
     e => console.warn('Não foi possível acompanhar a assinatura.', e)
   );
@@ -6493,7 +6640,11 @@ const DIAS_ANTES = 15;
 
 function addAviso(o){
   if(AVISOS.some(a => a.k === o.k)) return false;   // um por ciclo, não repete
-  AVISOS.unshift(Object.assign({ lido:false, em:iso(HOJE) }, o));
+  const aviso = Object.assign({ lido:false, em:iso(HOJE) }, o);
+  AVISOS.unshift(aviso);
+  /* A permissão do Android/Chrome é concedida uma vez. Depois disso, cada aviso
+     realmente novo também aparece na bandeja do celular. */
+  notificarNoCelular(aviso);
   return true;
 }
 const naoLidos = () => AVISOS.filter(a => !a.lido).length;
@@ -6731,7 +6882,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.93';
+const VERSAO_APP = '1.5.94';
 let ONBOARD = false;
 let carregado = false;
 
@@ -6763,6 +6914,10 @@ async function lerEstadoLocal(chave){
 }
 
 function resetarEstadoEmMemoria(){
+  if(typeof TIMER_DOWNGRADE !== 'undefined'){
+    clearTimeout(TIMER_DOWNGRADE); TIMER_DOWNGRADE = null;
+  }
+  if(typeof fecharDowngrade === 'function') fecharDowngrade();
   VEIC = []; REGISTROS = []; AVISOS = [];
   ativo = null; veicSel = null;
   PLANO = 'free'; CICLO = 'anual';
@@ -6957,6 +7112,7 @@ async function carregar(){
   }else{
     go(ONBOARD ? 'garagem' : 'bemvindo');
   }
+  if(ONBOARD && new URLSearchParams(location.search).get('abrir') === 'avisos') go('avisos');
   window.dispatchEvent(new Event('tmycar:rota-pronta'));
   window.dispatchEvent(new Event('tmycar:pronto'));
 }
@@ -6971,6 +7127,9 @@ function registrarPwa(){
     }catch(e){ /* o app continua funcionando normalmente sem instalação */ }
   });
 }
+navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', evento => {
+  if(evento.data && evento.data.tipo === 'tmycar:abrir-avisos' && ONBOARD) go('avisos');
+});
 window.addEventListener('offline', ()=>toast('Você está sem internet. Os dados salvos neste aparelho continuam disponíveis.'));
 window.addEventListener('online', ()=>toast('Conexão restabelecida.'));
 registrarPwa();
