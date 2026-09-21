@@ -18,7 +18,7 @@
   <script>
 document.documentElement.classList.add('tmycar-splash');
   </script>
-<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&family=Sora:wght@400;500;600;700&display=swap');
 
 :root{
   --ink:#E8EDF5; --muted:#93A6C4; --dim:#6E82A3;
@@ -661,6 +661,7 @@ select option{background:#0B1A33;color:#E8EDF5}
 .fritmo{font-size:10.5px;color:var(--dim);margin-top:3px;
   font-family:'IBM Plex Mono',monospace}
 .fst{font-size:11.5px;font-weight:600;flex-shrink:0;text-align:right;max-width:42%;line-height:1.3}
+.fitem-action{margin-top:10px;padding:9px;font-size:12.5px}
 .ousep{display:flex;align-items:center;gap:11px;margin:15px 0 13px;color:var(--dim);font-size:11px}
 .ousep::before,.ousep::after{content:"";flex:1;height:1px;background:var(--line)}
 /* ---------- planos e ajustes, no acabamento da referência ---------- */
@@ -1919,6 +1920,20 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 #shOleoMotor .flabel,
 #shFreio .flabel,
 #shCambio .field .flabel{text-align:center!important}
+#shOleoMotor .field,
+#shOleoMotor input,
+#shBoxData,
+#shBoxData .flabel,
+#shBoxData input,
+#shBoxIntervalo,
+#shBoxIntervalo .flabel,
+#shBoxIntervalo input{text-align:center!important}
+#shBoxIntervalo .sufixo input{padding-left:52px!important;padding-right:52px!important}
+#shBoxIntervalo #shIkm{text-align:left!important;padding-left:12px!important;padding-right:42px!important}
+#shFreio #shFluidoFreio{text-align:center!important;text-align-last:center!important;padding-left:32px!important;padding-right:32px!important}
+#shFreio #shFluidoFreio option{text-align:center!important}
+#shCambio #shOleoCambio{text-align:center!important}
+#shBoxData input[type="date"]::-webkit-datetime-edit{display:block;text-align:center;width:100%}
 #shCambio .section-title{text-align:center!important}
 .gasto-category-screen .category-months>.section-title{text-align:center!important}
 #s-gastos .g-filter-title{justify-content:center!important;margin-left:0!important;margin-right:0!important;text-align:center!important}
@@ -1948,6 +1963,42 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 #s-cadastro #cKm,
 #s-cadastro #cOleo,
 #s-cadastro #cPlaca{text-align:center!important}
+
+/* Garagem — opção C: cartão centralizado, arredondado e com leitura rápida. */
+#s-garagem .vcard.garage-card-c{
+  font-family:'Sora','Inter',sans-serif;
+  align-items:stretch;text-align:left;padding:14px;border-radius:19px;
+  background:radial-gradient(circle at 50% 0%,rgba(25,170,255,.19),transparent 44%),
+    linear-gradient(150deg,rgba(5,18,34,.96),rgba(2,10,20,.96));
+  border:1px solid rgba(25,170,255,.22);box-shadow:0 16px 38px rgba(0,7,18,.34);
+}
+#s-garagem .vcard.garage-card-c.is-highlight{border-color:rgba(42,183,255,.52);box-shadow:0 16px 38px rgba(0,7,18,.38),0 0 25px rgba(7,140,255,.10)}
+#s-garagem .vcard.garage-card-c.is-highlight::before{display:none}
+.garage-c-head{position:relative;display:block;min-height:72px}
+.garage-c-car-data{padding:0 48px;text-align:center}
+.garage-c-titleline{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0}
+.garage-c-color{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 9px color-mix(in srgb,var(--vehicle-color) 68%,transparent)}
+.garage-c-name{min-width:0;font-size:15px;font-weight:600;line-height:1.3;color:#f5f9ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.garage-c-status-right{position:absolute;right:2px;top:0;display:flex;align-items:center;justify-content:center;
+  width:32px;height:32px}
+.garage-c-status-icon{display:flex;align-items:center;justify-content:center;font-size:23px;line-height:1}
+.garage-c-status-icon.is-ok{width:21px;height:21px;border-radius:50%;background:#36d78d;
+  color:#fff;box-shadow:0 0 13px rgba(54,215,141,.42);font-family:'Inter',sans-serif;font-size:14px;font-weight:800}
+.garage-c-status-icon.is-bad{width:26px;height:26px;border-radius:6px;background:#e43f52;color:#fff;
+  font-family:'Inter',sans-serif;font-size:19px;font-weight:800;box-shadow:0 5px 14px rgba(228,63,82,.30)}
+.garage-c-status-icon.is-empty{width:24px;height:24px;border-radius:50%;border:1px solid #7088a7;color:#8ca2bd;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:700;background:rgba(255,255,255,.035)}
+.garage-c-meta{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap;
+  margin-top:6px;font-size:11.5px;color:#91a9c5}
+.garage-c-meta .plate{background:transparent;padding:0;color:#7f99b8;font-family:'Sora','Inter',sans-serif;
+  font-size:11.5px;font-weight:400;letter-spacing:.05em}
+.garage-c-reading{margin-top:7px;text-align:center;font-size:12px;font-weight:500;color:#d6ebfb}
+.garage-c-summary{width:100%;display:block;margin-top:10px;padding:8px 12px;border-radius:12px;text-align:center;
+  background:rgba(13,31,51,.88);border:1px solid rgba(151,184,224,.08)}
+.garage-c-summary span{display:block;font-size:9.5px;color:#7f99b8}
+.garage-c-summary strong{display:block;margin-top:3px;font-size:10.5px;font-weight:600;line-height:1.35;color:#edf7ff}
+#s-garagem .garage-card-c .vacts{width:100%;margin-top:10px;padding-top:10px;justify-content:center}
+#s-garagem .garage-card-c .vact{flex:1;justify-content:center;max-width:126px}
 /* ================= FIM DO FLUXO DE ACESSO ================= */
 </style>
 </head>
@@ -2341,7 +2392,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
     <!-- ================= FIPE ================= -->
     <div class="screen" id="s-fipe">
       <div class="topbar">
-        <div class="topbar-left"><span class="back" onclick="go('painel')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="title">Tabela FIPE</span></div>
+        <div class="topbar-left"><span class="back" onclick="voltarFipe()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="title">Tabela FIPE</span></div>
       </div>
       <div id="fpBody"></div>
     </div>
@@ -2918,6 +2969,48 @@ function resumoProxima(c){
 
 /* ---------- navegação ---------- */
 let RETORNO_DOCUMENTO_LEGAL = 'conta-dados';
+let HISTORICO_APP_INICIADO = false;
+let NAVEGANDO_PELO_HISTORICO = false;
+const TELAS_DE_ENTRADA = ['bemvindo','conta','criar-conta','verificar-email','recuperar-senha','recuperacao-enviada','identidade','termos'];
+
+function estadoDaRota(t){
+  const estado = { tmycar:true, tela:t };
+  if(t === 'fipe') estado.fipeEtapa = fipeEtapa;
+  return estado;
+}
+
+function registrarRota(t, anterior, opcoes={}){
+  if(NAVEGANDO_PELO_HISTORICO || opcoes.semHistorico) return;
+  const estado = estadoDaRota(t);
+  const atual = history.state || {};
+  /* A primeira tela vira a raiz do app. Depois do login, Garagem substitui a
+     tela de acesso para o botão físico nunca devolver o usuário ao login. */
+  const substituir = !HISTORICO_APP_INICIADO || opcoes.substituirHistorico ||
+    (t === 'garagem' && TELAS_DE_ENTRADA.includes(anterior));
+  try{
+    if(substituir) history.replaceState(estado, '', location.href);
+    else if(!atual.tmycar || atual.tela !== t) history.pushState(estado, '', location.href);
+    else history.replaceState(Object.assign({}, atual, estado), '', location.href);
+    HISTORICO_APP_INICIADO = true;
+  }catch(e){ /* o app continua navegando mesmo se o navegador bloquear a API */ }
+}
+
+window.addEventListener('popstate', evento => {
+  const estado = evento.state;
+  if(!estado || !estado.tmycar || !estado.tela || !$('s-'+estado.tela)) return;
+  NAVEGANDO_PELO_HISTORICO = true;
+  try{
+    if(estado.tela === 'fipe' && estado.fipeEtapa){
+      fipeEtapa = estado.fipeEtapa;
+      fipeOcupado = false;
+      fipeDados.filtro = '';
+    }
+    go(estado.tela, { semHistorico:true });
+  }finally{
+    NAVEGANDO_PELO_HISTORICO = false;
+  }
+});
+
 function abrirDocumentoLegal(caminho, titulo){
   RETORNO_DOCUMENTO_LEGAL = telaAtual() || 'conta-dados';
   $('legalTitulo').textContent = titulo || 'Documento';
@@ -2933,7 +3026,8 @@ window.addEventListener('message', evento => {
     fecharDocumentoLegal();
 });
 
-function go(t){
+function go(t, opcoes={}){
+  const anterior = telaAtual();
   fecharFolhas();
   conferirTeste();   /* o prazo pode ter estourado com o app em qualquer tela */
   if(EMAIL_VERIFICACAO_PENDENTE && !['verificar-email','conta','criar-conta','recuperar-senha','recuperacao-enviada','bemvindo'].includes(t))
@@ -2946,6 +3040,7 @@ function go(t){
   $('nav').classList.toggle('hidden', !['garagem','gastos','config'].includes(t));
   document.querySelectorAll('.nitem').forEach(n=>n.classList.toggle('active', n.dataset.n===t));
   document.querySelector('.screen.active').scrollTop = 0;
+  registrarRota(t, anterior, opcoes);
   if(['bemvindo','conta','criar-conta','verificar-email','recuperar-senha','recuperacao-enviada','identidade','termos'].includes(t)) zerarOnboarding();
   if(t==='garagem'){
     pintarGaragem();
@@ -3028,19 +3123,24 @@ function pintarGaragem(){
       ? i.partes.map(p=>calc(i,v.km,p.ultKm,p.ultData,p)).sort((a,b)=>b.pct-a.pct)[0]
       : calc(i,v.km,i.ultKm,i.ultData)).sort((a,b)=>b.pct-a.pct);
     const pior = cs[0] || { cl:'nt', rot:'Sem registro', txt:'—' };
-    h += `<div class="vcard ${idx===ativo?'is-highlight':''}" onclick="abrirPainel(${idx})">
-      <div class="vtop">
-      <span class="spine" style="background:${v.cor}"></span>
-      <div class="vinfo">
-        <div class="vname">${v.marca} ${v.modelo}</div>
-        <div class="vmeta"><span class="vcolor" style="background:${v.cor}"></span>
-          ${v.ano || 'ano não informado'} · ${v.cilTxt} <span class="plate">${v.placa||'———'}</span></div>
-        <div class="vmeta mono vreadings" style="color:var(--dim)"><span>${textoKm(v.km)}</span>${FIPE_ATIVA && PLANO!=='free' && v.fipe && v.fipe.valor ? `<span>· FIPE ${esc(v.fipe.valor)}</span>` : ''}</div>
+    const estadoGaragem = pior.cl === 'ok' ? { icone:'✓', texto:'Em dia', classe:'is-ok' }
+      : pior.cl === 'warn' ? { icone:'⚠️', texto:'Atenção', classe:'' }
+      : pior.cl === 'bad' ? { icone:'!', texto:'Vencido', classe:'is-bad' }
+      : { icone:'?', texto:'Sem registro', classe:'is-empty' };
+    h += `<div class="vcard garage-card-c ${idx===ativo?'is-highlight':''}" style="--vehicle-color:${v.cor}" onclick="abrirPainel(${idx})">
+      <div class="garage-c-head">
+        <div class="garage-c-car-data">
+          <div class="garage-c-titleline"><i class="garage-c-color" style="background:${v.cor}" aria-hidden="true"></i>
+            <div class="garage-c-name">${esc(v.marca)} ${esc(v.modelo)}</div></div>
+          <div class="garage-c-meta"><span>${esc(v.ano || 'ano não informado')}</span><span>·</span>
+            <span>${esc(v.cilTxt)}</span><span>·</span><span class="plate">${esc(v.placa||'sem placa')}</span></div>
+          <div class="garage-c-reading">${esc(textoKm(v.km))}</div>
+        </div>
+        <div class="garage-c-status-right" role="img" aria-label="${estadoGaragem.texto}" title="${estadoGaragem.texto}">
+          <span class="garage-c-status-icon ${estadoGaragem.classe}" aria-hidden="true">${estadoGaragem.icone}</span></div>
       </div>
-      <div class="vright">
-        <span class="status ${pior.cl}">${pior.rot}</span>
-      </div>
-      </div>
+      ${FIPE_ATIVA && PLANO!=='free' ? `<div class="garage-c-summary"><span>Tabela FIPE</span>
+        <strong>${v.fipe && v.fipe.valor ? esc(v.fipe.valor) : 'Cotação ainda não consultada'}</strong></div>` : ''}
       <div class="vacts">
         <span class="vact" onclick="event.stopPropagation();pedirEditar(${idx})">${ICO_LAPIS}Editar</span>
         <span class="vact del" onclick="event.stopPropagation();excluirVeiculo(${idx})">${ICO_LIXO}Excluir</span>
@@ -3513,24 +3613,25 @@ function pintarPainel(){
             <span class="status ${pior.cl}">${pior.rot}</span></div>
           <div>
             ${cs.map(({p,c})=>{
-              const cor = corDe(c.cl);
-              const prox = resumoProxima(c);
-              return `<div class="fitem">
-                <div class="fitem-head">
-                  <span class="fmk" style="background:${cor}">${c.vazio?'?':c.cl==='ok'?'✓':'!'}</span>
-                  <div class="fnome">${esc(p.nome)}</div>
-                  <span aria-hidden="true"></span>
-                </div>
-                <div class="fbody">
-                  <span class="fnext-label">Próxima troca</span>
-                  <span class="fnext-value" style="color:var(--ink)">${prox.valor}</span>
-                  <span class="fnext-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
-                </div>
-              </div>`;
-            }).join('')}
-          </div>
-          <button class="cta outline" style="margin-top:12px;padding:9px;font-size:12.5px" onclick="abrirSheet('${it.id}')">Registrar troca</button>
-        </div>`;
+               const cor = corDe(c.cl);
+               const prox = resumoProxima(c);
+               const nome = p.id === 'ar' ? 'Filtro de ar' : p.id === 'comb' ? 'Filtro de combustível' : 'Filtro de cabine';
+               return `<div class="fitem">
+                 <div class="fitem-head">
+                   <span class="fmk" style="background:${cor}">${c.vazio?'?':c.cl==='ok'?'✓':'!'}</span>
+                   <div class="fnome">${nome}</div>
+                   <span aria-hidden="true"></span>
+                 </div>
+                 <div class="fbody">
+                   <span class="fnext-label">Próxima troca</span>
+                   <span class="fnext-value" style="color:var(--ink)">${prox.valor}</span>
+                   <span class="fnext-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
+                 </div>
+                 <button class="cta outline fitem-action" onclick="abrirSheetFiltro('${p.id}')">Registrar troca</button>
+               </div>`;
+             }).join('')}
+           </div>
+         </div>`;
         return;
       }
       const c = calc(it, v.km, it.ultKm, it.ultData);
@@ -3941,9 +4042,36 @@ async function fipeHistorico(){
 function fipeTrocarVersao(){
   /* Mantém explicitamente a rota da FIPE. Assim uma resposta/repaint atrasado
      do painel de manutenção não consegue roubar a navegação. */
+  const voltaParaValor = fipeEtapa === 'pronto' && !!(VEIC[ativo] && VEIC[ativo].fipe && VEIC[ativo].fipe.valor);
+  if(voltaParaValor && $('s-fipe').classList.contains('active')){
+    try{
+      history.replaceState(Object.assign({}, history.state || {}, estadoDaRota('fipe'), { fipeEtapa:'pronto' }), '', location.href);
+      history.pushState(Object.assign({}, estadoDaRota('fipe'), { fipeEtapa:'modelos', fipeVoltarValor:true }), '', location.href);
+      HISTORICO_APP_INICIADO = true;
+    }catch(e){ /* a seta da própria tela continua oferecendo o mesmo retorno */ }
+  }
   fipeDados.filtro=''; fipeEtapa='modelos';
   if(!$('s-fipe').classList.contains('active')) go('fipe');
   fipeBuscarModelos();
+}
+
+function voltarFipe(){
+  const v = VEIC[ativo];
+  const temValor = !!(v && v.fipe && v.fipe.valor);
+  if(fipeEtapa !== 'pronto' && temValor){
+    if(history.state && history.state.tmycar && history.state.tela === 'fipe' && history.state.fipeVoltarValor){
+      history.back();
+      return;
+    }
+    fipeOcupado = false;
+    fipeEtapa = 'pronto';
+    fipeDados.filtro = '';
+    fipeDados.aviso = '';
+    try{ history.replaceState(estadoDaRota('fipe'), '', location.href); }catch(e){}
+    pintarFipe();
+    return;
+  }
+  go('painel');
 }
 /* Busca por termos soltos: "1.0 turbo" acha "1.0 Turbo 12V Flex" e também
    "Turbo 1.0", porque cada palavra é procurada separadamente. */
@@ -4254,18 +4382,27 @@ function pintarFipe(){
 
 /* ================= FOLHAS ================= */
 let itAtual = null;
+let PARTE_FILTRO_ABERTA = null;
 /* mostra a unidade ao lado do número, com singular quando é 1 */
 function unidade(el, alvo, um, muitos){
   const n = parseInt(String(el.value).replace(/\D/g,'') || '0', 10);
   $(alvo).textContent = n === 1 ? um : muitos;
 }
 
+function abrirSheetFiltro(parteId){
+  PARTE_FILTRO_ABERTA = parteId;
+  abrirSheet('filtros');
+}
 function abrirSheet(id){
+  const parteId = id === 'filtros' ? PARTE_FILTRO_ABERTA : null;
+  PARTE_FILTRO_ABERTA = null;
   const v = VEIC[ativo];
   if(!v) return go('garagem');
   itAtual = (v.itens||[]).find(i=>i.id===id);
   if(!itAtual) return;
-  $('shTitle').textContent = itAtual.partes ? 'Registrar troca de filtros' : itAtual.nome;
+  const parteUnica = itAtual.partes && parteId ? itAtual.partes.find(p=>p.id===parteId) : null;
+  const nomeParte = parteUnica ? (parteUnica.id === 'ar' ? 'Filtro de ar' : parteUnica.id === 'comb' ? 'Filtro de combustível' : 'Filtro de cabine') : '';
+  $('shTitle').textContent = parteUnica ? `Registrar troca · ${nomeParte}` : (itAtual.partes ? 'Registrar troca de filtros' : itAtual.nome);
   $('shKm').value = kmInformado(v.km) ? fmt(v.km) : ''; $('shData').value = iso(HOJE);
   $('shIkm').value = itAtual.ikm?fmt(itAtual.ikm):''; $('shImes').value = itAtual.imes||'';
   unidade($('shIkm'),'shUkm','km','km'); unidade($('shImes'),'shUmes','mês','meses');
@@ -4322,19 +4459,20 @@ function abrirSheet(id){
     </div>` : '';
 
   $('shBoxKm').style.display = ''; $('shBoxData').style.display = '';
+  const partesNaFolha = itAtual.partes ? (parteUnica ? [parteUnica] : itAtual.partes) : [];
   $('shPartes').innerHTML = itAtual.partes
-    ? `<div class="odo-hint" style="margin-bottom:12px">Escolha o filtro que você trocou e defina somente o intervalo dele. Os outros permanecem como estavam.</div>
-       ${itAtual.partes.map(p => `
-        <div class="pfil" data-p="${p.id}">
-          <div class="chk" onclick="alternarFiltroTroca(this)">
-            <span class="box"></span>${p.nome}</div>
+    ? `<div class="odo-hint" style="margin-bottom:12px">${parteUnica ? 'Defina o intervalo deste filtro. Os outros filtros permanecem como estavam.' : 'Escolha o filtro que você trocou e defina somente o intervalo dele. Os outros permanecem como estavam.'}</div>
+       ${partesNaFolha.map(p => `
+        <div class="pfil ${parteUnica?'selected':''}" data-p="${p.id}">
+          <div class="chk ${parteUnica?'checked':''}" onclick="alternarFiltroTroca(this)">
+            <span class="box">${parteUnica?'✓':''}</span>${nomeParte || p.nome}</div>
           <div class="pfil-lab">Trocar a cada</div>
           <div class="pfil-int">
             <span class="sufixo"><input class="mono" id="fi_${p.id}" inputmode="numeric" placeholder="0"
-              value="${p.ikm?fmt(p.ikm):''}" disabled oninput="maskKm(this);unidade(this,'fu_${p.id}','km','km')"><span id="fu_${p.id}">km</span></span>
+              value="${p.ikm?fmt(p.ikm):''}" ${parteUnica?'':'disabled'} oninput="maskKm(this);unidade(this,'fu_${p.id}','km','km')"><span id="fu_${p.id}">km</span></span>
             <span class="ou">ou</span>
             <span class="sufixo"><input class="mono" id="fm_${p.id}" inputmode="numeric" placeholder="0"
-              value="${p.imes||''}" disabled oninput="this.value=this.value.replace(/\\D/g,'').slice(0,3);unidade(this,'fn_${p.id}','mês','meses')"><span id="fn_${p.id}">${p.imes===1?'mês':'meses'}</span></span>
+              value="${p.imes||''}" ${parteUnica?'':'disabled'} oninput="this.value=this.value.replace(/\\D/g,'').slice(0,3);unidade(this,'fn_${p.id}','mês','meses')"><span id="fn_${p.id}">${p.imes===1?'mês':'meses'}</span></span>
           </div>
         </div>`).join('')}` : '';
   fecharFolhas();
@@ -6882,7 +7020,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.94';
+const VERSAO_APP = '1.5.95';
 let ONBOARD = false;
 let carregado = false;
 
