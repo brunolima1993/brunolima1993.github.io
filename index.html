@@ -1994,11 +1994,16 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   font-size:11.5px;font-weight:400;letter-spacing:.05em}
 .garage-c-reading{margin-top:7px;text-align:center;font-size:12px;font-weight:500;color:#d6ebfb}
 .garage-c-summary{width:100%;display:block;margin-top:10px;padding:8px 12px;border-radius:12px;text-align:center;
-  background:rgba(13,31,51,.88);border:1px solid rgba(151,184,224,.08)}
+  background:rgba(13,31,51,.88);border:1px solid rgba(151,184,224,.08);font-family:inherit;color:inherit;
+  appearance:none;cursor:pointer}
 .garage-c-summary span{display:block;font-size:9.5px;color:#7f99b8}
 .garage-c-summary strong{display:block;margin-top:3px;font-size:10.5px;font-weight:600;line-height:1.35;color:#edf7ff}
 #s-garagem .garage-card-c .vacts{width:100%;margin-top:10px;padding-top:10px;justify-content:center}
 #s-garagem .garage-card-c .vact{flex:1;justify-content:center;max-width:126px}
+#s-garagem #gBody>.section>.section-title{text-align:center!important}
+#s-gastos .gastos-lancamentos-title{text-align:center!important}
+#s-avisos .mplaca{color:#20b7ff!important;text-shadow:0 0 9px rgba(0,174,255,.68)}
+#s-avisos .avisos-veiculo-titulo{justify-content:center!important;text-align:center!important;flex-wrap:wrap}
 /* ================= FIM DO FLUXO DE ACESSO ================= */
 </style>
 </head>
@@ -3133,14 +3138,14 @@ function pintarGaragem(){
           <div class="garage-c-titleline"><i class="garage-c-color" style="background:${v.cor}" aria-hidden="true"></i>
             <div class="garage-c-name">${esc(v.marca)} ${esc(v.modelo)}</div></div>
           <div class="garage-c-meta"><span>${esc(v.ano || 'ano não informado')}</span><span>·</span>
-            <span>${esc(v.cilTxt)}</span><span>·</span><span class="plate">${esc(v.placa||'sem placa')}</span></div>
+            <span>${esc(v.cilTxt)}</span>${v.placa ? `<span>·</span><span class="plate">${esc(v.placa)}</span>` : ''}</div>
           <div class="garage-c-reading">${esc(textoKm(v.km))}</div>
         </div>
         <div class="garage-c-status-right" role="img" aria-label="${estadoGaragem.texto}" title="${estadoGaragem.texto}">
           <span class="garage-c-status-icon ${estadoGaragem.classe}" aria-hidden="true">${estadoGaragem.icone}</span></div>
       </div>
-      ${FIPE_ATIVA && PLANO!=='free' ? `<div class="garage-c-summary"><span>Tabela FIPE</span>
-        <strong>${v.fipe && v.fipe.valor ? esc(v.fipe.valor) : 'Cotação ainda não consultada'}</strong></div>` : ''}
+      ${FIPE_ATIVA && PLANO!=='free' ? `<button type="button" class="garage-c-summary" onclick="event.stopPropagation();abrirFipeDaGaragem(${idx})"><span>Tabela FIPE</span>
+        <strong>${v.fipe && v.fipe.valor ? esc(v.fipe.valor) : 'Cotação ainda não consultada'}</strong></button>` : ''}
       <div class="vacts">
         <span class="vact" onclick="event.stopPropagation();pedirEditar(${idx})">${ICO_LAPIS}Editar</span>
         <span class="vact del" onclick="event.stopPropagation();excluirVeiculo(${idx})">${ICO_LIXO}Excluir</span>
@@ -3574,6 +3579,11 @@ function salvarEdicao(){
 }
 
 function abrirPainel(i){ ativo = i; go('painel'); }
+function abrirFipeDaGaragem(i){
+  if(!VEIC[i]) return;
+  ativo = i;
+  abrirFipe();
+}
 function pintarPainel(){
   conferirTeste();
   const v = VEIC[ativo]; if(!v) return go('garagem');
@@ -5415,7 +5425,7 @@ function renderMesesGasto(registros, tipo){
 function listaLancamentos(doAno){
   const manutencoes = doAno.filter(r=>tipoDoRegistro(r)==='manutencao');
   const alvo = veicSel !== null && VEIC[veicSel] ? ` · ${VEIC[veicSel].marca} ${VEIC[veicSel].modelo}` : '';
-  return `<div class="section"><div class="section-title">Lançamentos${alvo}</div>
+  return `<div class="section"><div class="section-title gastos-lancamentos-title">Lançamentos${alvo}</div>
     ${renderMesesGasto(manutencoes,'manutencao')}
   </div><div style="height:112px"></div>`;
 }
@@ -6936,11 +6946,11 @@ function pintarAvisos(){
 
   const total = grupos.reduce((s,g)=>s+g.itens.length, 0);
   let html = `<div class="section">
-    <div class="odo-hint" style="text-align:left;margin-bottom:12px">${total} ${total===1?'aviso':'avisos'} em ${grupos.length} ${grupos.length===1?'veículo':'veículos'}. Toque para abrir o painel.</div>`;
+    <div class="odo-hint" style="text-align:center;margin-bottom:12px">${total} ${total===1?'aviso':'avisos'}. Toque para abrir o painel.</div>`;
 
   grupos.forEach(g => {
     const v = VEIC[g.veic];
-    html += `<div class="section-title" style="display:flex;align-items:center;gap:8px;margin-top:4px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">
+    html += `<div class="section-title avisos-veiculo-titulo" style="display:flex;align-items:center;gap:8px;margin-top:4px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">
       <span style="width:9px;height:9px;border-radius:50%;background:${v?v.cor:'var(--dim)'};flex-shrink:0"></span>
       ${v ? `${v.marca} ${v.modelo}` : (g.veic==='plano' ? 'Seu plano' : 'veículo removido')}
       ${v && v.placa ? `<span class="mplaca">${v.placa}</span>` : ''}</div>
@@ -6950,7 +6960,6 @@ function pintarAvisos(){
         <div style="flex:1">
           <div class="tt">${a.titulo}</div>
           <div class="sb">${a.texto}</div>
-          <div class="qd">${a.tipo==='km'?'por quilometragem':a.tipo==='pendencia'?'falta informar':'por prazo'}</div>
         </div></div>`).join('')}
       </div>`;
   });
@@ -7020,7 +7029,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.95';
+const VERSAO_APP = '1.5.96';
 let ONBOARD = false;
 let carregado = false;
 

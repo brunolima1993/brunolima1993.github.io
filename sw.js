@@ -1,4 +1,4 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.95-layout-garagem-e-navegacao';
+const CACHE_APP = 'tmycar-pwa-v1.5.96-garagem-avisos-e-placa-opcional';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
