@@ -4885,6 +4885,7 @@ const ICONES = {
   'chevron-down': imgAsset('chevron-down'),
   'chevron-left': imgAsset('chevron-left'),
   'chevron-right': imgAsset('chevron-right'),
+  'account-data': "<svg viewBox=\"0 0 24 24\" class=\"ico-svg\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"7.5\" r=\"3.1\"/><path d=\"M3.3 19c.35-3.25 2.05-5.05 5.2-5.05 2.75 0 4.4 1.38 5.02 3.92\"/><path d=\"M16 6.5h4.7M16 10.7h4.7M16 14.9h4.7M16 19.1h4.7\"/></svg>",
   'crown': "<svg viewBox=\"0 0 24 24\" class=\"ico-svg\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 8l4 3 5-6 5 6 4-3-1.6 10H4.6z\"/><path d=\"M4.6 18h14.8\"/></svg>",
   'document-plus': imgAsset('document-plus'),
   'gauge': imgAsset('chart'),
@@ -4954,7 +4955,7 @@ function pintarConfig(){
   atualizarResumoPlano();
   $('cfPlanoEntryIcon').innerHTML = ico('crown');
   $('cfNotifEntryIcon').innerHTML = ico('bell');
-  $('cfContaEntryIcon').innerHTML = ico('shield');
+  $('cfContaEntryIcon').innerHTML = ico('account-data');
   $('cfContaResumo').textContent = CONTA.local
     ? 'Sem conta · dados somente neste aparelho'
     : (CONTA.email || 'Acesso, termos e exclusão da conta');
