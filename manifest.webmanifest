@@ -8,7 +8,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
+  "background_color": "#02294B",
   "theme_color": "#061A35",
   "categories": ["auto", "utilities"],
   "icons": [

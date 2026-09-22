@@ -1,4 +1,4 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.96-splash-alta-definicao';
+const CACHE_APP = 'tmycar-pwa-v1.5.97-splash-tela-cheia';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -13,7 +13,7 @@ const ARQUIVOS_APP = [
   new URL('./icons/icon-maskable-512.png', self.registration.scope).href,
   new URL('./icons/apple-touch-icon.png', self.registration.scope).href,
   new URL('./assets/splash.js', self.registration.scope).href,
-  new URL('./assets/splash-screen-hd.jpg', self.registration.scope).href,
+  new URL('./assets/splash-screen-fullscreen-v2.webp', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-check-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-auth-compat.js', self.registration.scope).href,

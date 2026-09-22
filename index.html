@@ -2,7 +2,7 @@
 <html lang="pt-BR"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="Acompanhe manutenções, quilometragem e gastos do seu carro com o TMy Car.">
-<meta name="theme-color" content="#061A35">
+<meta name="theme-color" content="#02294B">
 <meta name="application-name" content="TMy Car">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,11 +11,11 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-<link rel="preload" as="image" href="./assets/splash-screen-hd.jpg" fetchpriority="high">
+<link rel="preload" as="image" href="./assets/splash-screen-fullscreen-v2.webp" fetchpriority="high">
 <title>TMy Car — Manutenção na palma da mão</title>
-  <!-- O preto é pintado pelo navegador antes de qualquer outro recurso. A tela
-       azul estática entra logo depois, sem o quadro branco da abertura antiga. -->
-  <style id="abertura-critica">html,body{margin:0;min-height:100%;background:#000}</style>
+  <!-- A mesma cor da borda da arte é pintada antes de qualquer recurso. Assim,
+       a transição entre a splash nativa e a página não produz um quadro branco. -->
+  <style id="abertura-critica">html,body{margin:0;min-height:100%;background:#02294B}</style>
   <script>
 document.documentElement.classList.add('tmycar-splash');
   </script>
@@ -812,7 +812,7 @@ select option{background:#0B1A33;color:#E8EDF5}
 
 /* ---------- splash ---------- */
 .splash{position:absolute;inset:0;z-index:55;display:none;align-items:center;justify-content:center;
- overflow:hidden;background:#061a35}
+ overflow:hidden;background:#02294B}
 .tmycar-splash .splash,
 .splash.on{display:flex}
 .splash-image{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
@@ -2013,7 +2013,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   <!-- Declarado antes do restante da interface para a tela Começar jamais ser
        pintada por baixo durante a leitura inicial do documento. -->
   <div class="splash" id="splash" role="status" aria-label="Abrindo TMy Car">
-    <img class="splash-image" src="./assets/splash-screen-hd.jpg" alt="" aria-hidden="true" fetchpriority="high">
+    <img class="splash-image" src="./assets/splash-screen-fullscreen-v2.webp" alt="" aria-hidden="true" fetchpriority="high">
   </div>
   <script src="./assets/splash.js"></script>
   <noscript><style>.splash{display:none!important}</style></noscript>
@@ -7021,7 +7021,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.96';
+const VERSAO_APP = '1.5.97';
 let ONBOARD = false;
 let carregado = false;
 
