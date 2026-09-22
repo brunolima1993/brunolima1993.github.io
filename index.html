@@ -11,6 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="preload" as="image" href="./assets/splash-screen-hd.jpg" fetchpriority="high">
 <title>TMy Car — Manutenção na palma da mão</title>
   <!-- O preto é pintado pelo navegador antes de qualquer outro recurso. A tela
        azul estática entra logo depois, sem o quadro branco da abertura antiga. -->
@@ -617,10 +618,12 @@ select option{background:#0B1A33;color:#E8EDF5}
 .gsub.alerta{color:var(--amber)}
 .selw select{text-align:center;text-align-last:center;padding-left:18px}
 .selw select option{text-align:center}
-.attkm{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;
-  color:#20b7ff;font-family:inherit;font-size:9px;font-weight:800;letter-spacing:.07em;cursor:pointer;padding:2px 4px;
-  text-shadow:0 0 8px rgba(0,174,255,.68)}
-.attkm svg{width:19px;height:19px;filter:drop-shadow(0 0 5px rgba(0,174,255,.68))}
+.attkm{display:inline-flex;width:auto;min-height:24px;align-items:center;justify-content:center;
+  margin:0;padding:4px 9px;border:1px solid rgba(37,180,255,.82);border-radius:7px;
+  background:linear-gradient(145deg,rgba(0,151,255,.58),rgba(0,91,204,.48));
+  box-shadow:0 0 11px rgba(0,160,255,.42),inset 0 1px 0 rgba(255,255,255,.18);
+  color:#fff;font-family:'Inter',system-ui,sans-serif;font-size:8.5px;font-weight:850;
+  letter-spacing:.045em;white-space:nowrap;cursor:pointer}
 .attkm:active{opacity:.65}
 .fab svg{width:25px;height:25px}
 .toast{position:absolute;left:16px;right:16px;bottom:84px;z-index:60;background:#12233F;
@@ -809,15 +812,10 @@ select option{background:#0B1A33;color:#E8EDF5}
 
 /* ---------- splash ---------- */
 .splash{position:absolute;inset:0;z-index:55;display:none;align-items:center;justify-content:center;
- overflow:hidden;background:radial-gradient(circle at 50% 34%,#0A2446 0%,#061A35 58%,#020712 100%)}
+ overflow:hidden;background:#061a35}
 .tmycar-splash .splash,
 .splash.on{display:flex}
-.splash-logo{display:flex;align-items:baseline;justify-content:center;color:#E8EDF5;
-  font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:clamp(48px,14vw,78px);
-  font-weight:800;letter-spacing:-.055em;line-height:1;white-space:nowrap;
-  transform:translateY(-1vh);text-rendering:geometricPrecision}
-.splash-logo .my{color:#0088ff;text-shadow:0 0 10px rgba(0,136,255,.68),0 0 24px rgba(0,136,255,.32)}
-.splash-logo .car{margin-left:.14em}
+.splash-image{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .splash.saindo{opacity:0;transition:opacity .14s ease;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.splash.saindo{transition:none}}
 @keyframes sobe{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
@@ -2015,7 +2013,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   <!-- Declarado antes do restante da interface para a tela Começar jamais ser
        pintada por baixo durante a leitura inicial do documento. -->
   <div class="splash" id="splash" role="status" aria-label="Abrindo TMy Car">
-    <div class="splash-logo" aria-hidden="true"><span>T</span><span class="my">My</span><span class="car">Car</span></div>
+    <img class="splash-image" src="./assets/splash-screen-hd.jpg" alt="" aria-hidden="true" fetchpriority="high">
   </div>
   <script src="./assets/splash.js"></script>
   <noscript><style>.splash{display:none!important}</style></noscript>
@@ -2383,13 +2381,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
     <div class="screen" id="s-painel">
       <div class="topbar">
         <div class="topbar-left"><span class="back" onclick="go('garagem')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="title">Painel de Manutenção</span></div>
-        <button class="attkm" onclick="abrirOdo()" title="Atualizar quilometragem">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 11.5A8 8 0 0 0 6.3 6.3L4 8.5"/><path d="M4 4v4.5h4.5"/>
-            <path d="M4 12.5a8 8 0 0 0 13.7 5.2L20 15.5"/><path d="M20 20v-4.5h-4.5"/>
-          </svg>
-          <span>ATT KM</span>
-        </button>
+        <button class="attkm" onclick="abrirOdo()" title="Atualizar quilometragem">ATUALIZAR KM</button>
       </div>
       <div id="pBody"></div>
     </div>
