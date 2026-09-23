@@ -816,8 +816,13 @@ select option{background:#0B1A33;color:#E8EDF5}
 .tmycar-splash .splash,
 .splash.on{display:flex}
 .splash-image{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+.splash-loading{position:absolute;left:50%;top:69%;width:38px;height:38px;transform:translate(-50%,-50%);
+  border-radius:50%;border:3px solid rgba(214,239,255,.22);border-top-color:#00c8ff;
+  border-right-color:#087fff;filter:drop-shadow(0 0 8px rgba(0,183,255,.72));
+  animation:splash-girar .82s linear infinite}
+@keyframes splash-girar{to{transform:translate(-50%,-50%) rotate(360deg)}}
 .splash.saindo{opacity:0;transition:opacity .14s ease;pointer-events:none}
-@media(prefers-reduced-motion:reduce){.splash.saindo{transition:none}}
+@media(prefers-reduced-motion:reduce){.splash.saindo{transition:none}.splash-loading{animation-duration:1.6s}}
 @keyframes sobe{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 
 /* ---------- barra de início ---------- */
@@ -2014,6 +2019,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
        pintada por baixo durante a leitura inicial do documento. -->
   <div class="splash" id="splash" role="status" aria-label="Abrindo TMy Car">
     <img class="splash-image" src="./assets/splash-screen-fullscreen-v2.webp" alt="" aria-hidden="true" fetchpriority="high">
+    <span class="splash-loading" aria-hidden="true"></span>
   </div>
   <script src="./assets/splash.js"></script>
   <noscript><style>.splash{display:none!important}</style></noscript>

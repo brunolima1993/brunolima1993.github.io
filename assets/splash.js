@@ -1,4 +1,4 @@
-/* Tela estática e vetorial: cobre a abertura até o app decidir a rota correta. */
+/* Cobre a abertura até o app decidir a rota correta. O indicador visual é animado por CSS. */
 (() => {
   const splash = document.getElementById('splash');
   if (!splash) return;
