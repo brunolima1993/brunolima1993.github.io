@@ -1011,7 +1011,9 @@ textarea::placeholder{color:var(--dim)}
 .sheet-bg{position:absolute;inset:0;background:rgba(2,5,12,.72);z-index:40;display:none}
 .sheet-bg.on{display:block}
 .sheet{position:absolute;left:0;right:0;bottom:0;z-index:41;background:#0B182E;border-top:1px solid var(--line-strong);
-  border-radius:22px 22px 0 0;max-height:86%;overflow-y:auto;transform:translateY(101%);transition:transform .26s cubic-bezier(.32,.72,0,1)}
+  border-radius:22px 22px 0 0;max-height:86%;overflow-y:auto;overscroll-behavior:contain;
+  transform:translate3d(0,101%,0);transition:transform .22s cubic-bezier(.32,.72,0,1);
+  will-change:transform;contain:layout paint}
 .sheet.on{transform:translateY(0)}
 .sheet::-webkit-scrollbar{display:none}
 .grab{width:36px;height:4px;border-radius:9px;background:rgba(255,255,255,.22);margin:9px auto 2px}
@@ -1312,13 +1314,11 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 .sheet,.modal{
   background:linear-gradient(180deg,rgba(13,31,54,.98),rgba(4,12,24,.99));
   border-color:rgba(151,184,224,.18);
-  box-shadow:0 -20px 55px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.04);
-  backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
+  box-shadow:0 -16px 42px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04);
 }
 .sheet{border-radius:24px 24px 0 0}
 .modal{border-radius:22px}
-.sheet-bg,.modal-bg{background:rgba(0,4,10,.74);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.sheet-bg,.modal-bg{background:rgba(0,4,10,.82)}
 
 /* Estados */
 .alert,.msgbox,.chain-note,.recap-hi{border-radius:14px}
@@ -4484,7 +4484,11 @@ function abrirSheet(id){
           </div>
         </div>`).join('')}` : '';
   fecharFolhas();
-  $('shBg').classList.add('on'); $('sh').classList.add('on');
+  $('shBg').classList.add('on');
+  /* Deixa o navegador pintar o toque e o fundo antes de animar a folha.
+     Em Android isso evita a pausa causada por montar o formulário e iniciar
+     a transição no mesmo quadro. */
+  requestAnimationFrame(() => $('sh').classList.add('on'));
 }
 function alternarFiltroTroca(chk){
   const card = chk && chk.closest('.pfil');
@@ -7028,7 +7032,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.97';
+const VERSAO_APP = '1.5.98';
 let ONBOARD = false;
 let carregado = false;
 
