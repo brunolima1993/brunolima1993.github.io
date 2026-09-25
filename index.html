@@ -639,7 +639,7 @@ select option{background:#0B1A33;color:#E8EDF5}
 .pfil{padding:13px;border:1px solid var(--line);border-radius:13px;
   background:var(--surface-2);margin-bottom:9px}
 .pfil:last-child{margin-bottom:0}
-.pfil .chk{margin-bottom:0}
+.pfil .chk{margin:0;justify-content:center;text-align:center}
 .pfil-lab{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
   color:var(--dim);margin:11px 0 7px;text-align:center}
 .pfil-int{display:flex;align-items:center;gap:8px}
@@ -1939,6 +1939,11 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 #shCambio #shOleoCambio{text-align:center!important}
 #shBoxData input[type="date"]::-webkit-datetime-edit{display:block;text-align:center;width:100%}
 #shCambio .section-title{text-align:center!important}
+#shCambio .radio{align-items:center!important;justify-content:center!important;text-align:center!important}
+#shCambio .radio>div{text-align:center!important}
+#shFiltroOleo{width:100%;margin:2px 0 12px;justify-content:center;text-align:center;
+  background:var(--surface-2);font-family:inherit;font-size:14px;padding:12px 14px}
+#shFiltroOleo .box{width:22px;height:22px;border-radius:6px;font-size:14px}
 .gasto-category-screen .category-months>.section-title{text-align:center!important}
 #s-gastos .g-filter-title{justify-content:center!important;margin-left:0!important;margin-right:0!important;text-align:center!important}
 #s-gastos .selw select{text-align:center!important;text-align-last:center!important;padding-left:32px!important}
@@ -2868,7 +2873,8 @@ const CORES = [['#EDEFF3','Branco'],['#B0B4BA','Prata'],['#767D87','Cinza'],['#1
 /* itens padrão de manutenção de todo veículo */
 const modelo = (motor) => {
   const it = [
-    { id:'oleo', g:'Motor', nome:'Óleo do motor + filtro', crit:'10.000 km ou 6 meses', ikm:10000, imes:6 },
+    { id:'oleo', g:'Motor', nome:'Óleo do motor e filtro de óleo', crit:'10.000 km ou 6 meses', ikm:10000, imes:6,
+      filtroOleoTrocado:true },
     { id:'filtros', g:'Filtros', nome:'Filtros', crit:'cada um no seu ritmo', ikm:10000, imes:12,
       partes:[{id:'ar',nome:'Ar do motor',ikm:10000,imes:12},
               {id:'comb',nome:'Combustível',ikm:10000,imes:12},
@@ -4448,6 +4454,10 @@ function abrirSheet(id){
         <input id="shViscosidade" maxlength="30" placeholder="ex.: 5W-30, 10W-40" value="${esc(itAtual.oleoUsado||'')}">
         <p class="ajuda">Registre o óleo que foi realmente colocado nesta troca.${oleoRecomendado ? ` A recomendação do app é <b style="color:var(--ink)">${esc(oleoRecomendado)}</b>.` : ''}</p>
       </div>
+      <button type="button" id="shFiltroOleo" class="chk ${itAtual.filtroOleoTrocado!==false?'checked':''}"
+        aria-pressed="${itAtual.filtroOleoTrocado!==false?'true':'false'}" onclick="alternarFiltroOleo(this)">
+        <span class="box">${itAtual.filtroOleoTrocado!==false?'✓':''}</span><span>Filtro de óleo</span>
+      </button>
     </div>` : '';
 
   const fluidoFreio = itAtual.fluidoUsado || '';
@@ -4499,6 +4509,13 @@ function alternarFiltroTroca(chk){
   chk.querySelector('.box').textContent = ligado ? '✓' : '';
   card.classList.toggle('selected', ligado);
   card.querySelectorAll('input').forEach(input => input.disabled = !ligado);
+}
+function alternarFiltroOleo(botao){
+  if(!botao) return;
+  const ligado = !botao.classList.contains('checked');
+  botao.classList.toggle('checked', ligado);
+  botao.setAttribute('aria-pressed', ligado ? 'true' : 'false');
+  botao.querySelector('.box').textContent = ligado ? '✓' : '';
 }
 function escolherCambio(t){
   if(!itAtual) return;
@@ -4561,6 +4578,7 @@ function salvarTroca(){
     const viscosidade = ($('shViscosidade') ? $('shViscosidade').value : '').trim();
     if(viscosidade) itAtual.oleoUsado = viscosidade;
     else delete itAtual.oleoUsado;
+    itAtual.filtroOleoTrocado = !!($('shFiltroOleo') && $('shFiltroOleo').classList.contains('checked'));
   }
   if(itAtual.id === 'freio'){
     const fluido = ($('shFluidoFreio') ? $('shFluidoFreio').value : '').trim();
@@ -4844,6 +4862,11 @@ function migrarItens(){
       if(p.ikm  === undefined) p.ikm  = fl.ikm  != null ? fl.ikm  : 10000;
       if(p.imes === undefined) p.imes = fl.imes != null ? fl.imes : 12;
     });
+    const oleo = v.itens.find(i => i.id === 'oleo');
+    if(oleo){
+      oleo.nome = 'Óleo do motor e filtro de óleo';
+      if(oleo.filtroOleoTrocado === undefined) oleo.filtroOleoTrocado = true;
+    }
   });
 }
 
