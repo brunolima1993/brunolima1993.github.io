@@ -1433,6 +1433,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 <script src="vendor/firebase-12.18.0/firebase-app-check-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-auth-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-firestore-compat.js"></script>
+<script src="vendor/firebase-12.18.0/firebase-messaging-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-functions-compat.js"></script>
 
 <style id="gastos-ref-v2">
@@ -4624,6 +4625,76 @@ const notificacaoDisponivel = () => typeof Notification !== 'undefined';
 function estadoPermissaoNotificacao(){
   return notificacaoDisponivel() ? Notification.permission : 'unsupported';
 }
+function pushServidorConfigurado(){
+  return !!(FIREBASE_WEB_PUSH_VAPID_KEY && MESSAGING && FUNCTIONS &&
+    'serviceWorker' in navigator && estadoPermissaoNotificacao() === 'granted');
+}
+async function registrarPushDaConta(){
+  const u = AUTH && AUTH.currentUser;
+  if(!u || !UID || u.uid !== UID || !pushServidorConfigurado()) return false;
+  try{
+    const registro = await obterRegistroPwa();
+    if(!registro) return false;
+    const token = await MESSAGING.getToken({
+      vapidKey:FIREBASE_WEB_PUSH_VAPID_KEY,
+      serviceWorkerRegistration:registro
+    });
+    if(!token) return false;
+    const registrar = FUNCTIONS.httpsCallable('registrarDispositivoPush');
+    await registrar({
+      token,
+      idioma:navigator.language || 'pt-BR',
+      plataforma:(navigator.userAgent || 'web').slice(0,180)
+    });
+    TOKEN_PUSH_ATUAL = token;
+    return true;
+  }catch(e){
+    console.warn('O aparelho ainda não pôde ser registrado para push.', e);
+    return false;
+  }
+}
+async function removerPushDaConta(){
+  const u = AUTH && AUTH.currentUser;
+  if(!u || !FUNCTIONS || !MESSAGING || estadoPermissaoNotificacao() !== 'granted'){
+    TOKEN_PUSH_ATUAL = null;
+    return false;
+  }
+  let removidoServidor = false;
+  try{
+    const registro = await obterRegistroPwa();
+    const token = TOKEN_PUSH_ATUAL || (FIREBASE_WEB_PUSH_VAPID_KEY && registro
+      ? await MESSAGING.getToken({
+          vapidKey:FIREBASE_WEB_PUSH_VAPID_KEY,
+          serviceWorkerRegistration:registro
+        }) : null);
+    if(!token) return false;
+    const remover = FUNCTIONS.httpsCallable('removerDispositivoPush');
+    await remover({token});
+    removidoServidor = true;
+  }catch(e){
+    console.warn('Não foi possível remover o aparelho do push agora.', e);
+  }finally{
+    /* Revoga também a inscrição neste navegador. Assim, mesmo que a chamada
+       esteja sem rede, a conta anterior não continua recebendo neste aparelho. */
+    try{ await MESSAGING.deleteToken(); }catch(e){}
+    TOKEN_PUSH_ATUAL = null;
+  }
+  return removidoServidor;
+}
+async function mostrarPushEmPrimeiroPlano(payload){
+  if(!payload || !NOTIF.nGeral || estadoPermissaoNotificacao() !== 'granted') return;
+  const dados = payload.data || {};
+  const notificacao = payload.notification || {};
+  const registro = await obterRegistroPwa();
+  if(!registro) return;
+  await registro.showNotification(notificacao.title || 'TMy Car', {
+    body:notificacao.body || 'Abra o TMy Car para conferir.',
+    icon:'./icons/icon-192.png', badge:'./icons/icon-192.png',
+    tag:`tmycar-${dados.item || 'manutencao'}-${dados.vencimento || 'agora'}`,
+    renotify:false,
+    data:{url:dados.url || './?abrir=avisos'}
+  });
+}
 async function notificarNoCelular(aviso){
   if(!aviso || !NOTIF.nGeral || estadoPermissaoNotificacao() !== 'granted') return false;
   const opcoes = {
@@ -4652,10 +4723,13 @@ async function pedirPermissaoNotificacoes(){
     try{ permissao = await Notification.requestPermission(); }catch(e){ permissao = 'denied'; }
   }
   if(permissao === 'granted'){
+    const pushAtivo = await registrarPushDaConta();
     const pendente = AVISOS.find(a => !a.lido && a.tipo !== 'pendencia');
     if(pendente) notificarNoCelular(pendente);
     else notificarNoCelular({ k:'permissao', titulo:'Notificações ativadas', texto:'O TMy Car poderá avisar quando uma manutenção precisar de atenção.' });
-    toast('Notificações do celular ativadas.');
+    toast(pushAtivo || CONTA.local
+      ? 'Notificações do celular ativadas.'
+      : 'Avisos locais ativados. O envio com o app fechado será concluído na configuração do servidor.');
   }else{
     toast('Permissão não concedida. Os avisos continuam disponíveis dentro do app.');
   }
@@ -4685,7 +4759,9 @@ function sincronizarNotifUI(){
   const status = $('nPermissaoStatus');
   if(status){
     const p = estadoPermissaoNotificacao();
-    status.textContent = p === 'granted' ? 'Autorizado a enviar avisos para este celular.'
+    status.textContent = p === 'granted' && !CONTA.local && !FIREBASE_WEB_PUSH_VAPID_KEY
+      ? 'Avisos locais autorizados. Falta concluir a chave Web Push do Firebase.'
+      : p === 'granted' ? 'Autorizado a enviar avisos para este celular.'
       : p === 'denied' ? 'O celular bloqueou os avisos. Libere nas configurações do app ou do site.'
       : p === 'default' ? 'Ao ativar, o celular pedirá sua autorização.'
       : 'Os avisos continuam disponíveis dentro do aplicativo.';
@@ -4706,6 +4782,8 @@ async function togNotif(id){
   sincronizarNotifUI();
   varrerPrazos(); varrerPendencias(); persistir(); pintarSino();
   if(NOTIF.nGeral && estadoPermissaoNotificacao() === 'default') await pedirPermissaoNotificacoes();
+  else if(NOTIF.nGeral) registrarPushDaConta();
+  else removerPushDaConta();
 }
 /* veículos guardados continuam no banco, só saem de circulação */
 const ativos = () => VEIC.map((v,i)=>({v,i})).filter(x=>!x.v.inativo);
@@ -5613,6 +5691,9 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "357646169698",
   appId: "1:357646169698:web:936c7aa80641b6db26c33b"
 };
+/* Firebase Console > Configurações do projeto > Cloud Messaging >
+   Certificados Web Push. Cole aqui somente a chave PÚBLICA VAPID. */
+const FIREBASE_WEB_PUSH_VAPID_KEY = 'BOg-hxT1xvmhsNkhIXjEEVxxy93L7DiByeYjl83mNmn8yqyyBZlWuzxA93PEJDR2bBG9BXaIz2unYyCshab_6RI';
 /* Chave pública do reCAPTCHA Enterprise registrada no Firebase App Check.
    O App Check só é iniciado em HTTPS; arquivos locais e localhost continuam
    disponíveis para testes sem enviar uma atestação de produção inválida. */
@@ -5625,7 +5706,8 @@ const FIREBASE_CONFIG = {
 };
 */
 
-let AUTH = null, NUVEM = null, FUNCTIONS = null, UID = null, APP_CHECK = null;
+let AUTH = null, NUVEM = null, FUNCTIONS = null, MESSAGING = null, UID = null, APP_CHECK = null;
+let TOKEN_PUSH_ATUAL = null, REGISTRO_PWA_PROMESSA = null;
 let SINCRONIZACAO_UID = null, SINCRONIZACAO_CONTA = null;
 let EXCLUINDO_CONTA = false;
 /* Guarda o que a pessoa confirmou ao abrir a janela. O tipo da exclusão não
@@ -5691,6 +5773,9 @@ function sincronizarContaAutenticada(u){
     /* A assinatura atualiza logo depois, mas não segura a entrada na Garagem.
        Isso elimina uma segunda espera de rede após o retorno do Google. */
     puxarAssinatura().catch(() => false);
+    /* Se a permissão já foi concedida, renova o vínculo do aparelho a cada
+       entrada. Tokens antigos expiram no servidor após 120 dias sem uso. */
+    registrarPushDaConta().catch(() => false);
     return resultado;
   })();
   return SINCRONIZACAO_CONTA;
@@ -5927,6 +6012,15 @@ function iniciarFirebase(){
     iniciarAppCheck();
     AUTH  = firebase.auth();
     NUVEM = firebase.firestore();
+    try{
+      if(typeof firebase.messaging === 'function' && firebase.messaging.isSupported()){
+        MESSAGING = firebase.messaging();
+        MESSAGING.onMessage(payload => mostrarPushEmPrimeiroPlano(payload).catch(() => false));
+      }
+    }catch(erroMessaging){
+      MESSAGING = null;
+      console.warn('Push não está disponível neste navegador.', erroMessaging);
+    }
     /* No navegador o cache persistente vem desligado. Ativá-lo faz Safari,
        Chrome e Firefox guardarem também as gravações ainda não confirmadas e
        enviarem tudo quando a conexão voltar. */
@@ -6328,6 +6422,7 @@ async function sairDaConta(){
   const uidSaindo = UID;
   if(contextoDeUsuarioAtivo(uidSaindo)) await persistirLocal(false);
   if(contextoDeUsuarioAtivo(uidSaindo)) await salvarNaNuvemAgora();
+  if(contextoDeUsuarioAtivo(uidSaindo)) await removerPushDaConta();
   if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
   SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
   await ativarContextoAnonimo();
@@ -6496,6 +6591,7 @@ async function excluirConta(){
 
     if(!NUVEM){ const e = new Error('cloud-unavailable'); e.code = 'app/cloud-unavailable'; throw e; }
     await FILA_NUVEM.catch(() => false);
+    await removerPushDaConta();
     EXCLUINDO_CONTA = true;
     refConta = NUVEM.collection('usuarios').doc(u.uid);
     copiaSeguranca = JSON.parse(JSON.stringify(dadosUsuarioAtual()));
@@ -6718,6 +6814,7 @@ async function entrarSemContaNesteAparelho(){
   const uidSaindo = UID;
   if(contextoDeUsuarioAtivo(uidSaindo)) await persistirLocal(false);
   if(contextoDeUsuarioAtivo(uidSaindo)) await salvarNaNuvemAgora();
+  if(contextoDeUsuarioAtivo(uidSaindo)) await removerPushDaConta();
   if(AUTH && AUTH.currentUser){ try{ await AUTH.signOut(); }catch(e){} }
   SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
   await ativarContextoAnonimo();
@@ -7268,14 +7365,23 @@ async function carregar(){
 }
 
 /* ================= PWA ================= */
+function obterRegistroPwa(){
+  if(!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol))
+    return Promise.resolve(null);
+  if(!REGISTRO_PWA_PROMESSA){
+    REGISTRO_PWA_PROMESSA = navigator.serviceWorker.register('./sw.js', { scope:'./' })
+      .then(registro => { registro.update(); return registro; })
+      .catch(e => {
+        REGISTRO_PWA_PROMESSA = null;
+        console.warn('Service worker indisponível.', e);
+        return null;
+      });
+  }
+  return REGISTRO_PWA_PROMESSA;
+}
 function registrarPwa(){
   if(!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
-  window.addEventListener('load', async()=>{
-    try{
-      const registro = await navigator.serviceWorker.register('./sw.js', { scope:'./' });
-      registro.update();
-    }catch(e){ /* o app continua funcionando normalmente sem instalação */ }
-  });
+  window.addEventListener('load', ()=>obterRegistroPwa());
 }
 navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', evento => {
   if(evento.data && evento.data.tipo === 'tmycar:abrir-avisos' && ONBOARD) go('avisos');

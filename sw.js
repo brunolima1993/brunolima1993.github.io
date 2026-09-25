@@ -1,4 +1,21 @@
-const CACHE_APP = 'tmycar-pwa-v1.5.98-loading-circular';
+/* O mesmo service worker cuida do cache e do Firebase Messaging. Assim o push
+   acorda o app mesmo quando nenhuma janela está aberta. */
+importScripts(
+  './vendor/firebase-12.18.0/firebase-app-compat.js',
+  './vendor/firebase-12.18.0/firebase-messaging-compat.js'
+);
+
+firebase.initializeApp({
+  apiKey: 'AIzaSyBV8AaQ0YX0fl4soUT0brAcnTO37qTJxDw',
+  authDomain: 'auth.tmycar.com.br',
+  projectId: 'tmycar-222e5',
+  storageBucket: 'tmycar-222e5.firebasestorage.app',
+  messagingSenderId: '357646169698',
+  appId: '1:357646169698:web:936c7aa80641b6db26c33b'
+});
+firebase.messaging();
+
+const CACHE_APP = 'tmycar-pwa-v1.5.99-push-manutencao';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -18,6 +35,7 @@ const ARQUIVOS_APP = [
   new URL('./vendor/firebase-12.18.0/firebase-app-check-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-auth-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-firestore-compat.js', self.registration.scope).href,
+  new URL('./vendor/firebase-12.18.0/firebase-messaging-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-functions-compat.js', self.registration.scope).href
 ];
 
@@ -74,13 +92,18 @@ self.addEventListener('fetch', evento => {
 
 self.addEventListener('notificationclick', evento => {
   evento.notification.close();
-  const destino = new URL((evento.notification.data && evento.notification.data.url) || './?abrir=avisos', self.registration.scope).href;
+  const dados = evento.notification.data || {};
+  const mensagemFcm = dados.FCM_MSG || {};
+  const destinoInformado = dados.url ||
+    (mensagemFcm.fcmOptions && mensagemFcm.fcmOptions.link) ||
+    (mensagemFcm.data && mensagemFcm.data.url) || './?abrir=avisos';
+  const destino = new URL(destinoInformado, self.registration.scope).href;
   evento.waitUntil((async()=>{
     const janelas = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
     const aberta = janelas.find(cliente => new URL(cliente.url).origin === self.location.origin);
     if(aberta){
       await aberta.focus();
-      aberta.postMessage({ tipo:'tmycar:abrir-avisos' });
+      aberta.postMessage({ tipo:'tmycar:abrir-avisos', url:destino });
       return;
     }
     await self.clients.openWindow(destino);
