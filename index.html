@@ -2870,22 +2870,22 @@ const CORES = [['#EDEFF3','Branco'],['#B0B4BA','Prata'],['#767D87','Cinza'],['#1
 /* itens padrão de manutenção de todo veículo */
 const modelo = (motor) => {
   const it = [
-    { id:'oleo', g:'Motor', nome:'Óleo do motor', crit:'10.000 km ou 6 meses', ikm:10000, imes:6 },
+    { id:'oleo', g:'Motor', nome:'Óleo do Motor', crit:'10.000 km ou 6 meses', ikm:10000, imes:6 },
     { id:'filtros', g:'Filtros', nome:'Filtros', crit:'cada um no seu ritmo', ikm:10000, imes:12,
       partes:[{id:'oleo',nome:'Óleo',ikm:10000,imes:6},
-              {id:'ar',nome:'Ar do motor',ikm:10000,imes:12},
+              {id:'ar',nome:'Ar',ikm:10000,imes:12},
               {id:'comb',nome:'Combustível',ikm:10000,imes:12},
               {id:'cab',nome:'Cabine',ikm:10000,imes:12}] },
-    { id:'freio', g:'Fluidos', nome:'Fluido de freio', crit:'2 anos ou 20–40 mil km', ikm:30000, imes:24,
+    { id:'freio', g:'Fluidos', nome:'Fluido de Freio', crit:'2 anos ou 20–40 mil km', ikm:30000, imes:24,
       obs:'Absorve água do ar mesmo com o carro parado. Água ferve antes e o pedal vai ao fundo.' },
-    { id:'arref', g:'Fluidos', nome:'Líquido de arrefecimento', crit:'2 anos ou 40.000 km', ikm:40000, imes:24,
+    { id:'arref', g:'Fluidos', nome:'Líquido de Arrefecimento', crit:'2 anos ou 40.000 km', ikm:40000, imes:24,
       obs:'Perde o poder anticorrosivo com o tempo. Nunca completar com água de torneira.' },
-    { id:'cambio', g:'Câmbio', nome:'Óleo do câmbio', crit:'a cada 48 meses', ikm:null, imes:48,
+    { id:'cambio', g:'Câmbio', nome:'Óleo do Câmbio', crit:'a cada 48 meses', ikm:null, imes:48,
       tipo:null, oleo:'',
       obs:'O intervalo muda muito entre modelos e entre automático e manual. Confira sempre o manual do seu carro antes de trocar.' }
   ];
   if(motor && motor.d !== 'corrente'){
-    it.splice(1, 0, { id:'correia', g:'Motor', nome:'Correia dentada',
+    it.splice(1, 0, { id:'correia', g:'Motor', nome:'Correia Dentada',
       crit:`${fmt(motor.km||60000)} km`, ikm:motor.km||60000, imes:48, brando:true,
       obs:'Se arrebentar, atropela as válvulas. É a troca mais cara de esquecer.' });
   }
@@ -4398,11 +4398,11 @@ let PARTE_FILTRO_ABERTA = null;
 function nomeDoFiltro(parte){
   const id = typeof parte === 'string' ? parte : ((parte||{}).id || '');
   return ({
-    oleo:'Filtro de óleo',
-    ar:'Filtro de ar',
-    comb:'Filtro de combustível',
-    cab:'Filtro de cabine'
-  })[id] || `Filtro de ${String((parte||{}).nome || 'manutenção').toLowerCase()}`;
+    oleo:'Filtro de Óleo',
+    ar:'Filtro de Ar',
+    comb:'Filtro de Combustível',
+    cab:'Filtro de Cabine'
+  })[id] || `Filtro de ${String((parte||{}).nome || 'manutenção')}`;
 }
 /* mostra a unidade ao lado do número, com singular quando é 1 */
 function unidade(el, alvo, um, muitos){
@@ -4852,18 +4852,20 @@ function migrarItens(){
       if(!v.itens.some(i => i.id === novo.id)) v.itens.push(JSON.parse(JSON.stringify(novo)));
     });
     const oleo = v.itens.find(i => i.id === 'oleo');
-    if(oleo){
-      oleo.nome = 'Óleo do motor';
-    }
+    const nomes = {
+      oleo:'Óleo do Motor', correia:'Correia Dentada', freio:'Fluido de Freio',
+      arref:'Líquido de Arrefecimento', cambio:'Óleo do Câmbio'
+    };
+    v.itens.forEach(i => { if(nomes[i.id]) i.nome = nomes[i.id]; });
     const fl = v.itens.find(i => i.id === 'filtros');
     if(fl){
       fl.partes = Array.isArray(fl.partes) ? fl.partes : [];
       let filtroOleo = fl.partes.find(p => p.id === 'oleo');
       if(!filtroOleo){
         filtroOleo = { id:'oleo', nome:'Óleo', ikm:10000, imes:6 };
-        /* Até esta versão, óleo e filtro formavam um único registro. O novo
-           filtro começa nesse mesmo marco, sem apagar nem inventar outra troca. */
-        if(oleo && oleo.filtroOleoTrocado !== false){
+        /* O cadastro anterior tratava óleo e filtro como uma única troca.
+           O novo filtro começa no mesmo marco para preservar esse histórico. */
+        if(oleo){
           if(oleo.ultKm != null) filtroOleo.ultKm = oleo.ultKm;
           if(oleo.ultData) filtroOleo.ultData = oleo.ultData;
         }
@@ -4871,11 +4873,13 @@ function migrarItens(){
       }
       fl.partes.forEach(p => {
         if(p.id === 'oleo') p.nome = 'Óleo';
+        else if(p.id === 'ar') p.nome = 'Ar';
+        else if(p.id === 'comb') p.nome = 'Combustível';
+        else if(p.id === 'cab') p.nome = 'Cabine';
         if(p.ikm === undefined) p.ikm = p.id === 'oleo' ? 10000 : (fl.ikm != null ? fl.ikm : 10000);
         if(p.imes === undefined) p.imes = p.id === 'oleo' ? 6 : (fl.imes != null ? fl.imes : 12);
       });
     }
-    if(oleo) delete oleo.filtroOleoTrocado;
   });
 }
 
