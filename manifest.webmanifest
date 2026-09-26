@@ -7,7 +7,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#02294B",
   "theme_color": "#061A35",
   "categories": ["auto", "utilities"],

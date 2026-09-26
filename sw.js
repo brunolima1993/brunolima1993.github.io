@@ -15,7 +15,7 @@ firebase.initializeApp({
 });
 firebase.messaging();
 
-const CACHE_APP = 'tmycar-pwa-v1.5.99-push-manutencao';
+const CACHE_APP = 'tmycar-pwa-v1.5.100-adaptive-android';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [

@@ -1906,6 +1906,16 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   .nav{min-height:72px;padding:6px 8px max(9px,env(safe-area-inset-bottom))!important}
   .toast{bottom:calc(72px + env(safe-area-inset-bottom))}
 }
+/* Em tablets, dobráveis abertos e janelas amplas, a TWA continua ocupando a
+   tela inteira, mas a área útil fica centralizada para os cartões e formulários
+   não se esticarem. A regra começa em 600 px e não altera celulares. */
+@media (display-mode:standalone) and (min-width:600px){
+  html,body{background:#02050c}
+  body{display:flex;align-items:center}
+  .device{width:min(100vw,600px);margin:0 auto;
+    border-left:1px solid rgba(145,175,220,.12);
+    border-right:1px solid rgba(145,175,220,.12)}
+}
 #nav .nitem{color:#d5e5f8!important}
 #nav .nitem>span:not(.cad){font-size:11px!important;font-weight:750!important;line-height:1.2!important;opacity:1!important;text-shadow:0 1px 5px rgba(0,0,0,.72)}
 #nav .nitem.active{color:#2ab9ff!important}
