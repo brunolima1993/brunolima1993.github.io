@@ -1941,9 +1941,6 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 #shCambio .section-title{text-align:center!important}
 #shCambio .radio{align-items:center!important;justify-content:center!important;text-align:center!important}
 #shCambio .radio>div{text-align:center!important}
-#shFiltroOleo{width:100%;margin:2px 0 12px;justify-content:center;text-align:center;
-  background:var(--surface-2);font-family:inherit;font-size:14px;padding:12px 14px}
-#shFiltroOleo .box{width:22px;height:22px;border-radius:6px;font-size:14px}
 .gasto-category-screen .category-months>.section-title{text-align:center!important}
 #s-gastos .g-filter-title{justify-content:center!important;margin-left:0!important;margin-right:0!important;text-align:center!important}
 #s-gastos .selw select{text-align:center!important;text-align-last:center!important;padding-left:32px!important}
@@ -2873,10 +2870,10 @@ const CORES = [['#EDEFF3','Branco'],['#B0B4BA','Prata'],['#767D87','Cinza'],['#1
 /* itens padrão de manutenção de todo veículo */
 const modelo = (motor) => {
   const it = [
-    { id:'oleo', g:'Motor', nome:'Óleo do motor e filtro de óleo', crit:'10.000 km ou 6 meses', ikm:10000, imes:6,
-      filtroOleoTrocado:true },
+    { id:'oleo', g:'Motor', nome:'Óleo do motor', crit:'10.000 km ou 6 meses', ikm:10000, imes:6 },
     { id:'filtros', g:'Filtros', nome:'Filtros', crit:'cada um no seu ritmo', ikm:10000, imes:12,
-      partes:[{id:'ar',nome:'Ar do motor',ikm:10000,imes:12},
+      partes:[{id:'oleo',nome:'Óleo',ikm:10000,imes:6},
+              {id:'ar',nome:'Ar do motor',ikm:10000,imes:12},
               {id:'comb',nome:'Combustível',ikm:10000,imes:12},
               {id:'cab',nome:'Cabine',ikm:10000,imes:12}] },
     { id:'freio', g:'Fluidos', nome:'Fluido de freio', crit:'2 anos ou 20–40 mil km', ikm:30000, imes:24,
@@ -3630,7 +3627,7 @@ function pintarPainel(){
             ${cs.map(({p,c})=>{
                const cor = corDe(c.cl);
                const prox = resumoProxima(c);
-               const nome = p.id === 'ar' ? 'Filtro de ar' : p.id === 'comb' ? 'Filtro de combustível' : 'Filtro de cabine';
+               const nome = nomeDoFiltro(p);
                return `<div class="fitem">
                  <div class="fitem-head">
                    <span class="fmk" style="background:${cor}">${c.vazio?'?':c.cl==='ok'?'✓':'!'}</span>
@@ -4398,6 +4395,15 @@ function pintarFipe(){
 /* ================= FOLHAS ================= */
 let itAtual = null;
 let PARTE_FILTRO_ABERTA = null;
+function nomeDoFiltro(parte){
+  const id = typeof parte === 'string' ? parte : ((parte||{}).id || '');
+  return ({
+    oleo:'Filtro de óleo',
+    ar:'Filtro de ar',
+    comb:'Filtro de combustível',
+    cab:'Filtro de cabine'
+  })[id] || `Filtro de ${String((parte||{}).nome || 'manutenção').toLowerCase()}`;
+}
 /* mostra a unidade ao lado do número, com singular quando é 1 */
 function unidade(el, alvo, um, muitos){
   const n = parseInt(String(el.value).replace(/\D/g,'') || '0', 10);
@@ -4416,7 +4422,7 @@ function abrirSheet(id){
   itAtual = (v.itens||[]).find(i=>i.id===id);
   if(!itAtual) return;
   const parteUnica = itAtual.partes && parteId ? itAtual.partes.find(p=>p.id===parteId) : null;
-  const nomeParte = parteUnica ? (parteUnica.id === 'ar' ? 'Filtro de ar' : parteUnica.id === 'comb' ? 'Filtro de combustível' : 'Filtro de cabine') : '';
+  const nomeParte = parteUnica ? nomeDoFiltro(parteUnica) : '';
   $('shTitle').textContent = parteUnica ? `Registrar troca · ${nomeParte}` : (itAtual.partes ? 'Registrar troca de filtros' : itAtual.nome);
   $('shKm').value = kmInformado(v.km) ? fmt(v.km) : ''; $('shData').value = iso(HOJE);
   $('shIkm').value = itAtual.ikm?fmt(itAtual.ikm):''; $('shImes').value = itAtual.imes||'';
@@ -4454,10 +4460,6 @@ function abrirSheet(id){
         <input id="shViscosidade" maxlength="30" placeholder="ex.: 5W-30, 10W-40" value="${esc(itAtual.oleoUsado||'')}">
         <p class="ajuda">Registre o óleo que foi realmente colocado nesta troca.${oleoRecomendado ? ` A recomendação do app é <b style="color:var(--ink)">${esc(oleoRecomendado)}</b>.` : ''}</p>
       </div>
-      <button type="button" id="shFiltroOleo" class="chk ${itAtual.filtroOleoTrocado!==false?'checked':''}"
-        aria-pressed="${itAtual.filtroOleoTrocado!==false?'true':'false'}" onclick="alternarFiltroOleo(this)">
-        <span class="box">${itAtual.filtroOleoTrocado!==false?'✓':''}</span><span>Filtro de óleo</span>
-      </button>
     </div>` : '';
 
   const fluidoFreio = itAtual.fluidoUsado || '';
@@ -4484,7 +4486,7 @@ function abrirSheet(id){
        ${partesNaFolha.map(p => `
         <div class="pfil ${parteUnica?'selected':''}" data-p="${p.id}">
           <div class="chk ${parteUnica?'checked':''}" onclick="alternarFiltroTroca(this)">
-            <span class="box">${parteUnica?'✓':''}</span>${nomeParte || p.nome}</div>
+            <span class="box">${parteUnica?'✓':''}</span>${nomeParte || nomeDoFiltro(p)}</div>
           <div class="pfil-lab">Trocar a cada</div>
           <div class="pfil-int">
             <span class="sufixo"><input class="mono" id="fi_${p.id}" inputmode="numeric" placeholder="0"
@@ -4509,13 +4511,6 @@ function alternarFiltroTroca(chk){
   chk.querySelector('.box').textContent = ligado ? '✓' : '';
   card.classList.toggle('selected', ligado);
   card.querySelectorAll('input').forEach(input => input.disabled = !ligado);
-}
-function alternarFiltroOleo(botao){
-  if(!botao) return;
-  const ligado = !botao.classList.contains('checked');
-  botao.classList.toggle('checked', ligado);
-  botao.setAttribute('aria-pressed', ligado ? 'true' : 'false');
-  botao.querySelector('.box').textContent = ligado ? '✓' : '';
 }
 function escolherCambio(t){
   if(!itAtual) return;
@@ -4578,7 +4573,6 @@ function salvarTroca(){
     const viscosidade = ($('shViscosidade') ? $('shViscosidade').value : '').trim();
     if(viscosidade) itAtual.oleoUsado = viscosidade;
     else delete itAtual.oleoUsado;
-    itAtual.filtroOleoTrocado = !!($('shFiltroOleo') && $('shFiltroOleo').classList.contains('checked'));
   }
   if(itAtual.id === 'freio'){
     const fluido = ($('shFluidoFreio') ? $('shFluidoFreio').value : '').trim();
@@ -4857,16 +4851,31 @@ function migrarItens(){
     base.forEach(novo => {
       if(!v.itens.some(i => i.id === novo.id)) v.itens.push(JSON.parse(JSON.stringify(novo)));
     });
-    const fl = v.itens.find(i => i.id === 'filtros');
-    if(fl && fl.partes) fl.partes.forEach(p => {
-      if(p.ikm  === undefined) p.ikm  = fl.ikm  != null ? fl.ikm  : 10000;
-      if(p.imes === undefined) p.imes = fl.imes != null ? fl.imes : 12;
-    });
     const oleo = v.itens.find(i => i.id === 'oleo');
     if(oleo){
-      oleo.nome = 'Óleo do motor e filtro de óleo';
-      if(oleo.filtroOleoTrocado === undefined) oleo.filtroOleoTrocado = true;
+      oleo.nome = 'Óleo do motor';
     }
+    const fl = v.itens.find(i => i.id === 'filtros');
+    if(fl){
+      fl.partes = Array.isArray(fl.partes) ? fl.partes : [];
+      let filtroOleo = fl.partes.find(p => p.id === 'oleo');
+      if(!filtroOleo){
+        filtroOleo = { id:'oleo', nome:'Óleo', ikm:10000, imes:6 };
+        /* Até esta versão, óleo e filtro formavam um único registro. O novo
+           filtro começa nesse mesmo marco, sem apagar nem inventar outra troca. */
+        if(oleo && oleo.filtroOleoTrocado !== false){
+          if(oleo.ultKm != null) filtroOleo.ultKm = oleo.ultKm;
+          if(oleo.ultData) filtroOleo.ultData = oleo.ultData;
+        }
+        fl.partes.unshift(filtroOleo);
+      }
+      fl.partes.forEach(p => {
+        if(p.id === 'oleo') p.nome = 'Óleo';
+        if(p.ikm === undefined) p.ikm = p.id === 'oleo' ? 10000 : (fl.ikm != null ? fl.ikm : 10000);
+        if(p.imes === undefined) p.imes = p.id === 'oleo' ? 6 : (fl.imes != null ? fl.imes : 12);
+      });
+    }
+    if(oleo) delete oleo.filtroOleoTrocado;
   });
 }
 
