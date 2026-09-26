@@ -1913,6 +1913,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 .garage-alert-close{position:absolute;right:8px;top:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;
   border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(2,7,15,.34);color:#fff;font:700 20px/1 sans-serif;cursor:pointer}
 .garage-alert-close:active{transform:scale(.94)}
+.garage-plan-limit{position:relative;padding-right:52px!important}
 #shPartes .pfil:not(.selected) .pfil-int{opacity:.42}
 #shPartes .pfil input:disabled{cursor:not-allowed}
 #shBoxKm .flabel{text-align:center!important}
@@ -3072,6 +3073,15 @@ const USUARIO = { nome:'Rafael' };
 /* O aviso pode ser fechado durante esta abertura. Ele não vai para o storage:
    ao encerrar e abrir o app de novo, volta a lembrar a pessoa. */
 let ALERTA_VENCIDOS_FECHADO = false;
+/* O lembrete comercial pode ser dispensado nesta abertura do app. Ele só
+   existe durante os 15 dias seguintes ao fim do teste grátis. */
+let AVISO_LIMITE_PLANO_FECHADO = false;
+const JANELA_AVISO_LIMITE_PLANO = 15 * 24 * 60 * 60 * 1000;
+function mostrarAvisoLimitePlano(){
+  const fim = Number(TRIAL && TRIAL.fim);
+  return !AVISO_LIMITE_PLANO_FECHADO && TRIAL.usado === true &&
+    Number.isFinite(fim) && Date.now() >= fim && Date.now() < fim + JANELA_AVISO_LIMITE_PLANO;
+}
 function saudacao(agora = new Date()){
   const minutos = agora.getHours() * 60 + agora.getMinutes();
   if(minutos >= 18 * 60 || minutos <= 3 * 60) return 'Boa noite';
@@ -3159,7 +3169,8 @@ function pintarGaragem(){
     h += `<button class="cta outline" style="margin-top:12px" onclick="abrirCadastro()">+ Adicionar veículo</button>`;
   } else if(PLANO==='free'){
     const testeDisponivel = !TRIAL.usado;
-    h += `<div class="card" style="margin-top:12px;border-color:rgba(58,159,240,.35);background:rgba(58,159,240,.08)">
+    if(testeDisponivel || mostrarAvisoLimitePlano()) h += `<div class="card ${testeDisponivel?'':'garage-plan-limit'}" style="margin-top:12px;border-color:rgba(58,159,240,.35);background:rgba(58,159,240,.08)">
+      ${testeDisponivel ? '' : '<button class="garage-alert-close" type="button" aria-label="Fechar este aviso" onclick="event.stopPropagation();fecharAvisoLimitePlano()">×</button>'}
       <div style="font-size:14px;font-weight:700;margin-bottom:4px">${testeDisponivel ? 'Teste o Premium por 14 dias' : 'Chegou ao limite do plano grátis'}</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5">${testeDisponivel
         ? 'Libere agora até 3 veículos, cotação FIPE e uma experiência sem anúncios. Ao fim dos 14 dias, sua conta volta ao plano grátis e você decide se quer assinar.'
@@ -3175,6 +3186,10 @@ function pintarGaragem(){
 }
 function fecharAlertaVencidos(){
   ALERTA_VENCIDOS_FECHADO = true;
+  pintarGaragem();
+}
+function fecharAvisoLimitePlano(){
+  AVISO_LIMITE_PLANO_FECHADO = true;
   pintarGaragem();
 }
 
