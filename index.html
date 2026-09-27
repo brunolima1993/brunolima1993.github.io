@@ -2770,12 +2770,12 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="radios" id="ofPlanos">
         <div class="radio sel" id="plAnual" onclick="escolherPreco('anual')">
           <span class="rb"></span>
-          <div style="flex:1"><b>Anual · R$ 29,99<span class="tagcat" style="margin-left:8px">economize 37%</span></b>
-          <small>Sai por R$ 2,50 por mês, cobrado uma vez ao ano.</small></div>
+          <div style="flex:1"><b>Anual · R$ 39,99<span class="tagcat" style="margin-left:8px">economize 33%</span></b>
+          <small>Sai por R$ 3,33 por mês, cobrado uma vez ao ano.</small></div>
         </div>
         <div class="radio" id="plMensal" onclick="escolherPreco('mensal')">
           <span class="rb"></span>
-          <div style="flex:1"><b>Mensal · R$ 3,99</b>
+          <div style="flex:1"><b>Mensal · R$ 4,99</b>
           <small>Cobrado todo mês, cancela quando quiser.</small></div>
         </div>
       </div>
@@ -4920,10 +4920,10 @@ function corrigirAtivo(){
 /* o cliente troca de plano quando quiser, direto na conta */
 const PLANOS = [
   { id:'free',   nome:'Plano grátis',   preco:'R$ 0',     nota:'1 veículo · com anúncios' },
-  { id:'mensal', nome:'Premium mensal', preco:'R$ 3,99',  nota:'3 veículos · Tabela FIPE · sem anúncios',
+  { id:'mensal', nome:'Premium mensal', preco:'R$ 4,99',  nota:'3 veículos · Tabela FIPE · sem anúncios',
     selo:'Mais escolhido' },
-  { id:'anual',  nome:'Premium anual',  preco:'R$ 29,99', nota:'Tudo do mensal por R$ 2,50/mês',
-    eco:'Economize 37%' }
+  { id:'anual',  nome:'Premium anual',  preco:'R$ 39,99', nota:'Tudo do mensal por R$ 3,33/mês',
+    eco:'Economize 33%' }
 ];
 const planoAtual = () => PLANO === 'free' ? 'free' : CICLO;
 const emTeste = () => PLANO === 'premium' && CICLO === 'teste';
