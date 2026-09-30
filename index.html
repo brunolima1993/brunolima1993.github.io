@@ -2770,12 +2770,12 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       <div class="radios" id="ofPlanos">
         <div class="radio sel" id="plAnual" onclick="escolherPreco('anual')">
           <span class="rb"></span>
-          <div style="flex:1"><b>Anual · R$ 39,99<span class="tagcat" style="margin-left:8px">economize 33%</span></b>
-          <small>Sai por R$ 3,33 por mês, cobrado uma vez ao ano.</small></div>
+          <div style="flex:1"><b>Anual · <span id="ofPrecoAnual">R$ 39,99</span><span class="tagcat" id="ofEconomiaAnual" style="margin-left:8px">economize 33%</span></b>
+          <small>Sai por <span id="ofEquivAnual">R$ 3,33</span> por mês, cobrado uma vez ao ano.</small></div>
         </div>
         <div class="radio" id="plMensal" onclick="escolherPreco('mensal')">
           <span class="rb"></span>
-          <div style="flex:1"><b>Mensal · R$ 4,99</b>
+          <div style="flex:1"><b>Mensal · <span id="ofPrecoMensal">R$ 4,99</span></b>
           <small>Cobrado todo mês, cancela quando quiser.</small></div>
         </div>
       </div>
@@ -4925,6 +4925,15 @@ const PLANOS = [
   { id:'anual',  nome:'Premium anual',  preco:'R$ 39,99', nota:'Tudo do mensal por R$ 3,33/mês',
     eco:'Economize 33%' }
 ];
+const METODO_GOOGLE_PLAY = 'https://play.google.com/billing';
+const PRODUTOS_GOOGLE_PLAY = Object.freeze({
+  mensal:'tmycar_premium',
+  anual:'tmycar_premium_anual'
+});
+let SERVICO_GOOGLE_PLAY = null;
+let DETALHES_GOOGLE_PLAY = {};
+let RESTAURACAO_PLAY_UID = null;
+let ATIVANDO_ASSINATURA = false;
 const planoAtual = () => PLANO === 'free' ? 'free' : CICLO;
 const emTeste = () => PLANO === 'premium' && CICLO === 'teste';
 const rotuloCicloPlano = () => PLANO === 'free' ? 'Free' : (emTeste() ? 'Teste' : (CICLO === 'anual' ? 'Anual' : 'Mensal'));
@@ -5006,7 +5015,11 @@ function agendarMudanca(id){
 }
 
 function cancelarAgendamento(){
-  toast('A alteração da assinatura será gerenciada pela Google Play.');
+  abrirAssinaturasGooglePlay();
+}
+
+function abrirAssinaturasGooglePlay(){
+  window.open('https://play.google.com/store/account/subscriptions', '_blank', 'noopener');
 }
 
 function escolherPlano(id){
@@ -5019,10 +5032,11 @@ function escolherPlano(id){
     return;
   }
   if(id === 'free'){
-    toast('O cancelamento será feito pela Google Play quando as assinaturas forem publicadas.');
+    abrirAssinaturasGooglePlay();
     return;
   }
-  toast('A assinatura paga será liberada junto com a publicação na Google Play.');
+  precoEscolhido = id;
+  abrirOferta('premium');
 }
 
 /* ícones circulares reaproveitáveis, no acabamento da referência */
@@ -5192,6 +5206,72 @@ function escolherPreco(p){
   $('plAnual').classList.toggle('sel', p==='anual');
   $('plMensal').classList.toggle('sel', p==='mensal');
 }
+function idDetalheGooglePlay(item){
+  return String(item && (item.itemId || item.id) || '');
+}
+function precoDetalheGooglePlay(item){
+  const preco = item && item.price ? item.price : item;
+  const value = String(preco && preco.value != null ? preco.value : '');
+  const currency = String(preco && (preco.currency || preco.currencyCode) || '');
+  const numero = Number(value);
+  return value && currency && Number.isFinite(numero) ? {value, currency, numero} : null;
+}
+function formatarPrecoGooglePlay(preco){
+  if(!preco) return '';
+  return new Intl.NumberFormat('pt-BR', {
+    style:'currency', currency:preco.currency
+  }).format(preco.numero);
+}
+async function obterServicoGooglePlay(){
+  if(SERVICO_GOOGLE_PLAY) return SERVICO_GOOGLE_PLAY;
+  if(typeof window.getDigitalGoodsService !== 'function') return null;
+  try{
+    SERVICO_GOOGLE_PLAY = await window.getDigitalGoodsService(METODO_GOOGLE_PLAY);
+    return SERVICO_GOOGLE_PLAY || null;
+  }catch(e){
+    console.warn('Google Play Billing não está disponível neste ambiente.', e);
+    return null;
+  }
+}
+async function atualizarPrecosGooglePlay(){
+  const servico = await obterServicoGooglePlay();
+  if(!servico) return false;
+  const produtos = Object.values(PRODUTOS_GOOGLE_PLAY);
+  const detalhes = await servico.getDetails(produtos);
+  if(!Array.isArray(detalhes) || !detalhes.length) return false;
+  DETALHES_GOOGLE_PLAY = {};
+  detalhes.forEach(item => {
+    const id = idDetalheGooglePlay(item);
+    if(produtos.includes(id)) DETALHES_GOOGLE_PLAY[id] = item;
+  });
+
+  const mensal = precoDetalheGooglePlay(DETALHES_GOOGLE_PLAY[PRODUTOS_GOOGLE_PLAY.mensal]);
+  const anual = precoDetalheGooglePlay(DETALHES_GOOGLE_PLAY[PRODUTOS_GOOGLE_PLAY.anual]);
+  if(mensal){
+    const texto = formatarPrecoGooglePlay(mensal);
+    $('ofPrecoMensal').textContent = texto;
+    const plano = PLANOS.find(p => p.id === 'mensal');
+    if(plano) plano.preco = texto;
+  }
+  if(anual){
+    const texto = formatarPrecoGooglePlay(anual);
+    $('ofPrecoAnual').textContent = texto;
+    const plano = PLANOS.find(p => p.id === 'anual');
+    if(plano) plano.preco = texto;
+    const equivalente = {...anual, numero:anual.numero / 12};
+    const textoEquivalente = formatarPrecoGooglePlay(equivalente);
+    $('ofEquivAnual').textContent = textoEquivalente;
+    if(plano) plano.nota = `Tudo do mensal por ${textoEquivalente}/mês`;
+  }
+  if(mensal && anual && mensal.currency === anual.currency && mensal.numero > 0){
+    const economia = Math.max(0, Math.round((1 - anual.numero / (mensal.numero * 12)) * 100));
+    $('ofEconomiaAnual').textContent = `economize ${economia}%`;
+    const plano = PLANOS.find(p => p.id === 'anual');
+    if(plano) plano.eco = `Economize ${economia}%`;
+  }
+  if($('s-planos').classList.contains('active')) pintarPlanos();
+  return true;
+}
 function abrirOferta(origem){
   ofOrigem = origem || 'gastos';
   const atual = document.querySelector('.screen.active');
@@ -5219,13 +5299,18 @@ function abrirOferta(origem){
   escolherPreco(precoEscolhido);   // deixa o visual sempre igual ao estado
   fecharFolhas();
   $('ofBg').classList.add('on'); $('of').classList.add('on');
+  if(!testeDisponivel) atualizarPrecosGooglePlay().catch(e =>
+    console.warn('Não foi possível consultar os preços da Google Play.', e));
 }
 function fecharOferta(){ $('ofBg').classList.remove('on'); $('of').classList.remove('on'); }
 let ATIVANDO_TESTE = false;
-async function chamarAtivacaoTeste(){
+async function chamarFuncaoProtegida(nome, dados={}){
+  const permitidas = ['ativarTesteGratis', 'validarAssinaturaGooglePlay'];
+  if(!permitidas.includes(nome)) throw new Error('Função não permitida.');
   if(FUNCTIONS){
-    const ativar = FUNCTIONS.httpsCallable('ativarTesteGratis');
-    return ativar({});
+    const chamar = FUNCTIONS.httpsCallable(nome);
+    const retorno = await chamar(dados);
+    return retorno && retorno.data !== undefined ? retorno.data : retorno;
   }
 
   /* Caminho alternativo para navegadores que carregam Auth e App Check, mas
@@ -5242,7 +5327,7 @@ async function chamarAtivacaoTeste(){
     APP_CHECK.getToken(false)
   ]);
   const resposta = await fetch(
-    'https://southamerica-east1-tmycar-222e5.cloudfunctions.net/ativarTesteGratis',
+    `https://southamerica-east1-tmycar-222e5.cloudfunctions.net/${nome}`,
     {
       method:'POST',
       headers:{
@@ -5250,7 +5335,7 @@ async function chamarAtivacaoTeste(){
         'Authorization':'Bearer ' + tokenConta,
         'X-Firebase-AppCheck':tokenApp.token
       },
-      body:JSON.stringify({ data:{} })
+      body:JSON.stringify({ data:dados })
     }
   );
   let retorno = {};
@@ -5263,6 +5348,9 @@ async function chamarAtivacaoTeste(){
     throw falha;
   }
   return retorno.result || retorno.data || retorno;
+}
+async function chamarAtivacaoTeste(){
+  return chamarFuncaoProtegida('ativarTesteGratis', {});
 }
 async function iniciarTesteGratis(){
   /* defesa para um botão antigo ainda visível enquanto o estado era atualizado */
@@ -5305,6 +5393,69 @@ async function iniciarTesteGratis(){
     if(bt){ bt.disabled = false; bt.textContent = TRIAL.usado ? 'Assinar Premium' : 'Ativar 14 dias grátis'; }
   }
 }
+function produtoDaCompraGooglePlay(compra){
+  return String(compra && (compra.itemId || compra.id || compra.productId) || '');
+}
+function tokenDaCompraGooglePlay(compra){
+  return String(compra && (compra.purchaseToken || compra.token) || '').trim();
+}
+async function comprasAtuaisGooglePlay(servico){
+  try{
+    const compras = await servico.listPurchases();
+    return Array.isArray(compras) ? compras : [];
+  }catch(e){
+    console.warn('Não foi possível consultar as compras atuais da Google Play.', e);
+    return [];
+  }
+}
+async function validarCompraGooglePlay(productId, purchaseToken){
+  return chamarFuncaoProtegida('validarAssinaturaGooglePlay', {productId, purchaseToken});
+}
+async function restaurarAssinaturaGooglePlay(uidEsperado){
+  if(!uidEsperado || RESTAURACAO_PLAY_UID === uidEsperado ||
+     !AUTH || !AUTH.currentUser || AUTH.currentUser.uid !== uidEsperado) return false;
+  RESTAURACAO_PLAY_UID = uidEsperado;
+  const servico = await obterServicoGooglePlay();
+  if(!servico) return false;
+  const produtos = Object.values(PRODUTOS_GOOGLE_PLAY);
+  const compras = await comprasAtuaisGooglePlay(servico);
+  let restaurou = false;
+  for(const compra of compras){
+    const productId = produtoDaCompraGooglePlay(compra);
+    const purchaseToken = tokenDaCompraGooglePlay(compra);
+    if(!produtos.includes(productId) || !purchaseToken) continue;
+    try{
+      await validarCompraGooglePlay(productId, purchaseToken);
+      restaurou = true;
+      if(compra.acknowledged === false){
+        try{ await servico.acknowledge(purchaseToken, 'onetime'); }catch(e){}
+      }
+    }catch(e){
+      const codigo = String(e && e.code || '');
+      if(!codigo.includes('permission-denied') && !codigo.includes('failed-precondition'))
+        console.warn('Não foi possível restaurar uma assinatura da Google Play.', e);
+    }
+  }
+  if(restaurou) await puxarAssinatura();
+  return restaurou;
+}
+async function detalheDoPlanoGooglePlay(ciclo){
+  const productId = PRODUTOS_GOOGLE_PLAY[ciclo];
+  if(!productId) return null;
+  if(!DETALHES_GOOGLE_PLAY[productId]) await atualizarPrecosGooglePlay();
+  return DETALHES_GOOGLE_PLAY[productId] || null;
+}
+function mensagemErroAssinaturaGooglePlay(e){
+  const codigo = String(e && e.code || e && e.name || '');
+  if(codigo.includes('AbortError') || codigo.includes('NotAllowedError') ||
+     codigo.includes('USER_CANCELED')) return null;
+  if(codigo.includes('unauthenticated')) return 'Entre novamente na sua conta para assinar.';
+  if(codigo.includes('permission-denied')) return 'Esta compra já está vinculada a outra conta.';
+  if(codigo.includes('not-found')) return 'A Google Play ainda não encontrou essa compra. Tente novamente em instantes.';
+  if(codigo.includes('failed-precondition'))
+    return (e && e.message) || 'A assinatura ainda não está ativa na Google Play.';
+  return 'Não foi possível concluir a assinatura agora. Verifique a conexão e tente novamente.';
+}
 async function ativarPremium(){
   if(CONTA.local){
     fecharOferta();
@@ -5320,7 +5471,64 @@ async function ativarPremium(){
     await iniciarTesteGratis();
     return;
   }
-  toast('A assinatura paga será liberada junto com a publicação na Google Play.');
+  if(ATIVANDO_ASSINATURA) return;
+  ATIVANDO_ASSINATURA = true;
+  const bt = $('ofBotao');
+  if(bt){ bt.disabled = true; bt.textContent = 'Abrindo Google Play…'; }
+  let respostaPagamento = null;
+  try{
+    const servico = await obterServicoGooglePlay();
+    if(!servico || typeof PaymentRequest !== 'function'){
+      toast('Para assinar, abra o TMy Car instalado pela Google Play.');
+      return;
+    }
+    const productId = PRODUTOS_GOOGLE_PLAY[precoEscolhido];
+    const detalhe = await detalheDoPlanoGooglePlay(precoEscolhido);
+    const preco = precoDetalheGooglePlay(detalhe);
+    if(!productId || !detalhe || !preco)
+      throw new Error('Produto indisponível na Google Play.');
+
+    const dadosMetodo = {sku:productId};
+    const compras = await comprasAtuaisGooglePlay(servico);
+    const compraAnterior = compras.find(compra => {
+      const id = produtoDaCompraGooglePlay(compra);
+      return Object.values(PRODUTOS_GOOGLE_PLAY).includes(id) && id !== productId &&
+        tokenDaCompraGooglePlay(compra);
+    });
+    if(compraAnterior){
+      dadosMetodo.oldSku = produtoDaCompraGooglePlay(compraAnterior);
+      dadosMetodo.purchaseToken = tokenDaCompraGooglePlay(compraAnterior);
+      dadosMetodo.replacementMode = 'withTimeProration';
+    }
+
+    const pedido = new PaymentRequest(
+      [{supportedMethods:METODO_GOOGLE_PLAY, data:dadosMetodo}],
+      {total:{
+        label:String(detalhe.title || 'TMyCar Premium'),
+        amount:{currency:preco.currency, value:preco.value}
+      }}
+    );
+    respostaPagamento = await pedido.show();
+    const purchaseToken = tokenDaCompraGooglePlay(respostaPagamento && respostaPagamento.details);
+    if(!purchaseToken) throw new Error('A Google Play não devolveu o comprovante da compra.');
+    await validarCompraGooglePlay(productId, purchaseToken);
+    try{ await respostaPagamento.complete('success'); }catch(e){}
+    respostaPagamento = null;
+    await puxarAssinatura();
+    fecharOferta();
+    atualizarNav();
+    go(ofTelaAnterior || 'garagem');
+    toast(`Premium ${precoEscolhido === 'anual' ? 'anual' : 'mensal'} ativado com sucesso.`);
+  }catch(e){
+    if(respostaPagamento){
+      try{ await respostaPagamento.complete('fail'); }catch(ignorado){}
+    }
+    const mensagem = mensagemErroAssinaturaGooglePlay(e);
+    if(mensagem) toast(mensagem);
+  }finally{
+    ATIVANDO_ASSINATURA = false;
+    if(bt){ bt.disabled = false; bt.textContent = 'Assinar Premium'; }
+  }
 }
 
 let REGISTROS = [];
@@ -5839,6 +6047,9 @@ function sincronizarContaAutenticada(u){
     /* A assinatura atualiza logo depois, mas não segura a entrada na Garagem.
        Isso elimina uma segunda espera de rede após o retorno do Google. */
     puxarAssinatura().catch(() => false);
+    /* Dentro do app Android, recupera compras já pertencentes à conta Google
+       Play (inclusive após reinstalar) e pede ao servidor para validá-las. */
+    restaurarAssinaturaGooglePlay(u.uid).catch(() => false);
     /* Se a permissão já foi concedida, renova o vínculo do aparelho a cada
        entrada. Tokens antigos expiram no servidor após 120 dias sem uso. */
     registrarPushDaConta().catch(() => false);
@@ -6037,6 +6248,7 @@ async function tratarEstadoAuth(u){
     CONTA = { email:null, local:true };
     EMAIL_VERIFICACAO_PENDENTE = null;
     SINCRONIZACAO_UID = null; SINCRONIZACAO_CONTA = null;
+    RESTAURACAO_PLAY_UID = null;
   }
   /* Uma conta ainda não verificada não deve carimbar seu e-mail no espaço
      anônimo nem provocar gravações antes de receber autorização. */
