@@ -58,9 +58,32 @@
     if(!Number.isSafeInteger(km) || km<0 || km>9999999) return 'Informe a quilometragem do serviço (zero é permitido).';
     return '';
   }
-  function gruposServicos(registros, ano, servico){
+  function nomeServicoPainel(item, parte){
+    const filtros={oleo:'Filtro de Óleo',ar:'Filtro de Ar',comb:'Filtro de Combustível',cab:'Filtro de Cabine'};
+    const nome=parte ? (filtros[parte.id] || 'Filtro de '+parte.nome) : item.nome;
+    return (item.revisao ? 'Revisão — ' : 'Troca — ')+nome;
+  }
+  function registrarPainel(v, item, partes, km, data, criarId){
+    v.servicos=Array.isArray(v.servicos)?v.servicos:[];
+    const alvos=item.partes ? item.partes.filter(p=>(partes||[]).includes(p.id)) : [null];
+    alvos.forEach(p=>v.servicos.push({id:criarId(),servico:nomeServicoPainel(item,p),km,data}));
+  }
+  function importarUltimosRegistros(v){
+    if(v.historicoPainelImportado) return;
+    v.servicos=Array.isArray(v.servicos)?v.servicos:[];
+    const paineis=[v.itens||[],...Object.values(v.paineisArquivados||{})];
+    paineis.forEach((itens,painel)=>itens.forEach(item=>(item.partes||[null]).forEach(parte=>{
+      const registro=parte||item, data=registro.ultData;
+      if(!data || validarServico('Registro',data,0,'9999-12-31')) return;
+      const km=Number.isSafeInteger(registro.ultKm) && registro.ultKm>=0 ? registro.ultKm : null;
+      const id=`anterior:${painel}:${item.id}:${parte?parte.id:''}:${data}:${km}`;
+      if(!v.servicos.some(r=>r.id===id)) v.servicos.push({id,servico:nomeServicoPainel(item,parte),data,km});
+    })));
+    v.historicoPainelImportado=true;
+  }
+  function gruposServicos(registros, ano){
     const meses = new Map();
-    (registros||[]).filter(r=>(!ano || r.data.slice(0,4)===String(ano)) && (!servico || r.servico===servico))
+    (registros||[]).filter(r=>!ano || r.data.slice(0,4)===String(ano))
       .slice().sort((a,b)=>b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).forEach(r=>{
         const mes = r.data.slice(0,7);
         if(!meses.has(mes)) meses.set(mes,new Map());
@@ -70,7 +93,7 @@
       });
     return [...meses].map(([mes,dias])=>({mes,dias:[...dias].map(([data,itens])=>({data,itens}))}));
   }
-  const api = {eletricos,ehEletrico,marcas,modeloEletrico,mudarPropulsao,validarServico,gruposServicos};
+  const api = {eletricos,ehEletrico,marcas,modeloEletrico,mudarPropulsao,validarServico,gruposServicos,nomeServicoPainel,registrarPainel,importarUltimosRegistros};
   if(typeof module==='object' && module.exports) module.exports=api;
   else root.TMyManutencao=api;
 })(typeof globalThis==='object' ? globalThis : this);

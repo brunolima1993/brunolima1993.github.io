@@ -1429,7 +1429,9 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   background:linear-gradient(135deg,rgba(240,180,90,.12),rgba(240,180,90,.03))}
 .pselo.agenda{background:rgba(240,180,90,.9);color:#2A1B04}
 .pinfo .lnk{color:#0088ff;text-decoration:underline;cursor:pointer;white-space:nowrap}
-.sv-filtros{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px;margin:22px 0 16px}
+.sv-filtros{display:grid;grid-template-columns:minmax(0,180px);justify-content:center;margin:22px 0 16px;text-align:center}
+#cPropulsao,#svNome,#svKm{text-align:center!important;text-align-last:center}
+label[for="cPropulsao"],label[for="svNome"],label[for="svKm"]{display:block;text-align:center!important}
 .sv-grupo{margin:12px 0;border:1px solid rgba(0,153,255,.25);border-radius:18px;background:rgba(11,29,49,.8);overflow:hidden}
 .sv-grupo summary{cursor:pointer;padding:16px;color:var(--ink);font-weight:700}
 .sv-grupo summary small{font-size:12px;color:var(--muted);font-weight:400;margin-left:8px}
@@ -2341,7 +2343,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
             <div class="selw"><select id="cMarca"></select></div></div>
           <div class="field"><label class="flabel">Modelo</label>
             <div class="selw"><select id="cModelo" disabled><option>Selecione a marca</option></select></div></div>
-          <div class="field" id="cModeloLivreBox" hidden><label class="flabel" for="cModeloLivre">Nome do modelo elétrico</label><input id="cModeloLivre" maxlength="60" oninput="validarCad()" placeholder="Informe o modelo"></div>
+          <div class="field" id="cModeloLivreBox" hidden><label class="flabel" for="cModeloLivre">Nome do modelo</label><input id="cModeloLivre" maxlength="60" oninput="resolver()" placeholder="Informe o modelo"></div>
           <div class="field frow">
             <div class="field" style="flex:1;padding:0"><label class="flabel">Ano <span style="color:var(--dim);font-weight:500">· opcional</span></label>
               <input class="mono" id="cAno" inputmode="numeric" maxlength="4" placeholder="2016" disabled></div>
@@ -2433,7 +2435,6 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <button class="cta" onclick="abrirServico()">+ Adicionar manutenção</button>
         <div class="sv-filtros">
           <div><label class="flabel" for="svAno">Ano</label><div class="selw"><select id="svAno" onchange="pintarHistoricoServicos()"></select></div></div>
-          <div><label class="flabel" for="svTipo">Serviço</label><div class="selw"><select id="svTipo" onchange="pintarHistoricoServicos()"></select></div></div>
         </div>
         <div id="svHistorico"></div>
       </div>
@@ -3264,7 +3265,7 @@ const cadastroEletrico = () => $('cPropulsao').value === 'eletrico';
 const modeloCadastro = () => $('cModelo').value === '__outro' ? $('cModeloLivre').value.trim() : $('cModelo').value;
 function atualizarMarcasCadastro(){
   const atual = $('cMarca').value;
-  const marcas = cadastroEletrico() ? TMyManutencao.marcas(DB.carros) : Object.keys(DB.carros).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const marcas = TMyManutencao.marcas(DB.carros);
   $('cMarca').innerHTML = '<option value="">Selecione</option>' + marcas.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   if(marcas.includes(atual)) $('cMarca').value=atual;
 }
@@ -3272,11 +3273,19 @@ function visualTipoCadastro(){
   const ev = cadastroEletrico();
   ['cMotorBox','cTurboRow','cSincBox','cOleoBox'].forEach(id=>$(id).style.display=ev?'none':'');
   $('cBoxProx').style.display = ev || sincEscolhido()==='corrente' ? 'none' : '';
-  $('cModeloLivreBox').hidden = !ev || $('cModelo').value!=='__outro';
+  $('cModeloLivreBox').hidden = $('cModelo').value!=='__outro';
 }
 function mudarTipoCadastro(){
+  const marca=$('cMarca').value, modeloAnterior=modeloCadastro(), ano=$('cAno').value;
   cMotor=null; cSincTocado=false; cOleoTocado=false;
-  atualizarMarcasCadastro(); $('cMarca').onchange(); visualTipoCadastro();
+  $('cMarca').disabled=false;
+  atualizarMarcasCadastro(); $('cMarca').value=marca; $('cMarca').onchange();
+  if(modeloAnterior && marca){
+    $('cModelo').value=modeloAnterior;
+    if(!$('cModelo').value){$('cModelo').value='__outro';$('cModeloLivre').value=modeloAnterior;}
+    $('cModelo').onchange(); $('cAno').value=ano;
+  }
+  resolver();
 }
 
 function abrirCadastro(edit){
@@ -3299,10 +3308,10 @@ function abrirCadastro(edit){
   if(editandoVeic !== null){
     const v = VEIC[editandoVeic];
     /* recarrega a tela com o que já está gravado */
-    $('cMarca').value = v.marca; $('cMarca').disabled = true;
+    $('cMarca').value = v.marca; $('cMarca').disabled = false;
     $('cMarca').onchange();
     $('cModelo').value = v.modelo;
-    if(cadastroEletrico() && !$('cModelo').value){ $('cModelo').value='__outro'; $('cModeloLivre').value=v.modelo; }
+    if(!$('cModelo').value){ $('cModelo').value='__outro'; $('cModeloLivre').value=v.modelo; }
     $('cModelo').onchange();
     $('cAno').value = v.ano ? String(v.ano) : ''; $('cMotor').disabled = false; $('cTurbo').disabled = false;
     const m = String(v.cilTxt||'').match(/(\d\.\d)/);
@@ -3361,7 +3370,7 @@ $('cMarca').onchange = () => {
   if(ma){
     const modelos = cadastroEletrico() ? (TMyManutencao.eletricos[ma] || []) : Object.keys(DB.carros[ma] || {});
     modelos.slice().sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(mo=>s.insertAdjacentHTML('beforeend',`<option>${esc(mo)}</option>`));
-    if(cadastroEletrico()) s.insertAdjacentHTML('beforeend','<option value="__outro">Outro modelo elétrico…</option>');
+    s.insertAdjacentHTML('beforeend','<option value="__outro">Outro modelo…</option>');
   }
   $('cAno').disabled=true; $('cMotor').disabled=true; $('cAno').value=''; $('cMotor').value='';
   resolver();
@@ -3403,7 +3412,7 @@ function resolver(){
     msg('cMsgMotor','i','Painel elétrico: filtro de cabine, freio, arrefecimento da bateria, redutor, bateria de tração e pneus. Configure apenas os prazos previstos no manual.');
     validarCad(); return;
   }
-  const ma=$('cMarca').value, mo=$('cModelo').value;
+  const ma=$('cMarca').value, mo=modeloCadastro();
   const ano=parseInt($('cAno').value,10), cil=normCil($('cMotor').value);
   const tb=$('cTurbo').classList.contains('on');
   cMotor=null;
@@ -3417,17 +3426,17 @@ function resolver(){
     aplicarSinc(); aplicarOleo(); sugerirProx(); validarCad(); return;
   }
 
-  const lista = DB.carros[ma][mo]||[];
+  const lista = (DB.carros[ma]||{})[mo]||[];
   const porAno = lista.filter(x=>(!x.a0||ano>=x.a0)&&(!x.a1||ano<=x.a1));
   const achou = porAno.filter(x=>x.c===cil && x.t===tb);
 
   if(!porAno.length){
     const anos = lista.map(x=>x.a0).filter(Boolean);
-    msg('cMsgMotor','e',`Não tenho o <b>${mo}</b> em ${ano}${anos.length?` — o catálogo começa em ${Math.min(...anos)}`:''}. Preencha o sincronismo e o óleo à mão.`);
+    msg('cMsgMotor','e',`Não tenho o <b>${esc(mo)}</b> em ${ano}${anos.length?` — o catálogo começa em ${Math.min(...anos)}`:''}. Preencha o sincronismo e o óleo à mão.`);
   } else if(achou.length===1){
     const m = DB.motores[achou[0].e];
     if(m.d==='nao_mapeado'){
-      msg('cMsgMotor','w',`Reconheci o <b>${mo} ${cil.toFixed(1)}</b>, mas ainda não conferi o sincronismo desse motor. Preencha abaixo com o manual.`);
+      msg('cMsgMotor','w',`Reconheci o <b>${esc(mo)} ${cil.toFixed(1)}</b>, mas ainda não conferi o sincronismo desse motor. Preencha abaixo com o manual.`);
     } else {
       cMotor = m;
       /* em alguns modelos o aspirado e o turbo dividem o mesmo motor:
@@ -3443,7 +3452,7 @@ function resolver(){
     msg('cMsgMotor','w',`Esse ano teve mais de um motor <b>${cil.toFixed(1)}</b>. Preencha o sincronismo abaixo olhando o manual, para eu não chutar.`);
   } else {
     const ops=[...new Set(porAno.map(x=>x.c.toFixed(1)+(x.t?' turbo':'')))];
-    msg('cMsgMotor','e',`O <b>${mo} ${ano}</b> não teve motor ${cil.toFixed(1)}${tb?' turbo':''}. As opções: <b>${ops.join(', ')}</b>.`);
+    msg('cMsgMotor','e',`O <b>${esc(mo)} ${ano}</b> não teve motor ${cil.toFixed(1)}${tb?' turbo':''}. As opções: <b>${ops.join(', ')}</b>.`);
   }
   aplicarSinc(); aplicarOleo(); sugerirProx(); validarCad();
 }
@@ -3464,7 +3473,7 @@ function escolherSinc(v){
     msg('cMsgSinc','w',
       `O catálogo indica <b>corrente</b> para o ${cMotor.n}, que não tem troca programada. Marcando correia, o app vai te cobrar uma troca que talvez não exista.`);
   }
-  atualizarBoxProx();
+  atualizarBoxProx(); validarCad();
 }
 function aplicarSinc(){
   if(cMotor && !cSincTocado){
@@ -3650,6 +3659,9 @@ function salvarEdicao(){
   const querCorreia  = s === 'correia';
 
   const aplicar = () => {
+    TMyManutencao.importarUltimosRegistros(v);
+    if(v.marca!==$('cMarca').value || v.modelo!==modeloCadastro() || String(v.ano||'')!==$('cAno').value ||
+      (!cadastroEletrico() && v.cilTxt!==cil.toFixed(1)+(tb?' turbo':''))) delete v.fipe;
     const novoTipo = cadastroEletrico() ? 'eletrico' : 'combustao';
     const mudouTipo = (TMyManutencao.ehEletrico(v)?'eletrico':'combustao') !== novoTipo;
     const base = cadastroEletrico() ? TMyManutencao.modeloEletrico() : modelo({d:s,km:intervalo});
@@ -3824,7 +3836,7 @@ function abrirServico(id){
   $('svNome').value = registro ? registro.servico : '';
   $('svData').max = iso(new Date());
   $('svData').value = registro ? registro.data : iso(new Date());
-  $('svKm').value = registro ? fmt(registro.km) : v.km!=null ? fmt(v.km) : '';
+  $('svKm').value = registro ? (registro.km==null?'':fmt(registro.km)) : v.km!=null ? fmt(v.km) : '';
   go('servico-form');
 }
 function salvarServico(){
@@ -3844,7 +3856,7 @@ function salvarServico(){
   if(pos>=0) v.servicos[pos]=registro; else v.servicos.push(registro);
   if(v.km==null || km>v.km){ v.km=km; varrerKm(ativo,km); }
   persistir(); SERVICO_EDITANDO=null; SERVICO_VEICULO=null;
-  $('svAno').innerHTML=''; $('svTipo').innerHTML='';
+  $('svAno').innerHTML='';
   go('servicos'); toast('Manutenção salva.');
 }
 function prepararHistoricoServicos(){
@@ -3852,22 +3864,19 @@ function prepararHistoricoServicos(){
   const registros=v.servicos||[];
   $('svVeiculo').textContent=[v.marca,v.modelo,v.placa].filter(Boolean).join(' · ');
   const anos=[...new Set(registros.map(r=>r.data.slice(0,4)))].sort().reverse();
-  const servicos=[...new Set(registros.map(r=>r.servico))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const anoAntes=$('svAno').value, tipoAntes=$('svTipo').value;
+  const anoAntes=$('svAno').value;
   $('svAno').innerHTML='<option value="">Todos</option>'+anos.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
-  $('svTipo').innerHTML='<option value="">Todos os serviços</option>'+servicos.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
   if(anos.includes(anoAntes)) $('svAno').value=anoAntes;
-  if(servicos.includes(tipoAntes)) $('svTipo').value=tipoAntes;
   pintarHistoricoServicos();
 }
 function pintarHistoricoServicos(){
   const v=VEIC[ativo]; if(!v) return;
-  const grupos=TMyManutencao.gruposServicos(v.servicos,$('svAno').value,$('svTipo').value);
+  const grupos=TMyManutencao.gruposServicos(v.servicos,$('svAno').value);
   const total=grupos.reduce((n,g)=>n+g.dias.reduce((s,d)=>s+d.itens.length,0),0);
   $('svHistorico').innerHTML=`<div class="ev-note">${total} ${total===1?'manutenção registrada':'manutenções registradas'}</div>` + (grupos.length ? grupos.map((g,idx)=>{
     const titulo=new Date(g.mes+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
     const count=g.dias.reduce((n,d)=>n+d.itens.length,0);
-    return `<details class="sv-grupo" ${idx===0?'open':''}><summary>${esc(titulo)} <small>${count} ${count===1?'registro':'registros'}</small></summary>${g.dias.map(d=>`<details class="sv-dia" open><summary>${esc(new Date(d.data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}))}</summary>${d.itens.map(r=>`<div class="sv-registro"><div><b>${esc(r.servico)}</b><small>${fmt(r.km)} km</small></div><div class="sv-acoes"><button type="button" data-servico="${esc(r.id)}" data-acao="editar">Editar</button><button type="button" data-servico="${esc(r.id)}" data-acao="excluir">Excluir</button></div></div>`).join('')}</details>`).join('')}</details>`;
+    return `<details class="sv-grupo" ${idx===0?'open':''}><summary>${esc(titulo)} <small>${count} ${count===1?'registro':'registros'}</small></summary>${g.dias.map(d=>`<details class="sv-dia" open><summary>${esc(new Date(d.data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}))}</summary>${d.itens.map(r=>`<div class="sv-registro"><div><b>${esc(r.servico)}</b><small>${r.km==null?'KM não informado':fmt(r.km)+' km'}</small></div><div class="sv-acoes"><button type="button" data-servico="${esc(r.id)}" data-acao="editar">Editar</button><button type="button" data-servico="${esc(r.id)}" data-acao="excluir">Excluir</button></div></div>`).join('')}</details>`).join('')}</details>`;
   }).join('') : '<div class="card ev-note">Nenhum serviço para este filtro. Use “Adicionar manutenção” para registrar o que foi feito.</div>');
 }
 $('svHistorico').addEventListener('click',evento=>{
@@ -4714,7 +4723,10 @@ function abrirSheet(id){
   /* Deixa o navegador pintar o toque e o fundo antes de animar a folha.
      Em Android isso evita a pausa causada por montar o formulário e iniciar
      a transição no mesmo quadro. */
-  requestAnimationFrame(() => $('sh').classList.add('on'));
+  const itemAberto=itAtual;
+  requestAnimationFrame(() => {
+    if(itAtual===itemAberto && $('shBg').classList.contains('on')) $('sh').classList.add('on');
+  });
 }
 function alternarFiltroTroca(chk){
   const card = chk && chk.closest('.pfil');
@@ -4739,10 +4751,13 @@ function salvarTroca(){
   const ehCambio = itAtual.id === 'cambio';
 
   /* valida tudo ANTES de tocar nos dados, para não deixar o item pela metade */
-  const kmLido = parseInt(soD($('shKm').value)||'0',10);
-  const km = kmInformado(kmLido) ? kmLido : null;
+  const kmTexto = soD($('shKm').value);
+  const km = kmTexto ? Number(kmTexto) : null;
+  if(km!==null && (!Number.isSafeInteger(km) || km>9999999)){toast('Informe uma quilometragem válida.');return;}
   if(ehCambio && !itAtual.tipo){ toast('Diga se o câmbio é automático ou manual.'); return; }
   const data = $('shData').value || iso(HOJE);
+  const dataInvalida=TMyManutencao.validarServico('Registro',data,0,iso(new Date()));
+  if(dataInvalida){toast(dataInvalida);return;}
 
   if(ehCambio && !itAtual.tipo){ toast('Diga se o câmbio é automático ou manual.'); return; }
   let marc = null, novos = null;
@@ -4756,7 +4771,7 @@ function salvarTroca(){
       const ik = parseInt(soD(($('fi_'+p.id)||{}).value || '')||'0',10) || null;
       const im = parseInt(soD(($('fm_'+p.id)||{}).value || '')||'0',10) || null;
       if(!ik && !im){ toast(`Informe um intervalo para o filtro de ${p.nome.toLowerCase()} — em km ou em meses.`); return; }
-      if(!km && !im){ toast(`Sem KM informado, defina o intervalo em meses para o filtro de ${p.nome.toLowerCase()}.`); return; }
+      if(km===null && !im){ toast(`Sem KM informado, defina o intervalo em meses para o filtro de ${p.nome.toLowerCase()}.`); return; }
       /* grava explicitamente, inclusive o nulo: campo apagado fica apagado */
       novos[p.id] = { ikm:ik, imes:im };
     }
@@ -4767,7 +4782,7 @@ function salvarTroca(){
       toast('Informe pelo menos um intervalo — em km ou em meses.');
       return;
     }
-    if(!km && !nImes && nIkm){
+    if(km===null && !nImes && nIkm){
       toast('Sem KM informado, defina um intervalo em meses para acompanhar pela data.');
       return;
     }
@@ -4775,6 +4790,8 @@ function salvarTroca(){
   }
 
   /* daqui para baixo, só gravação */
+  TMyManutencao.importarUltimosRegistros(v);
+  TMyManutencao.registrarPainel(v,itAtual,marc,km,data,()=>crypto.randomUUID());
   if(ehCambio){
     const cambioAnterior = v.cambio || null;
     v.cambio = itAtual.tipo;
@@ -5061,6 +5078,7 @@ function migrarItens(){
   const base = modelo({ d:'corrente' });   // itens que não dependem do motor
   VEIC.forEach(v => {
     v.itens = v.itens || [];
+    TMyManutencao.importarUltimosRegistros(v);
     if(TMyManutencao.ehEletrico(v)){
       TMyManutencao.modeloEletrico().forEach(novo=>{
         const existente=v.itens.find(i=>i.id===novo.id);
