@@ -3,16 +3,16 @@
   'use strict';
   const eletricos = {
     'BYD':['Dolphin','Dolphin Mini','Yuan Plus','Yuan Pro','Seal','Tan','Han'],
-    'GWM':['Ora 03'],
+    'GWM':['Ora 03','Ora 5'],
     'Tesla':['Model 3','Model Y','Model S','Model X'],
     'Renault':['Kwid E-Tech','Zoe','Megane E-Tech'],
     'Nissan':['Leaf'],
-    'Chevrolet':['Bolt EV','Bolt EUV'],
+    'Chevrolet':['Bolt EV','Bolt EUV','Spark EUV','Captiva EV','Equinox EV','Blazer EV'],
     'Volvo':['EX30','EX40','EC40','C40','XC40 Recharge'],
     'JAC':['E-JS1','E-JS4'],
     'Peugeot':['e-208','e-2008'],
     'Fiat':['500e'],
-    'BMW':['i3','i4','iX','iX1'],
+    'BMW':['i3','i4','iX','iX1','iX2','iX3','i7'],
     'Kia':['EV5','EV6'],
     'Hyundai':['Ioniq 5'],
     'Audi':['e-tron','Q8 e-tron'],
@@ -20,10 +20,23 @@
     'Mercedes-Benz':['EQA','EQB','EQE','EQS'],
     'MINI':['Cooper SE'],
     'Ford':['Mustang Mach-E'],
-    'Volkswagen':['ID.4']
+    'Volkswagen':['ID.4'],
+    'Geely':['EX2','EX5'],
+    'Zeekr':['001','X','7X'],
+    'Omoda':['E5'],
+    'Foton':['eWonder','eView Connect','eView Grand','eToano Pro']
   };
+  const hibridos={
+    'GWM':['Haval H6 HEV','Haval H6 PHEV19','Haval H6 PHEV35','Haval H6 GT','Tank 300','Wey 07'],
+    'Omoda':['5 SHS-H','7 SHS-P']
+  };
+  function modelosDaMarca(carros,marca,tipo){
+    if(tipo==='eletrico') return [...(eletricos[marca]||[])];
+    return [...new Set([...Object.keys(carros[marca]||{}),...(tipo==='hibrido' ? hibridos[marca]||[] : [])])];
+  }
+  const tipoVeiculo = v => v && ['combustao','hibrido','eletrico'].includes(v.propulsao) ? v.propulsao : 'combustao';
   const ehEletrico = v => !!v && v.propulsao === 'eletrico';
-  function marcas(carros){ return [...new Set([...Object.keys(carros), ...Object.keys(eletricos)])].sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+  function marcas(carros){ return [...new Set([...Object.keys(carros), ...Object.keys(eletricos), ...Object.keys(hibridos)])].sort((a,b)=>a.localeCompare(b,'pt-BR')); }
   function modeloEletrico(){
     return [
       ['cabine','Filtros','Filtro de Cabine'],
@@ -41,12 +54,14 @@
   }
   function mudarPropulsao(v, tipo, base){
     const anterior = ehEletrico(v) ? 'eletrico' : 'combustao';
-    if(anterior === tipo) return;
+    const destino = tipo==='eletrico' ? 'eletrico' : 'combustao';
+    // Híbrido é uma escolha persistente, mas compartilha o painel de combustão.
+    if(anterior === destino){ v.propulsao=tipo; return; }
     // Guarda o painel anterior inteiro, inclusive revisões, sem convertê-las entre sistemas.
     v.paineisArquivados = v.paineisArquivados || {};
     v.paineisArquivados[anterior] = v.itens || [];
-    v.itens = v.paineisArquivados[tipo] || base;
-    delete v.paineisArquivados[tipo];
+    v.itens = v.paineisArquivados[destino] || base;
+    delete v.paineisArquivados[destino];
     v.propulsao = tipo;
   }
   function validarServico(servico, data, km, hoje){
@@ -93,7 +108,7 @@
       });
     return [...meses].map(([mes,dias])=>({mes,dias:[...dias].map(([data,itens])=>({data,itens}))}));
   }
-  const api = {eletricos,ehEletrico,marcas,modeloEletrico,mudarPropulsao,validarServico,gruposServicos,nomeServicoPainel,registrarPainel,importarUltimosRegistros};
+  const api = {eletricos,hibridos,modelosDaMarca,ehEletrico,tipoVeiculo,marcas,modeloEletrico,mudarPropulsao,validarServico,gruposServicos,nomeServicoPainel,registrarPainel,importarUltimosRegistros};
   if(typeof module==='object' && module.exports) module.exports=api;
   else root.TMyManutencao=api;
 })(typeof globalThis==='object' ? globalThis : this);

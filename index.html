@@ -1429,9 +1429,15 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   background:linear-gradient(135deg,rgba(240,180,90,.12),rgba(240,180,90,.03))}
 .pselo.agenda{background:rgba(240,180,90,.9);color:#2A1B04}
 .pinfo .lnk{color:#0088ff;text-decoration:underline;cursor:pointer;white-space:nowrap}
-.sv-filtros{display:grid;grid-template-columns:minmax(0,180px);justify-content:center;margin:22px 0 16px;text-align:center}
-#cPropulsao,#svNome,#svKm{text-align:center!important;text-align-last:center}
-label[for="cPropulsao"],label[for="svNome"],label[for="svKm"]{display:block;text-align:center!important}
+.sv-filtros{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0 16px;text-align:center}
+.sv-filtros .flabel{margin:0;flex:none}
+.sv-filtros .selw{width:110px;flex:0 0 110px}
+#cPropulsao,#svNome,#svKm,#svData{text-align:center!important;text-align-last:center!important}
+#cPropulsao{padding-left:32px!important;padding-right:32px!important}
+#svData::-webkit-date-and-time-value{text-align:center}
+#svData::-webkit-datetime-edit{display:block;text-align:center;width:100%}
+label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"]{display:block;text-align:center!important}
+#s-servico-form .ajuda,#s-cadastro .card>.ajuda{font-size:12px;line-height:1.5;color:var(--muted);margin:10px 0}
 .sv-grupo{margin:12px 0;border:1px solid rgba(0,153,255,.25);border-radius:18px;background:rgba(11,29,49,.8);overflow:hidden}
 .sv-grupo summary{cursor:pointer;padding:16px;color:var(--ink);font-weight:700}
 .sv-grupo summary small{font-size:12px;color:var(--muted);font-weight:400;margin-left:8px}
@@ -2077,7 +2083,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"]{display:block;text
           <p style="font-size:15px;color:#0088ff;font-weight:600;letter-spacing:.01em;margin:0 0 12px;text-shadow:0 0 10px rgba(0,136,255,.35)">
             Manutenção na palma da mão</p>
           <p style="font-size:13.5px;color:var(--muted);line-height:1.6;max-width:33ch;margin:0 auto">
-            São <b style="color:var(--ink)"><span id="totalMarcas">39</span> marcas no catálogo</b>, com acompanhamento para combustão, híbridos e elétricos. Organize a manutenção conforme o manual do seu veículo.</p>
+            São <b style="color:var(--ink)"><span id="totalMarcas">43</span> marcas no catálogo</b>, com acompanhamento para combustão, híbridos e elétricos. Organize a manutenção conforme o manual do seu veículo.</p>
         </div>
       </div>
       <div class="cta-wrap">
@@ -2335,7 +2341,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"]{display:block;text
         <div class="section-title cadastro-carro-title">O carro</div>
         <div class="card" style="margin-bottom:12px">
           <label class="flabel" for="cPropulsao">Tipo de veículo</label>
-          <div class="selw"><select id="cPropulsao" onchange="mudarTipoCadastro()"><option value="combustao">Combustão ou híbrido</option><option value="eletrico">100% elétrico</option></select></div>
+          <div class="selw"><select id="cPropulsao" onchange="mudarTipoCadastro()"><option value="combustao">Combustão</option><option value="hibrido">Híbrido</option><option value="eletrico">Elétrico</option></select></div>
           <p class="ajuda">Híbridos mantêm os cuidados do motor a combustão. Elétricos têm um painel próprio, com prazos definidos pelo manual.</p>
         </div>
         <div class="card" style="padding:4px 16px">
@@ -2434,7 +2440,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"]{display:block;text
       <div class="section"><div class="section-title" id="svVeiculo"></div>
         <button class="cta" onclick="abrirServico()">+ Adicionar manutenção</button>
         <div class="sv-filtros">
-          <div><label class="flabel" for="svAno">Ano</label><div class="selw"><select id="svAno" onchange="pintarHistoricoServicos()"></select></div></div>
+          <label class="flabel" for="svAno">Ano</label><div class="selw"><select id="svAno" onchange="pintarHistoricoServicos()"></select></div>
         </div>
         <div id="svHistorico"></div>
       </div>
@@ -3290,7 +3296,7 @@ function mudarTipoCadastro(){
 
 function abrirCadastro(edit){
   editandoVeic = (typeof edit === 'number') ? edit : null;
-  $('cPropulsao').value = editandoVeic !== null && TMyManutencao.ehEletrico(VEIC[editandoVeic]) ? 'eletrico' : 'combustao';
+  $('cPropulsao').value = TMyManutencao.tipoVeiculo(editandoVeic !== null ? VEIC[editandoVeic] : null);
   $('cModeloLivre').value='';
   atualizarMarcasCadastro();
   cMotor=null; cSincTocado=false; cOleoTocado=false; cProxTocado=false; cIntTocado=false; cCor=CORES[1][0]; cCambio=null;
@@ -3368,7 +3374,7 @@ $('cMarca').onchange = () => {
   const ma = $('cMarca').value, s = $('cModelo');
   s.innerHTML = '<option value="">Selecione</option>'; s.disabled = !ma;
   if(ma){
-    const modelos = cadastroEletrico() ? (TMyManutencao.eletricos[ma] || []) : Object.keys(DB.carros[ma] || {});
+    const modelos = TMyManutencao.modelosDaMarca(DB.carros,ma,$('cPropulsao').value);
     modelos.slice().sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(mo=>s.insertAdjacentHTML('beforeend',`<option>${esc(mo)}</option>`));
     s.insertAdjacentHTML('beforeend','<option value="__outro">Outro modelo…</option>');
   }
@@ -3574,7 +3580,7 @@ function salvarVeiculo(){
   const intervalo = parseInt(soD($('cInt').value)||'0',10);
   const v = {
     marca:$('cMarca').value, modelo:modeloCadastro(), ano:$('cAno').value || '',
-    propulsao:cadastroEletrico()?'eletrico':'combustao',
+    propulsao:$('cPropulsao').value,
     cilTxt: cadastroEletrico() ? 'Elétrico' : cil.toFixed(1)+(tb?' turbo':''), motorNome: cadastroEletrico() ? 'Motor elétrico' : cMotor?cMotor.n:'motor não identificado',
     km, placa:$('cPlaca').value, cor:cCor, oleo:cadastroEletrico()?'—':$('cOleo').value||'—', cambio:cadastroEletrico()?null:cCambio,
     itens: cadastroEletrico() ? TMyManutencao.modeloEletrico() : modelo(s==='corrente' ? {d:'corrente'} : {d:'correia', km:intervalo})
@@ -3662,8 +3668,8 @@ function salvarEdicao(){
     TMyManutencao.importarUltimosRegistros(v);
     if(v.marca!==$('cMarca').value || v.modelo!==modeloCadastro() || String(v.ano||'')!==$('cAno').value ||
       (!cadastroEletrico() && v.cilTxt!==cil.toFixed(1)+(tb?' turbo':''))) delete v.fipe;
-    const novoTipo = cadastroEletrico() ? 'eletrico' : 'combustao';
-    const mudouTipo = (TMyManutencao.ehEletrico(v)?'eletrico':'combustao') !== novoTipo;
+    const novoTipo = $('cPropulsao').value;
+    const mudouTipo = TMyManutencao.ehEletrico(v) !== cadastroEletrico();
     const base = cadastroEletrico() ? TMyManutencao.modeloEletrico() : modelo({d:s,km:intervalo});
     base.forEach(item=>{
       if(item.id==='correia'){
@@ -3815,7 +3821,7 @@ function pintarPainel(){
   });
   h += `<div class="section">
     <button class="cta" onclick="abrirServico()">+ Adicionar manutenção</button>
-    <button class="cta outline" style="margin:10px 0 20px" onclick="go('servicos')">Histórico de manutenções${v.servicos && v.servicos.length ? ' · '+v.servicos.length : ''}</button>
+    <button class="cta outline" style="margin:10px 0 20px" onclick="go('servicos')">Histórico de manutenções</button>
     <button class="cta outline" onclick="abrirCadastro(${ativo})">Editar dados do veículo</button>
     <div class="odo-hint" style="text-align:center;margin-top:8px;margin-bottom:14px">Corrigir marca, modelo, ano, placa ou cor não apaga o histórico.</div>
   </div>`;
