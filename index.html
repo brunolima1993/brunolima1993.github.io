@@ -1429,7 +1429,18 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
   background:linear-gradient(135deg,rgba(240,180,90,.12),rgba(240,180,90,.03))}
 .pselo.agenda{background:rgba(240,180,90,.9);color:#2A1B04}
 .pinfo .lnk{color:#0088ff;text-decoration:underline;cursor:pointer;white-space:nowrap}
-</style><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
+.sv-filtros{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px;margin:22px 0 16px}
+.sv-grupo{margin:12px 0;border:1px solid rgba(0,153,255,.25);border-radius:18px;background:rgba(11,29,49,.8);overflow:hidden}
+.sv-grupo summary{cursor:pointer;padding:16px;color:var(--ink);font-weight:700}
+.sv-grupo summary small{font-size:12px;color:var(--muted);font-weight:400;margin-left:8px}
+.sv-dia{margin:0 12px 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sv-dia summary{font-size:13px;color:#39b5ff;padding:12px}
+.sv-registro{padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);text-align:left}
+.sv-registro b{font-size:14px;overflow-wrap:anywhere}.sv-registro small{display:block;color:var(--muted);margin-top:5px;font-size:12px}
+.sv-acoes{display:flex;flex-shrink:0;gap:6px}.sv-acoes button{padding:10px;border-radius:10px;border:1px solid rgba(0,153,255,.3);background:rgba(0,153,255,.08);color:#39b5ff;cursor:pointer;font:inherit;font-size:12px}
+#s-servicos .section-title,#s-servico-form .section-title{text-align:center}
+.ev-note{font-size:12px;line-height:1.6;color:var(--muted);text-align:center;margin-bottom:16px}
+</style><script src="assets/manutencao.js"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-app-check-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-auth-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-firestore-compat.js"></script>
@@ -2064,7 +2075,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
           <p style="font-size:15px;color:#0088ff;font-weight:600;letter-spacing:.01em;margin:0 0 12px;text-shadow:0 0 10px rgba(0,136,255,.35)">
             Manutenção na palma da mão</p>
           <p style="font-size:13.5px;color:var(--muted);line-height:1.6;max-width:33ch;margin:0 auto">
-            São <b style="color:var(--ink)">36 marcas conferidas motor a motor</b>, criadas para te ajudar a manter a performance e a segurança em cada detalhe.</p>
+            São <b style="color:var(--ink)"><span id="totalMarcas">39</span> marcas no catálogo</b>, com acompanhamento para combustão, híbridos e elétricos. Organize a manutenção conforme o manual do seu veículo.</p>
         </div>
       </div>
       <div class="cta-wrap">
@@ -2275,7 +2286,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
       </div>
 
       <div class="section">
-        <div class="odo-hint" style="text-align:left"><b style="color:var(--ink)">Compatibilidade atual:</b> esta versão não é indicada para veículos 100% elétricos. Consulte os detalhes nos Termos de Uso.</div>
+        <div class="odo-hint" style="text-align:left"><b style="color:var(--ink)">Compatibilidade:</b> veículos a combustão, híbridos e 100% elétricos, com painel de manutenção conforme a propulsão.</div>
         <div class="odo-hint" style="text-align:left;margin-top:8px">O plano grátis tem anúncios. No Premium não há nenhum.</div>
       </div>
 
@@ -2320,16 +2331,21 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 
       <div class="section">
         <div class="section-title cadastro-carro-title">O carro</div>
-        <div class="odo-hint" style="text-align:left;margin-bottom:10px"><b style="color:var(--ink)">Compatibilidade:</b> esta versão é voltada a veículos a combustão e híbridos com motor a combustão. Veículos 100% elétricos ainda não são compatíveis.</div>
+        <div class="card" style="margin-bottom:12px">
+          <label class="flabel" for="cPropulsao">Tipo de veículo</label>
+          <div class="selw"><select id="cPropulsao" onchange="mudarTipoCadastro()"><option value="combustao">Combustão ou híbrido</option><option value="eletrico">100% elétrico</option></select></div>
+          <p class="ajuda">Híbridos mantêm os cuidados do motor a combustão. Elétricos têm um painel próprio, com prazos definidos pelo manual.</p>
+        </div>
         <div class="card" style="padding:4px 16px">
           <div class="field"><label class="flabel">Marca</label>
             <div class="selw"><select id="cMarca"></select></div></div>
           <div class="field"><label class="flabel">Modelo</label>
             <div class="selw"><select id="cModelo" disabled><option>Selecione a marca</option></select></div></div>
+          <div class="field" id="cModeloLivreBox" hidden><label class="flabel" for="cModeloLivre">Nome do modelo elétrico</label><input id="cModeloLivre" maxlength="60" oninput="validarCad()" placeholder="Informe o modelo"></div>
           <div class="field frow">
             <div class="field" style="flex:1;padding:0"><label class="flabel">Ano <span style="color:var(--dim);font-weight:500">· opcional</span></label>
               <input class="mono" id="cAno" inputmode="numeric" maxlength="4" placeholder="2016" disabled></div>
-            <div class="field" style="flex:1;padding:0"><label class="flabel">Motorização</label>
+            <div class="field" id="cMotorBox" style="flex:1;padding:0"><label class="flabel">Motorização</label>
               <input class="mono" id="cMotor" inputmode="decimal" maxlength="5" placeholder="1.4" disabled></div>
           </div>
         </div>
@@ -2348,7 +2364,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         </div>
       </div>
 
-      <div class="section">
+      <div class="section" id="cSincBox">
         <div class="section-title">Sincronismo do motor <span class="tagcat" id="cTagSinc" style="display:none">do catálogo</span></div>
         <div class="odo-hint" style="text-align:left;margin-bottom:10px">É a peça que sincroniza o motor. Uma tem troca marcada, a outra não.</div>
         <div class="radios">
@@ -2373,7 +2389,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <div id="cMsgProx"></div>
       </div>
 
-      <div class="section">
+      <div class="section" id="cOleoBox">
         <div class="section-title">Óleo do motor <span class="tagcat" id="cTagOleo" style="display:none">do catálogo</span></div>
         <div class="card" style="padding:4px 16px">
           <div class="field"><label class="flabel">Viscosidade</label><input id="cOleo" placeholder="5W-30"></div>
@@ -2409,6 +2425,31 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
         <button class="attkm" onclick="abrirOdo()" title="Atualizar quilometragem">ATUALIZAR KM</button>
       </div>
       <div id="pBody"></div>
+    </div>
+
+    <div class="screen" id="s-servicos">
+      <div class="topbar"><div class="topbar-left"><button class="back" type="button" onclick="go('painel')" aria-label="Voltar ao painel">‹</button><span class="title">Histórico de Manutenções</span></div></div>
+      <div class="section"><div class="section-title" id="svVeiculo"></div>
+        <button class="cta" onclick="abrirServico()">+ Adicionar manutenção</button>
+        <div class="sv-filtros">
+          <div><label class="flabel" for="svAno">Ano</label><div class="selw"><select id="svAno" onchange="pintarHistoricoServicos()"></select></div></div>
+          <div><label class="flabel" for="svTipo">Serviço</label><div class="selw"><select id="svTipo" onchange="pintarHistoricoServicos()"></select></div></div>
+        </div>
+        <div id="svHistorico"></div>
+      </div>
+    </div>
+    <div class="screen" id="s-servico-form">
+      <div class="topbar"><div class="topbar-left"><button class="back" type="button" onclick="go('servicos')" aria-label="Voltar ao histórico">‹</button><span class="title" id="svFormTitulo">Adicionar manutenção</span></div></div>
+      <div class="section"><form onsubmit="event.preventDefault();salvarServico()">
+        <div class="card">
+          <div class="field"><label class="flabel" for="svNome">Serviço realizado</label><input id="svNome" maxlength="100" required placeholder="Ex.: troca de amortecedores"></div>
+          <div class="field"><label class="flabel" for="svData">Data do serviço</label><input id="svData" type="date" required></div>
+          <div class="field"><label class="flabel" for="svKm">KM no serviço</label><input id="svKm" inputmode="numeric" required oninput="maskKm(this)" placeholder="Ex.: 45.000"></div>
+        </div>
+        <p class="ajuda">Este registro guarda o serviço realizado. Para ajustar um lembrete de próxima revisão, use o item correspondente no painel.</p>
+        <button class="cta" type="submit">Salvar manutenção</button>
+        <button class="cta outline" type="button" onclick="go('servicos')">Cancelar</button>
+      </form></div>
     </div>
 
     <!-- ================= FIPE ================= -->
@@ -2690,7 +2731,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
               </div>
     </div>
     <div class="cta-wrap" style="padding-top:8px">
-      <button class="cta" onclick="salvarTroca()">Salvar troca</button>
+      <button class="cta" id="shSalvar" onclick="salvarTroca()">Salvar troca</button>
       <button class="cta outline" onclick="fecharSheet()">Cancelar</button>
     </div>
 
@@ -2817,6 +2858,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(7,140,255,.62)!importa
 <script id="cat" type="application/json">{"motores":{"fiat_fire":{"n":"Fiat Fire / Fire Evo","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30 ou 15W-40","on":"Fiat / Selenia K","oc":"alta","c":"alta"},"fiat_firefly":{"n":"Fiat Firefly","d":"corrente","km":null,"kmf":null,"o":"0W-20","on":"Fiat 9.55535-GSX / API SP / ILSAC GF-6A","oc":"alta","c":"alta"},"fiat_gse_turbo":{"n":"Fiat GSE Turbo (T3/T4)","d":"corrente","km":null,"kmf":null,"o":"0W-20 ou 0W-30","on":"Fiat / família GSE","oc":"media","c":"alta"},"fiat_etorq":{"n":"Fiat E.torQ","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Fiat / Selenia","oc":"baixa","c":"alta"},"fiat_18_8v":{"n":"Fiat 1.8 8v (Powertrain)","d":"correia_seca","km":60000,"kmf":null,"o":"15W-40 ou 5W-30","on":"Fiat / Selenia","oc":"baixa","c":"alta"},"fiat_multijet":{"n":"Fiat MultiJet (diesel)","d":"correia_seca","km":120000,"kmf":null,"o":"5W-30","on":"Fiat / óleo para diesel","oc":"baixa","c":"media"},"fiat_tigershark":{"n":"Tigershark / MultiAir","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Mopar","oc":"baixa","c":"media"},"vw_ap":{"n":"Volkswagen AP","d":"correia_seca","km":60000,"kmf":null,"o":"15W-40 ou 20W-50","on":"VW 501.01 / 502.00","oc":"baixa","c":"alta"},"vw_ea111":{"n":"Volkswagen EA111","d":"correia_seca","km":90000,"kmf":null,"o":"5W-40","on":"VW 502.00","oc":"media","c":"media"},"vw_ea211":{"n":"Volkswagen EA211 (MPI / MSI / TSI)","d":"correia_seca","km":120000,"kmf":null,"o":"5W-30 ou 5W-40","on":"VW 508.88","oc":"media","c":"alta"},"vw_ea888":{"n":"Volkswagen EA888 2.0 TSI","d":"corrente","km":null,"kmf":null,"o":"5W-40","on":"VW 502.00 / 504.00","oc":"baixa","c":"alta"},"vw_25_5cil":{"n":"Volkswagen 2.5 5 cilindros","d":"corrente","km":null,"kmf":null,"o":"5W-40","on":"VW 502.00","oc":"baixa","c":"alta"},"vw_20_tdi":{"n":"Volkswagen 2.0 TDI (Amarok 4cil)","d":"correia_seca","km":120000,"kmf":null,"o":"5W-30","on":"VW 507.00","oc":"baixa","c":"media"},"vw_30_v6_tdi":{"n":"Volkswagen 3.0 V6 TDI (Amarok)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"VW 507.00","oc":"baixa","c":"media"},"gm_8v":{"n":"Chevrolet Family 1 / SPE-4 / Econoflex (8v)","d":"correia_seca","km":50000,"kmf":null,"o":"5W-30","on":"GM dexos1 / API SN","oc":"baixa","c":"alta"},"gm_ecotec_18":{"n":"Chevrolet Ecotec 1.8 16v","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30","on":"GM dexos1","oc":"baixa","c":"media"},"gm_turbo_10_12":{"n":"Chevrolet 1.0 / 1.2 Turbo (CSS Prime)","d":"correia_banhada_oleo","km":120000,"kmf":240000,"o":"0W-20","on":"GM dexos1 Gen 2 ou superior","oc":"alta","c":"alta"},"gm_14_turbo":{"n":"Chevrolet 1.4 Turbo (Cruze / Tracker)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"GM dexos1","oc":"baixa","c":"alta"},"gm_15_turbo":{"n":"Chevrolet 1.5 Turbo (Equinox)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"GM dexos1","oc":"baixa","c":"alta"},"gm_v6_36":{"n":"Chevrolet V6 3.6 DOHC","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"GM dexos1","oc":"baixa","c":"alta"},"ford_rocam":{"n":"Ford Zetec Rocam","d":"corrente","km":null,"kmf":null,"o":"5W-30 ou 15W-40","on":"Ford WSS-M2C913","oc":"baixa","c":"alta"},"ford_sigma":{"n":"Ford Sigma Ti-VCT (4 cilindros, 16v)","d":"correia_seca","km":100000,"kmf":null,"o":"5W-30","on":"Ford WSS-M2C913-D","oc":"media","c":"media"},"ford_dragon_10":{"n":"Ford Dragon 1.0 Ti-VCT (3 cilindros)","d":"correia_banhada_oleo","km":120000,"kmf":240000,"o":"5W-20","on":"Ford WSS-M2C948-B (atualizada para WSS-M2C960-A1 em 2021)","oc":"alta","c":"alta"},"ford_dragon_15":{"n":"Ford Dragon 1.5 Ti-VCT (3 cilindros)","d":"correia_banhada_oleo","km":120000,"kmf":160000,"o":"5W-20","on":"Ford WSS-M2C948-B (atualizada para WSS-M2C960-A1 em 2021)","oc":"alta","c":"alta"},"ford_duratec":{"n":"Ford Duratec / EcoBoost","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Ford WSS-M2C913-D","oc":"baixa","c":"alta"},"ford_v6_v8":{"n":"Ford V6 / V8 (Coyote, EcoBoost V6)","d":"corrente","km":null,"kmf":null,"o":"5W-20 ou 5W-30","on":"Ford / Motorcraft","oc":"baixa","c":"alta"},"honda_geral":{"n":"Honda (linha geral: L15, R18, K20, K24, i-VTEC)","d":"corrente","km":null,"kmf":null,"o":"0W-20 ou 5W-30","on":"Honda / API SN-SP","oc":"baixa","c":"alta"},"honda_v6":{"n":"Honda V6 (Accord)","d":"correia_seca","km":100000,"kmf":null,"o":"5W-30","on":"Honda","oc":"baixa","c":"media"},"toyota_geral":{"n":"Toyota (linha geral: NR, ZR, AR, GD, V6)","d":"corrente","km":null,"kmf":null,"o":"0W-20 ou 5W-30","on":"Toyota / API SN-SP","oc":"baixa","c":"alta"},"nissan_geral":{"n":"Nissan (linha geral: HR, MR, QR, YD)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Nissan / API SN","oc":"baixa","c":"alta"},"nissan_march_10_16v":{"n":"Nissan 1.0 16v (origem Renault D4D)","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30","on":"Renault RN0700","oc":"baixa","c":"alta"},"hyundai_kappa":{"n":"Hyundai/Kia Kappa","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SP / ILSAC GF-6","oc":"media","c":"alta"},"hyundai_gamma":{"n":"Hyundai/Kia Gamma","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SP / ILSAC GF-6","oc":"media","c":"alta"},"hyundai_nu_smartstream":{"n":"Hyundai/Kia Nu / Smartstream","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SP","oc":"baixa","c":"alta"},"hyundai_beta_20_antigo":{"n":"Hyundai 2.0 (Tucson 1ª geração / i30)","d":"correia_seca","km":90000,"kmf":null,"o":"5W-30","on":"API SN","oc":"baixa","c":"media"},"kia_16_turbo":{"n":"Kia 1.6 Turbo (Sportage novo)","d":"correia_seca","km":90000,"kmf":null,"o":"5W-30","on":"API SP","oc":"baixa","c":"media"},"renault_sce":{"n":"Renault SCe / H4M / B4D","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Renault RN0700","oc":"alta","c":"alta"},"renault_tce":{"n":"Renault TCe 1.3 Turbo","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Renault RN0720","oc":"media","c":"alta"},"renault_d4d":{"n":"Renault D4D 1.0 16v","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30 ou 5W-40","on":"Renault RN0700","oc":"baixa","c":"alta"},"renault_k7m_k4m":{"n":"Renault K7M 1.6 8v / K4M 1.6 16v","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30 ou 5W-40","on":"Renault RN0700","oc":"baixa","c":"alta"},"renault_f4r":{"n":"Renault F4R 2.0 16v","d":"correia_seca","km":60000,"kmf":null,"o":"5W-40","on":"Renault RN0700","oc":"baixa","c":"media"},"renault_m4r":{"n":"Renault M4R 2.0 (Fluence, origem Nissan)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Renault RN0700","oc":"baixa","c":"alta"},"psa_tu_ec5":{"n":"PSA TU / EC5 / EB2 (Peugeot e Citroën aspirados)","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30","on":"PSA B71 2290 / B71 2312","oc":"baixa","c":"alta"},"psa_thp":{"n":"PSA 1.6 THP","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"PSA B71 2290","oc":"baixa","c":"alta"},"mitsubishi_4b1":{"n":"Mitsubishi 4B1 2.0 MIVEC","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SN","oc":"baixa","c":"alta"},"mitsubishi_4g_v6":{"n":"Mitsubishi 4G / 6G (linha antiga e V6)","d":"correia_seca","km":90000,"kmf":null,"o":"5W-30 ou 10W-40","on":"API SN","oc":"baixa","c":"media"},"mitsubishi_diesel":{"n":"Mitsubishi diesel 4 cilindros (4D56, 4N15)","d":"nao_mapeado","km":null,"kmf":null,"o":"5W-30","on":"óleo para diesel","oc":"baixa","c":"baixa"},"jeep_tigershark":{"n":"Jeep Tigershark 2.0 / 2.4","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Mopar / MS-6395","oc":"baixa","c":"media"},"jeep_pentastar":{"n":"Jeep Pentastar V6","d":"corrente","km":null,"kmf":null,"o":"5W-20","on":"Mopar / MS-6395","oc":"baixa","c":"media"},"bmw_geral":{"n":"BMW (linha moderna: N/B series)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"BMW Longlife-01 / LL-04","oc":"baixa","c":"media"},"mercedes_geral":{"n":"Mercedes-Benz (linha moderna)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"MB 229.5 / 229.51","oc":"baixa","c":"media"},"nao_mapeado":{"n":"Não identificado","d":"nao_mapeado","km":null,"kmf":null,"o":null,"on":null,"oc":"baixa","c":"baixa"},"chery_15_asp":{"n":"Chery ACTECO 1.5 aspirado (SQR477F / E4G15)","d":"correia_seca","km":60000,"kmf":null,"o":"5W-30","on":"API SN ou superior","oc":"baixa","c":"alta"},"chery_15_turbo":{"n":"Chery ACTECO 1.5 Turbo (E4T15B / E4T15C)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SN/SP","oc":"baixa","c":"alta"},"chery_16_turbo":{"n":"Chery ACTECO 1.6 Turbo GDI (SQRF4J16)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SP","oc":"baixa","c":"alta"},"ram_hemi_57":{"n":"RAM 5.7 V8 Hemi","d":"corrente","km":null,"kmf":null,"o":"5W-20","on":"Mopar MS-6395","oc":"media","c":"alta"},"ram_cummins_67":{"n":"RAM 6.7 Cummins (diesel)","d":"corrente","km":null,"kmf":null,"o":"15W-40","on":"API CK-4 / Mopar MS-10902","oc":"media","c":"alta"},"ram_hurricane_20":{"n":"RAM 2.0 Turbo (Hurricane 4 / GME T4)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"Mopar MS-6395","oc":"baixa","c":"media"},"ram_22_diesel":{"n":"RAM 2.2 Turbodiesel (Rampage)","d":"nao_mapeado","km":null,"kmf":null,"o":"5W-30","on":"óleo para diesel — confira o manual","oc":"baixa","c":"baixa"},"volvo_vea":{"n":"Volvo Drive-E / VEA (T2 a T8, D2 a D5)","d":"correia_seca","km":150000,"kmf":240000,"o":"0W-20","on":"Volvo VCC RBS0-2AE","oc":"media","c":"alta"},"volvo_5cil":{"n":"Volvo 5 cilindros (linha anterior ao VEA)","d":"correia_seca","km":120000,"kmf":null,"o":"5W-30","on":"Volvo VCC 95200377","oc":"baixa","c":"media"},"vw_30_v6_tfsi":{"n":"Audi 3.0 V6 TFSI","d":"corrente","km":null,"kmf":null,"o":"5W-40","on":"VW 502.00","oc":"baixa","c":"alta"},"jlr_ingenium":{"n":"JLR Ingenium 2.0 (gasolina e diesel)","d":"corrente","km":null,"kmf":null,"o":"0W-20","on":"STJLR.51.5122","oc":"media","c":"alta"},"jlr_v6_v8":{"n":"JLR V6 / V8 (supercharged e diesel)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"STJLR.03.5003","oc":"baixa","c":"alta"},"porsche_geral":{"n":"Porsche (linha moderna, boxer e V6/V8)","d":"corrente","km":null,"kmf":null,"o":"0W-40","on":"Porsche A40","oc":"media","c":"alta"},"subaru_fb":{"n":"Subaru FB / FA (boxer moderno)","d":"corrente","km":null,"kmf":null,"o":"0W-20","on":"API SN / ILSAC GF-5","oc":"media","c":"alta"},"subaru_ej":{"n":"Subaru EJ (boxer da linha antiga)","d":"correia_seca","km":100000,"kmf":null,"o":"5W-30","on":"API SL / SM","oc":"baixa","c":"media"},"suzuki_geral":{"n":"Suzuki (K12/K14/K15, M16, J20)","d":"corrente","km":null,"kmf":null,"o":"0W-20 ou 5W-30","on":"API SN","oc":"baixa","c":"alta"},"alfa_ts":{"n":"Alfa Romeo Twin Spark / JTS (linha antiga)","d":"correia_seca","km":60000,"kmf":null,"o":"5W-40","on":"Selenia","oc":"baixa","c":"media"},"jac_4a9":{"n":"JAC 4A91 / 4A92 (origem Mitsubishi)","d":"corrente","km":null,"kmf":null,"o":"5W-30","on":"API SN","oc":"baixa","c":"media"},"nm_lifan":{"n":"Lifan — motor não conferido","d":"nao_mapeado","km":null,"kmf":null,"o":null,"on":null,"oc":"baixa","c":"baixa"},"nm_effa":{"n":"EFFA — motor não conferido","d":"nao_mapeado","km":null,"kmf":null,"o":null,"on":null,"oc":"baixa","c":"baixa"},"nm_ssangyong":{"n":"SsangYong — motor não conferido","d":"nao_mapeado","km":null,"kmf":null,"o":null,"on":null,"oc":"baixa","c":"baixa"},"nm_troller":{"n":"Troller — motor não conferido","d":"nao_mapeado","km":null,"kmf":null,"o":null,"on":null,"oc":"baixa","c":"baixa"}},"carros":{"Fiat":{"500":[{"m":"1.4 Fire Evo","e":"fiat_fire","c":1.4,"t":false,"a0":2009,"a1":2016}],"Uno":[{"m":"1.0 Fire","e":"fiat_fire","c":1,"t":false,"a0":2004,"a1":2021},{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2010,"a1":2021},{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2017,"a1":2021},{"m":"1.3 Firefly","e":"fiat_firefly","c":1.3,"t":false,"a0":2016,"a1":2021}],"Mobi":[{"m":"1.0 Fire","e":"fiat_fire","c":1,"t":false,"a0":2016,"a1":2024},{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2017,"a1":null}],"Palio":[{"m":"1.0 Fire","e":"fiat_fire","c":1,"t":false,"a0":2001,"a1":2017},{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2004,"a1":2017},{"m":"1.6 E.torQ","e":"fiat_etorq","c":1.6,"t":false,"a0":2012,"a1":2017},{"m":"1.8 8v","e":"fiat_18_8v","c":1.8,"t":false,"a0":2003,"a1":2012},{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2010,"a1":2017}],"Palio Weekend":[{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2004,"a1":2020},{"m":"1.6 E.torQ","e":"fiat_etorq","c":1.6,"t":false,"a0":2012,"a1":2020},{"m":"1.8 8v","e":"fiat_18_8v","c":1.8,"t":false,"a0":2003,"a1":2012}],"Siena":[{"m":"1.0 Fire","e":"fiat_fire","c":1,"t":false,"a0":2001,"a1":2016},{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2004,"a1":2016},{"m":"1.8 8v","e":"fiat_18_8v","c":1.8,"t":false,"a0":2003,"a1":2012}],"Grand Siena":[{"m":"1.0 Fire","e":"fiat_fire","c":1,"t":false,"a0":2012,"a1":2021},{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2012,"a1":2021},{"m":"1.6 E.torQ","e":"fiat_etorq","c":1.6,"t":false,"a0":2012,"a1":2021}],"Strada":[{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2004,"a1":2020},{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2010,"a1":2020},{"m":"1.3 Firefly","e":"fiat_firefly","c":1.3,"t":false,"a0":2021,"a1":null},{"m":"1.0 Turbo","e":"fiat_gse_turbo","c":1,"t":true,"a0":2022,"a1":null}],"Toro":[{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2016,"a1":2021},{"m":"2.0 Diesel","e":"fiat_multijet","c":2,"t":false,"a0":2016,"a1":null},{"m":"1.3 Turbo","e":"fiat_gse_turbo","c":1.3,"t":true,"a0":2021,"a1":null},{"m":"2.4 Tigershark","e":"fiat_tigershark","c":2.4,"t":false,"a0":2018,"a1":2021}],"Argo":[{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2017,"a1":null},{"m":"1.3 Firefly","e":"fiat_firefly","c":1.3,"t":false,"a0":2017,"a1":null},{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2017,"a1":2020}],"Cronos":[{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2021,"a1":null},{"m":"1.3 Firefly","e":"fiat_firefly","c":1.3,"t":false,"a0":2018,"a1":null},{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2018,"a1":2020}],"Pulse":[{"m":"1.3 Firefly","e":"fiat_firefly","c":1.3,"t":false,"a0":2022,"a1":null},{"m":"1.0 Turbo","e":"fiat_gse_turbo","c":1,"t":true,"a0":2021,"a1":null},{"m":"1.3 Turbo (Abarth)","e":"fiat_gse_turbo","c":1.3,"t":true,"a0":2023,"a1":null}],"Fastback":[{"m":"1.0 Turbo","e":"fiat_gse_turbo","c":1,"t":true,"a0":2022,"a1":null},{"m":"1.3 Turbo","e":"fiat_gse_turbo","c":1.3,"t":true,"a0":2022,"a1":null}],"Punto":[{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2008,"a1":2017},{"m":"1.6 E.torQ","e":"fiat_etorq","c":1.6,"t":false,"a0":2012,"a1":2017},{"m":"1.8 8v","e":"fiat_18_8v","c":1.8,"t":false,"a0":2008,"a1":2012},{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2010,"a1":2017}],"Idea":[{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2005,"a1":2016},{"m":"1.6 E.torQ","e":"fiat_etorq","c":1.6,"t":false,"a0":2012,"a1":2016},{"m":"1.8 8v","e":"fiat_18_8v","c":1.8,"t":false,"a0":2005,"a1":2012}],"Linea":[{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2011,"a1":2016},{"m":"1.4 T-Jet","e":"nao_mapeado","c":1.4,"t":true,"a0":2009,"a1":2014}],"Bravo":[{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2011,"a1":2016},{"m":"1.4 T-Jet","e":"nao_mapeado","c":1.4,"t":true,"a0":2010,"a1":2016}],"Doblò":[{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2010,"a1":2022},{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2010,"a1":2022}],"Fiorino":[{"m":"1.4 Fire","e":"fiat_fire","c":1.4,"t":false,"a0":2014,"a1":null}]},"Volkswagen":{"Gol":[{"m":"1.0 AP / 1.6 AP","e":"vw_ap","c":1,"t":false,"a0":1994,"a1":2008},{"m":"1.0 EA111","e":"vw_ea111","c":1,"t":false,"a0":2008,"a1":2016},{"m":"1.6 EA111","e":"vw_ea111","c":1.6,"t":false,"a0":2008,"a1":2016},{"m":"1.0 MPI (EA211)","e":"vw_ea211","c":1,"t":false,"a0":2016,"a1":2023},{"m":"1.6 MSI (EA211)","e":"vw_ea211","c":1.6,"t":false,"a0":2016,"a1":2023}],"Voyage":[{"m":"1.0 EA111","e":"vw_ea111","c":1,"t":false,"a0":2008,"a1":2016},{"m":"1.6 EA111","e":"vw_ea111","c":1.6,"t":false,"a0":2008,"a1":2016},{"m":"1.0 MPI (EA211)","e":"vw_ea211","c":1,"t":false,"a0":2016,"a1":2022},{"m":"1.6 MSI (EA211)","e":"vw_ea211","c":1.6,"t":false,"a0":2016,"a1":2022}],"Saveiro":[{"m":"1.6 AP","e":"vw_ap","c":1.6,"t":false,"a0":1994,"a1":2009},{"m":"1.6 EA111","e":"vw_ea111","c":1.6,"t":false,"a0":2009,"a1":2016},{"m":"1.6 MSI (EA211)","e":"vw_ea211","c":1.6,"t":false,"a0":2016,"a1":null}],"Fox":[{"m":"1.0 EA111","e":"vw_ea111","c":1,"t":false,"a0":2003,"a1":2016},{"m":"1.6 EA111","e":"vw_ea111","c":1.6,"t":false,"a0":2003,"a1":2016},{"m":"1.0 MPI (EA211)","e":"vw_ea211","c":1,"t":false,"a0":2013,"a1":2021},{"m":"1.6 MSI (EA211)","e":"vw_ea211","c":1.6,"t":false,"a0":2015,"a1":2021}],"Polo":[{"m":"1.6 EA111 (Polo antigo)","e":"vw_ea111","c":1.6,"t":false,"a0":2002,"a1":2014},{"m":"1.0 MPI","e":"vw_ea211","c":1,"t":false,"a0":2017,"a1":2022},{"m":"1.0 TSI","e":"vw_ea211","c":1,"t":true,"a0":2017,"a1":null},{"m":"1.6 MSI","e":"vw_ea211","c":1.6,"t":false,"a0":2017,"a1":2023},{"m":"1.4 TSI (GTS)","e":"vw_ea211","c":1.4,"t":true,"a0":2020,"a1":null}],"Virtus":[{"m":"1.0 TSI","e":"vw_ea211","c":1,"t":true,"a0":2018,"a1":null},{"m":"1.6 MSI","e":"vw_ea211","c":1.6,"t":false,"a0":2018,"a1":2023},{"m":"1.4 TSI (GTS)","e":"vw_ea211","c":1.4,"t":true,"a0":2020,"a1":null}],"Nivus":[{"m":"1.0 TSI","e":"vw_ea211","c":1,"t":true,"a0":2020,"a1":null}],"T-Cross":[{"m":"1.0 TSI","e":"vw_ea211","c":1,"t":true,"a0":2019,"a1":null},{"m":"1.4 TSI","e":"vw_ea211","c":1.4,"t":true,"a0":2019,"a1":null}],"Up!":[{"m":"1.0 MPI","e":"vw_ea211","c":1,"t":false,"a0":2014,"a1":2021},{"m":"1.0 TSI","e":"vw_ea211","c":1,"t":true,"a0":2015,"a1":2021}],"Golf":[{"m":"1.6 EA111","e":"vw_ea111","c":1.6,"t":false,"a0":1999,"a1":2013},{"m":"1.0 TSI / 1.4 TSI","e":"vw_ea211","c":1,"t":true,"a0":2014,"a1":2019},{"m":"2.0 TSI (GTI / R)","e":"vw_ea888","c":2,"t":true,"a0":2010,"a1":null}],"Jetta":[{"m":"2.5 5 cilindros","e":"vw_25_5cil","c":2.5,"t":false,"a0":2007,"a1":2011},{"m":"1.4 TSI","e":"vw_ea211","c":1.4,"t":true,"a0":2015,"a1":null},{"m":"2.0 TSI (GLI)","e":"vw_ea888","c":2,"t":true,"a0":2012,"a1":null}],"Tiguan":[{"m":"1.4 TSI","e":"vw_ea211","c":1.4,"t":true,"a0":2018,"a1":null},{"m":"2.0 TSI","e":"vw_ea888","c":2,"t":true,"a0":2009,"a1":null}],"Taos":[{"m":"1.4 TSI","e":"vw_ea211","c":1.4,"t":true,"a0":2021,"a1":null}],"Amarok":[{"m":"2.0 TDI","e":"vw_20_tdi","c":2,"t":true,"a0":2010,"a1":2022},{"m":"3.0 V6 TDI","e":"vw_30_v6_tdi","c":3,"t":true,"a0":2018,"a1":null}],"Santana":[{"m":"1.8 AP / 2.0 AP","e":"vw_ap","c":1.8,"t":false,"a0":1984,"a1":2006}],"Parati":[{"m":"1.6 AP / 1.8 AP","e":"vw_ap","c":1.6,"t":false,"a0":1995,"a1":2005},{"m":"1.6 EA111","e":"vw_ea111","c":1.6,"t":false,"a0":2005,"a1":2012}],"Kombi":[{"m":"1.4 EA111 (flex)","e":"vw_ea111","c":1.4,"t":false,"a0":2006,"a1":2014}]},"Chevrolet":{"Onix":[{"m":"1.0 SPE/4 8v","e":"gm_8v","c":1,"t":false,"a0":2012,"a1":2019},{"m":"1.4 SPE/4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2012,"a1":2019},{"m":"1.0 Aspirado (novo)","e":"gm_turbo_10_12","c":1,"t":false,"a0":2020,"a1":null},{"m":"1.0 Turbo","e":"gm_turbo_10_12","c":1,"t":true,"a0":2020,"a1":null}],"Prisma":[{"m":"1.0 8v","e":"gm_8v","c":1,"t":false,"a0":2006,"a1":2019},{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2006,"a1":2019}],"Cobalt":[{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2011,"a1":2020},{"m":"1.8 8v","e":"gm_8v","c":1.8,"t":false,"a0":2011,"a1":2020}],"Celta":[{"m":"1.0 8v","e":"gm_8v","c":1,"t":false,"a0":2000,"a1":2016},{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2006,"a1":2016}],"Corsa":[{"m":"1.0 8v","e":"gm_8v","c":1,"t":false,"a0":1994,"a1":2012},{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":1995,"a1":2012},{"m":"1.6 8v","e":"gm_8v","c":1.6,"t":false,"a0":1994,"a1":2012},{"m":"1.8 8v","e":"gm_8v","c":1.8,"t":false,"a0":2002,"a1":2012}],"Classic":[{"m":"1.0 8v","e":"gm_8v","c":1,"t":false,"a0":2002,"a1":2016},{"m":"1.6 8v","e":"gm_8v","c":1.6,"t":false,"a0":2002,"a1":2010}],"Agile":[{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2009,"a1":2014}],"Spin":[{"m":"1.8 8v","e":"gm_8v","c":1.8,"t":false,"a0":2012,"a1":2024}],"Montana":[{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2010,"a1":2022},{"m":"1.8 8v","e":"gm_8v","c":1.8,"t":false,"a0":2003,"a1":2022},{"m":"1.2 Turbo (nova)","e":"gm_turbo_10_12","c":1.2,"t":true,"a0":2023,"a1":null}],"Meriva":[{"m":"1.4 8v","e":"gm_8v","c":1.4,"t":false,"a0":2002,"a1":2012},{"m":"1.8 8v","e":"gm_8v","c":1.8,"t":false,"a0":2002,"a1":2012}],"Tracker":[{"m":"1.4 Turbo","e":"gm_14_turbo","c":1.4,"t":true,"a0":2014,"a1":2019},{"m":"1.0 Turbo","e":"gm_turbo_10_12","c":1,"t":true,"a0":2020,"a1":null},{"m":"1.2 Turbo","e":"gm_turbo_10_12","c":1.2,"t":true,"a0":2021,"a1":null}],"Cruze":[{"m":"1.8 Ecotec","e":"gm_ecotec_18","c":1.8,"t":false,"a0":2011,"a1":2016},{"m":"1.4 Turbo","e":"gm_14_turbo","c":1.4,"t":true,"a0":2016,"a1":null}],"Equinox":[{"m":"1.5 Turbo","e":"gm_15_turbo","c":1.5,"t":true,"a0":2017,"a1":null},{"m":"2.0 Turbo","e":"nao_mapeado","c":2,"t":true,"a0":2018,"a1":null}],"S10":[{"m":"2.4 Flex","e":"nao_mapeado","c":2.4,"t":false,"a0":2012,"a1":2021},{"m":"2.8 Diesel","e":"nao_mapeado","c":2.8,"t":false,"a0":2012,"a1":null}],"Trailblazer":[{"m":"2.8 Diesel","e":"nao_mapeado","c":2.8,"t":false,"a0":2012,"a1":null},{"m":"3.6 V6","e":"gm_v6_36","c":3.6,"t":false,"a0":2012,"a1":2016}],"Omega":[{"m":"3.6 V6","e":"gm_v6_36","c":3.6,"t":false,"a0":2005,"a1":2011}],"Captiva":[{"m":"3.6 V6","e":"gm_v6_36","c":3.6,"t":false,"a0":2008,"a1":2017},{"m":"2.4 Ecotec","e":"nao_mapeado","c":2.4,"t":false,"a0":2008,"a1":2017}],"Vectra":[{"m":"2.0 8v","e":"gm_8v","c":2,"t":false,"a0":1996,"a1":2011},{"m":"2.4 16v","e":"nao_mapeado","c":2.4,"t":false,"a0":2006,"a1":2011}],"Astra":[{"m":"1.8 8v","e":"gm_8v","c":1.8,"t":false,"a0":1998,"a1":2011},{"m":"2.0 8v","e":"gm_8v","c":2,"t":false,"a0":1998,"a1":2011}],"Zafira":[{"m":"2.0 8v","e":"gm_8v","c":2,"t":false,"a0":2001,"a1":2012}],"Kadett":[{"m":"1.8 / 2.0","e":"gm_8v","c":1.8,"t":false,"a0":1989,"a1":1998}],"Monza":[{"m":"1.8 / 2.0","e":"gm_8v","c":1.8,"t":false,"a0":1982,"a1":1996}]},"Ford":{"Ka":[{"m":"1.0 Zetec Rocam","e":"ford_rocam","c":1,"t":false,"a0":1997,"a1":2014},{"m":"1.6 Zetec Rocam","e":"ford_rocam","c":1.6,"t":false,"a0":2008,"a1":2014},{"m":"1.0 Ti-VCT (Dragon 3cil)","e":"ford_dragon_10","c":1,"t":false,"a0":2014,"a1":2021},{"m":"1.5 Ti-VCT (Sigma 4cil)","e":"ford_sigma","c":1.5,"t":false,"a0":2014,"a1":2018},{"m":"1.5 Ti-VCT (Dragon 3cil)","e":"ford_dragon_15","c":1.5,"t":false,"a0":2018,"a1":2021}],"Ka Sedan":[{"m":"1.0 Ti-VCT (Dragon 3cil)","e":"ford_dragon_10","c":1,"t":false,"a0":2014,"a1":2021},{"m":"1.5 Ti-VCT (Sigma 4cil)","e":"ford_sigma","c":1.5,"t":false,"a0":2014,"a1":2018},{"m":"1.5 Ti-VCT (Dragon 3cil)","e":"ford_dragon_15","c":1.5,"t":false,"a0":2018,"a1":2021}],"Fiesta":[{"m":"1.0 Zetec Rocam","e":"ford_rocam","c":1,"t":false,"a0":1996,"a1":2014},{"m":"1.6 Zetec Rocam","e":"ford_rocam","c":1.6,"t":false,"a0":2003,"a1":2014},{"m":"1.5 Ti-VCT (Sigma)","e":"ford_sigma","c":1.5,"t":false,"a0":2014,"a1":2019},{"m":"1.6 Ti-VCT (Sigma)","e":"ford_sigma","c":1.6,"t":false,"a0":2013,"a1":2019}],"EcoSport":[{"m":"1.0 Zetec Rocam","e":"ford_rocam","c":1,"t":false,"a0":2003,"a1":2012},{"m":"1.6 Zetec Rocam","e":"ford_rocam","c":1.6,"t":false,"a0":2003,"a1":2012},{"m":"1.6 Ti-VCT (Sigma)","e":"ford_sigma","c":1.6,"t":false,"a0":2012,"a1":2017},{"m":"2.0 Duratec","e":"ford_duratec","c":2,"t":false,"a0":2012,"a1":2021},{"m":"1.5 Ti-VCT (Dragon 3cil)","e":"ford_dragon_15","c":1.5,"t":false,"a0":2017,"a1":2021}],"Focus":[{"m":"1.6 Zetec Rocam","e":"ford_rocam","c":1.6,"t":false,"a0":2000,"a1":2009},{"m":"1.6 Ti-VCT (Sigma)","e":"ford_sigma","c":1.6,"t":false,"a0":2013,"a1":2019},{"m":"2.0 Duratec","e":"ford_duratec","c":2,"t":false,"a0":2009,"a1":2019}],"Fusion":[{"m":"2.0 EcoBoost","e":"ford_duratec","c":2,"t":true,"a0":2013,"a1":2020},{"m":"2.5 Duratec","e":"ford_duratec","c":2.5,"t":false,"a0":2006,"a1":2020},{"m":"3.5 V6","e":"ford_v6_v8","c":3.5,"t":false,"a0":2010,"a1":2016}],"Ranger":[{"m":"2.2 Diesel","e":"nao_mapeado","c":2.2,"t":false,"a0":2012,"a1":2022},{"m":"3.2 Diesel","e":"nao_mapeado","c":3.2,"t":false,"a0":2012,"a1":2022},{"m":"2.5 Flex","e":"nao_mapeado","c":2.5,"t":false,"a0":2012,"a1":2016},{"m":"3.0 V6 Diesel (Raptor)","e":"ford_v6_v8","c":3,"t":false,"a0":2023,"a1":null}],"Mustang":[{"m":"5.0 V8 Coyote","e":"ford_v6_v8","c":5,"t":false,"a0":2018,"a1":null},{"m":"2.3 EcoBoost","e":"ford_duratec","c":2.3,"t":true,"a0":2018,"a1":2020}],"Maverick":[{"m":"2.0 EcoBoost","e":"ford_duratec","c":2,"t":true,"a0":2022,"a1":null}],"Bronco Sport":[{"m":"2.0 EcoBoost","e":"ford_duratec","c":2,"t":true,"a0":2021,"a1":null}],"Escort":[{"m":"1.6 / 1.8 Zetec","e":"nao_mapeado","c":1.6,"t":false,"a0":1993,"a1":2002}],"Courier":[{"m":"1.6 Zetec Rocam","e":"ford_rocam","c":1.6,"t":false,"a0":1998,"a1":2013}]},"Honda":{"Fit":[{"m":"1.4 i-DSI","e":"honda_geral","c":1.4,"t":false,"a0":2003,"a1":2008},{"m":"1.5 i-VTEC","e":"honda_geral","c":1.5,"t":false,"a0":2003,"a1":2021}],"City":[{"m":"1.5 i-VTEC","e":"honda_geral","c":1.5,"t":false,"a0":2009,"a1":null}],"Civic":[{"m":"1.7","e":"honda_geral","c":1.7,"t":false,"a0":2001,"a1":2006},{"m":"1.8 i-VTEC","e":"honda_geral","c":1.8,"t":false,"a0":2006,"a1":2016},{"m":"2.0 i-VTEC","e":"honda_geral","c":2,"t":false,"a0":2012,"a1":2021},{"m":"1.5 Turbo","e":"honda_geral","c":1.5,"t":true,"a0":2016,"a1":null}],"HR-V":[{"m":"1.8 i-VTEC","e":"honda_geral","c":1.8,"t":false,"a0":2015,"a1":2022},{"m":"1.5 Turbo","e":"honda_geral","c":1.5,"t":true,"a0":2022,"a1":null}],"WR-V":[{"m":"1.5 i-VTEC","e":"honda_geral","c":1.5,"t":false,"a0":2017,"a1":2023}],"CR-V":[{"m":"2.0 i-VTEC","e":"honda_geral","c":2,"t":false,"a0":2007,"a1":2017},{"m":"1.5 Turbo","e":"honda_geral","c":1.5,"t":true,"a0":2017,"a1":null}],"Accord":[{"m":"2.0 / 2.4","e":"honda_geral","c":2,"t":false,"a0":1998,"a1":null},{"m":"3.0 V6 / 3.5 V6","e":"honda_v6","c":3,"t":false,"a0":1998,"a1":2016}]},"Toyota":{"Corolla":[{"m":"1.6 / 1.8 (até 2001)","e":"nao_mapeado","c":1.6,"t":false,"a0":1998,"a1":2001},{"m":"1.8 (2ZR / 3ZZ)","e":"toyota_geral","c":1.8,"t":false,"a0":2002,"a1":2019},{"m":"2.0 Dynamic Force","e":"toyota_geral","c":2,"t":false,"a0":2019,"a1":null},{"m":"1.8 Hybrid","e":"toyota_geral","c":1.8,"t":false,"a0":2019,"a1":null}],"Corolla Cross":[{"m":"2.0","e":"toyota_geral","c":2,"t":false,"a0":2021,"a1":null},{"m":"1.8 Hybrid","e":"toyota_geral","c":1.8,"t":false,"a0":2021,"a1":null}],"Etios":[{"m":"1.3","e":"toyota_geral","c":1.3,"t":false,"a0":2012,"a1":2021},{"m":"1.5","e":"toyota_geral","c":1.5,"t":false,"a0":2012,"a1":2021}],"Yaris":[{"m":"1.3","e":"toyota_geral","c":1.3,"t":false,"a0":2018,"a1":2023},{"m":"1.5","e":"toyota_geral","c":1.5,"t":false,"a0":2018,"a1":2023}],"Hilux":[{"m":"2.7 Flex","e":"toyota_geral","c":2.7,"t":false,"a0":2005,"a1":null},{"m":"2.8 Diesel","e":"toyota_geral","c":2.8,"t":false,"a0":2016,"a1":null},{"m":"3.0 Diesel","e":"toyota_geral","c":3,"t":false,"a0":2005,"a1":2015},{"m":"4.0 V6","e":"toyota_geral","c":4,"t":false,"a0":2005,"a1":2015}],"SW4":[{"m":"2.8 Diesel","e":"toyota_geral","c":2.8,"t":false,"a0":2016,"a1":null},{"m":"3.0 Diesel","e":"toyota_geral","c":3,"t":false,"a0":2005,"a1":2015}],"RAV4":[{"m":"2.5 Hybrid","e":"toyota_geral","c":2.5,"t":false,"a0":2019,"a1":null}]},"Hyundai":{"HB20":[{"m":"1.0 Kappa","e":"hyundai_kappa","c":1,"t":false,"a0":2012,"a1":null},{"m":"1.0 TGDi Turbo","e":"hyundai_kappa","c":1,"t":true,"a0":2019,"a1":null},{"m":"1.6 Gamma","e":"hyundai_gamma","c":1.6,"t":false,"a0":2012,"a1":2022}],"HB20S":[{"m":"1.0 Kappa","e":"hyundai_kappa","c":1,"t":false,"a0":2013,"a1":null},{"m":"1.0 TGDi Turbo","e":"hyundai_kappa","c":1,"t":true,"a0":2019,"a1":null},{"m":"1.6 Gamma","e":"hyundai_gamma","c":1.6,"t":false,"a0":2013,"a1":2022}],"Creta":[{"m":"1.6 Gamma","e":"hyundai_gamma","c":1.6,"t":false,"a0":2017,"a1":2022},{"m":"2.0 Nu","e":"hyundai_nu_smartstream","c":2,"t":false,"a0":2017,"a1":null},{"m":"1.0 TGDi Turbo","e":"hyundai_kappa","c":1,"t":true,"a0":2022,"a1":null}],"i30":[{"m":"2.0 (1ª geração)","e":"hyundai_beta_20_antigo","c":2,"t":false,"a0":2009,"a1":2012},{"m":"1.8","e":"hyundai_nu_smartstream","c":1.8,"t":false,"a0":2012,"a1":2016}],"Tucson":[{"m":"2.0 (1ª geração)","e":"hyundai_beta_20_antigo","c":2,"t":false,"a0":2005,"a1":2015},{"m":"1.6 Turbo (New Tucson)","e":"hyundai_nu_smartstream","c":1.6,"t":true,"a0":2016,"a1":null}],"IX35":[{"m":"2.0","e":"hyundai_nu_smartstream","c":2,"t":false,"a0":2010,"a1":2021}]},"Kia":{"Picanto":[{"m":"1.0 Kappa","e":"hyundai_kappa","c":1,"t":false,"a0":2011,"a1":null}],"Rio":[{"m":"1.6 Gamma","e":"hyundai_gamma","c":1.6,"t":false,"a0":2011,"a1":2017}],"Cerato":[{"m":"1.6 Gamma","e":"hyundai_gamma","c":1.6,"t":false,"a0":2009,"a1":null},{"m":"2.0 Nu","e":"hyundai_nu_smartstream","c":2,"t":false,"a0":2009,"a1":null}],"Sportage":[{"m":"2.0 Nu","e":"hyundai_nu_smartstream","c":2,"t":false,"a0":2010,"a1":2021},{"m":"1.6 Turbo (nova geração)","e":"kia_16_turbo","c":1.6,"t":true,"a0":2022,"a1":null}],"Soul":[{"m":"1.6 Gamma","e":"hyundai_gamma","c":1.6,"t":false,"a0":2010,"a1":2019}],"Sorento":[{"m":"2.4","e":"hyundai_nu_smartstream","c":2.4,"t":false,"a0":2010,"a1":null},{"m":"3.5 V6","e":"nao_mapeado","c":3.5,"t":false,"a0":2010,"a1":null}]},"Renault":{"Kwid":[{"m":"1.0 SCe","e":"renault_sce","c":1,"t":false,"a0":2017,"a1":null}],"Sandero":[{"m":"1.0 16v (D4D)","e":"renault_d4d","c":1,"t":false,"a0":2007,"a1":2016},{"m":"1.6 8v (K7M)","e":"renault_k7m_k4m","c":1.6,"t":false,"a0":2007,"a1":2016},{"m":"1.0 SCe","e":"renault_sce","c":1,"t":false,"a0":2016,"a1":null},{"m":"1.6 SCe","e":"renault_sce","c":1.6,"t":false,"a0":2016,"a1":null},{"m":"2.0 (RS)","e":"renault_f4r","c":2,"t":false,"a0":2015,"a1":2020}],"Logan":[{"m":"1.0 16v (D4D)","e":"renault_d4d","c":1,"t":false,"a0":2007,"a1":2016},{"m":"1.6 8v (K7M)","e":"renault_k7m_k4m","c":1.6,"t":false,"a0":2007,"a1":2016},{"m":"1.0 SCe","e":"renault_sce","c":1,"t":false,"a0":2016,"a1":null},{"m":"1.6 SCe","e":"renault_sce","c":1.6,"t":false,"a0":2016,"a1":null}],"Duster":[{"m":"1.6 16v (K4M)","e":"renault_k7m_k4m","c":1.6,"t":false,"a0":2011,"a1":2016},{"m":"2.0 16v (F4R)","e":"renault_f4r","c":2,"t":false,"a0":2011,"a1":2020},{"m":"1.6 SCe","e":"renault_sce","c":1.6,"t":false,"a0":2016,"a1":2021},{"m":"1.3 TCe Turbo","e":"renault_tce","c":1.3,"t":true,"a0":2021,"a1":null}],"Oroch":[{"m":"1.6 SCe","e":"renault_sce","c":1.6,"t":false,"a0":2016,"a1":2022},{"m":"2.0 16v (F4R)","e":"renault_f4r","c":2,"t":false,"a0":2015,"a1":2020},{"m":"1.3 TCe Turbo","e":"renault_tce","c":1.3,"t":true,"a0":2022,"a1":null}],"Captur":[{"m":"1.6 SCe","e":"renault_sce","c":1.6,"t":false,"a0":2017,"a1":2021},{"m":"2.0 16v (F4R)","e":"renault_f4r","c":2,"t":false,"a0":2017,"a1":2020},{"m":"1.3 TCe Turbo","e":"renault_tce","c":1.3,"t":true,"a0":2021,"a1":null}],"Clio":[{"m":"1.0 16v (D4D)","e":"renault_d4d","c":1,"t":false,"a0":1999,"a1":2016},{"m":"1.6 8v (K7M)","e":"renault_k7m_k4m","c":1.6,"t":false,"a0":1999,"a1":2016}],"Fluence":[{"m":"1.6 16v (K4M)","e":"renault_k7m_k4m","c":1.6,"t":false,"a0":2011,"a1":2018},{"m":"2.0 (M4R)","e":"renault_m4r","c":2,"t":false,"a0":2011,"a1":2018}],"Megane":[{"m":"1.6 16v (K4M)","e":"renault_k7m_k4m","c":1.6,"t":false,"a0":1998,"a1":2012},{"m":"2.0 16v (F4R)","e":"renault_f4r","c":2,"t":false,"a0":1998,"a1":2012}],"Master":[{"m":"2.3 Diesel (M9T)","e":"nao_mapeado","c":2.3,"t":false,"a0":2013,"a1":null}]},"Nissan":{"March":[{"m":"1.0 16v (origem Renault)","e":"nissan_march_10_16v","c":1,"t":false,"a0":2011,"a1":2016},{"m":"1.0 3cil","e":"nissan_geral","c":1,"t":false,"a0":2017,"a1":2022},{"m":"1.6 16v","e":"nissan_geral","c":1.6,"t":false,"a0":2011,"a1":2022}],"Versa":[{"m":"1.0 3cil","e":"nissan_geral","c":1,"t":false,"a0":2020,"a1":null},{"m":"1.6 16v","e":"nissan_geral","c":1.6,"t":false,"a0":2011,"a1":null}],"Kicks":[{"m":"1.6 16v","e":"nissan_geral","c":1.6,"t":false,"a0":2016,"a1":null},{"m":"1.0 Turbo","e":"nissan_geral","c":1,"t":true,"a0":2025,"a1":null}],"Sentra":[{"m":"2.0 16v","e":"nissan_geral","c":2,"t":false,"a0":2007,"a1":null}],"Frontier":[{"m":"2.3 Diesel","e":"nissan_geral","c":2.3,"t":false,"a0":2017,"a1":null},{"m":"2.5 Diesel","e":"nissan_geral","c":2.5,"t":false,"a0":2008,"a1":2016}],"Livina":[{"m":"1.6 16v","e":"nissan_geral","c":1.6,"t":false,"a0":2009,"a1":2014},{"m":"1.8 16v","e":"nissan_geral","c":1.8,"t":false,"a0":2009,"a1":2014}],"Tiida":[{"m":"1.8 16v","e":"nissan_geral","c":1.8,"t":false,"a0":2007,"a1":2013}]},"Peugeot":{"206":[{"m":"1.0 16v","e":"psa_tu_ec5","c":1,"t":false,"a0":1999,"a1":2010},{"m":"1.4 8v","e":"psa_tu_ec5","c":1.4,"t":false,"a0":1999,"a1":2010},{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":1999,"a1":2010}],"207":[{"m":"1.4 8v","e":"psa_tu_ec5","c":1.4,"t":false,"a0":2008,"a1":2015},{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2008,"a1":2015}],"208":[{"m":"1.5 8v","e":"psa_tu_ec5","c":1.5,"t":false,"a0":2013,"a1":2019},{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2013,"a1":2020},{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2022,"a1":null},{"m":"1.0 Turbo (GSE)","e":"fiat_gse_turbo","c":1,"t":true,"a0":2023,"a1":null}],"307":[{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2002,"a1":2012},{"m":"2.0 16v","e":"psa_tu_ec5","c":2,"t":false,"a0":2002,"a1":2012}],"308":[{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2012,"a1":2018},{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2012,"a1":2018}],"408":[{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2011,"a1":2019},{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2011,"a1":2019},{"m":"2.0 16v","e":"psa_tu_ec5","c":2,"t":false,"a0":2011,"a1":2019}],"2008":[{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2015,"a1":2022},{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2020,"a1":2022},{"m":"1.0 Turbo (GSE)","e":"fiat_gse_turbo","c":1,"t":true,"a0":2023,"a1":null}],"3008":[{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2018,"a1":2022}],"Hoggar":[{"m":"1.4 8v / 1.6 16v","e":"psa_tu_ec5","c":1.4,"t":false,"a0":2010,"a1":2014}],"Partner":[{"m":"1.4 Fire (Rapid)","e":"fiat_fire","c":1.4,"t":false,"a0":2022,"a1":null}]},"Citroën":{"C3":[{"m":"1.4 8v","e":"psa_tu_ec5","c":1.4,"t":false,"a0":2003,"a1":2021},{"m":"1.5 8v","e":"psa_tu_ec5","c":1.5,"t":false,"a0":2013,"a1":2021},{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2003,"a1":2021},{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2022,"a1":null},{"m":"1.0 Turbo (GSE)","e":"fiat_gse_turbo","c":1,"t":true,"a0":2023,"a1":null}],"C3 Aircross":[{"m":"1.0 Firefly","e":"fiat_firefly","c":1,"t":false,"a0":2023,"a1":null},{"m":"1.0 Turbo (GSE)","e":"fiat_gse_turbo","c":1,"t":true,"a0":2023,"a1":null}],"C4 Cactus":[{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2018,"a1":2023},{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2018,"a1":2023}],"C4 Lounge":[{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2013,"a1":2021},{"m":"2.0 16v","e":"psa_tu_ec5","c":2,"t":false,"a0":2013,"a1":2021}],"Aircross":[{"m":"1.5 8v / 1.6 16v","e":"psa_tu_ec5","c":1.5,"t":false,"a0":2010,"a1":2017}],"C4 Picasso":[{"m":"1.6 THP","e":"psa_thp","c":1.6,"t":true,"a0":2014,"a1":2018}],"Xsara Picasso":[{"m":"1.6 16v / 2.0 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2001,"a1":2012}],"Berlingo":[{"m":"1.6 16v","e":"psa_tu_ec5","c":1.6,"t":false,"a0":2000,"a1":2015}]},"Jeep":{"Renegade":[{"m":"1.8 E.torQ","e":"fiat_etorq","c":1.8,"t":false,"a0":2015,"a1":2021},{"m":"2.0 Diesel","e":"fiat_multijet","c":2,"t":false,"a0":2015,"a1":2021},{"m":"1.3 Turbo (GSE)","e":"fiat_gse_turbo","c":1.3,"t":true,"a0":2022,"a1":null}],"Compass":[{"m":"2.0 Flex (Tigershark)","e":"jeep_tigershark","c":2,"t":false,"a0":2017,"a1":2021},{"m":"2.0 Diesel","e":"fiat_multijet","c":2,"t":false,"a0":2017,"a1":null},{"m":"1.3 Turbo (GSE)","e":"fiat_gse_turbo","c":1.3,"t":true,"a0":2022,"a1":null}],"Commander":[{"m":"1.3 Turbo (GSE)","e":"fiat_gse_turbo","c":1.3,"t":true,"a0":2021,"a1":null},{"m":"2.0 Diesel","e":"fiat_multijet","c":2,"t":false,"a0":2021,"a1":null}],"Grand Cherokee":[{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2011,"a1":null},{"m":"3.0 V6 Diesel","e":"nao_mapeado","c":3,"t":false,"a0":2011,"a1":2020}],"Wrangler":[{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2012,"a1":null},{"m":"2.0 Turbo","e":"jeep_tigershark","c":2,"t":true,"a0":2018,"a1":null}]},"Mitsubishi":{"Lancer":[{"m":"2.0 MIVEC (4B1)","e":"mitsubishi_4b1","c":2,"t":false,"a0":2011,"a1":2017}],"ASX":[{"m":"2.0 MIVEC (4B1)","e":"mitsubishi_4b1","c":2,"t":false,"a0":2011,"a1":2021}],"Outlander":[{"m":"2.0 MIVEC (4B1)","e":"mitsubishi_4b1","c":2,"t":false,"a0":2013,"a1":null},{"m":"3.0 V6","e":"mitsubishi_4g_v6","c":3,"t":false,"a0":2007,"a1":2019}],"Eclipse Cross":[{"m":"1.5 Turbo","e":"nao_mapeado","c":1.5,"t":true,"a0":2018,"a1":null}],"Pajero TR4":[{"m":"2.0 16v (4G63)","e":"mitsubishi_4g_v6","c":2,"t":false,"a0":2002,"a1":2015}],"Pajero Sport":[{"m":"2.4 Diesel (4N15)","e":"mitsubishi_diesel","c":2.4,"t":false,"a0":2017,"a1":null},{"m":"2.5 Diesel (4D56)","e":"mitsubishi_diesel","c":2.5,"t":false,"a0":2008,"a1":2016},{"m":"3.5 V6","e":"mitsubishi_4g_v6","c":3.5,"t":false,"a0":2000,"a1":2011}],"Pajero Full":[{"m":"3.2 Diesel","e":"mitsubishi_diesel","c":3.2,"t":false,"a0":2003,"a1":2021},{"m":"3.8 V6","e":"mitsubishi_4g_v6","c":3.8,"t":false,"a0":2003,"a1":2015}],"L200 Triton":[{"m":"2.4 Diesel (4N15)","e":"mitsubishi_diesel","c":2.4,"t":false,"a0":2017,"a1":null},{"m":"3.2 Diesel","e":"mitsubishi_diesel","c":3.2,"t":false,"a0":2008,"a1":2016},{"m":"3.5 V6 Flex","e":"mitsubishi_4g_v6","c":3.5,"t":false,"a0":2010,"a1":2016}]},"BMW":{"Serie 1":[{"m":"1.6 / 2.0 Turbo","e":"bmw_geral","c":1.6,"t":true,"a0":2011,"a1":null}],"Serie 3":[{"m":"1.6 / 2.0 / 3.0 Turbo","e":"bmw_geral","c":1.6,"t":true,"a0":2005,"a1":null}],"Serie 5":[{"m":"2.0 / 3.0 Turbo","e":"bmw_geral","c":2,"t":true,"a0":2005,"a1":null}],"X1":[{"m":"1.5 / 2.0 Turbo","e":"bmw_geral","c":1.5,"t":true,"a0":2010,"a1":null}],"X3":[{"m":"2.0 / 3.0 Turbo","e":"bmw_geral","c":2,"t":true,"a0":2004,"a1":null}],"X5":[{"m":"3.0 / 4.4 Turbo","e":"bmw_geral","c":3,"t":true,"a0":2000,"a1":null}]},"Mercedes-Benz":{"Classe A":[{"m":"1.3 / 1.6 / 2.0 Turbo","e":"mercedes_geral","c":1.3,"t":true,"a0":2013,"a1":null}],"Classe C":[{"m":"1.6 / 2.0 / 3.0 Turbo","e":"mercedes_geral","c":1.6,"t":true,"a0":2000,"a1":null}],"Classe E":[{"m":"2.0 / 3.0 Turbo","e":"mercedes_geral","c":2,"t":true,"a0":2000,"a1":null}],"GLA":[{"m":"1.6 / 2.0 Turbo","e":"mercedes_geral","c":1.6,"t":true,"a0":2014,"a1":null}],"GLC":[{"m":"2.0 Turbo","e":"mercedes_geral","c":2,"t":true,"a0":2016,"a1":null}],"Sprinter":[{"m":"2.1 / 2.2 Diesel","e":"nao_mapeado","c":2.1,"t":false,"a0":1997,"a1":null}]},"Caoa Chery":{"Tiggo 2":[{"m":"1.5 aspirado","e":"chery_15_asp","c":1.5,"t":false,"a0":2018,"a1":2023}],"Tiggo 3X":[{"m":"1.5 aspirado","e":"chery_15_asp","c":1.5,"t":false,"a0":2018,"a1":2022}],"Tiggo 5X":[{"m":"1.5 Turbo","e":"chery_15_turbo","c":1.5,"t":true,"a0":2019,"a1":null}],"Tiggo 7":[{"m":"1.5 Turbo","e":"chery_15_turbo","c":1.5,"t":true,"a0":2019,"a1":2021},{"m":"1.6 Turbo GDI (Pro)","e":"chery_16_turbo","c":1.6,"t":true,"a0":2021,"a1":null}],"Tiggo 8":[{"m":"1.5 Turbo","e":"chery_15_turbo","c":1.5,"t":true,"a0":2020,"a1":2021},{"m":"1.6 Turbo GDI","e":"chery_16_turbo","c":1.6,"t":true,"a0":2020,"a1":null}],"Arrizo 5":[{"m":"1.5 Turbo","e":"chery_15_turbo","c":1.5,"t":true,"a0":2021,"a1":null}],"Arrizo 6":[{"m":"1.5 Turbo","e":"chery_15_turbo","c":1.5,"t":true,"a0":2021,"a1":null}]},"RAM":{"1500":[{"m":"5.7 V8 Hemi","e":"ram_hemi_57","c":5.7,"t":false,"a0":2014,"a1":null},{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2019,"a1":null}],"2500":[{"m":"6.7 Cummins","e":"ram_cummins_67","c":6.7,"t":true,"a0":2013,"a1":null}],"3500":[{"m":"6.7 Cummins","e":"ram_cummins_67","c":6.7,"t":true,"a0":2013,"a1":null}],"Rampage":[{"m":"2.0 Turbo (Hurricane)","e":"ram_hurricane_20","c":2,"t":true,"a0":2023,"a1":null},{"m":"2.2 Turbodiesel","e":"ram_22_diesel","c":2.2,"t":true,"a0":2023,"a1":null}]},"Audi":{"A1":[{"m":"1.4 TFSI","e":"vw_ea211","c":1.4,"t":true,"a0":2011,"a1":2018}],"A3":[{"m":"1.4 TFSI","e":"vw_ea211","c":1.4,"t":true,"a0":2013,"a1":null},{"m":"1.8 TFSI","e":"vw_ea888","c":1.8,"t":true,"a0":2007,"a1":2018},{"m":"2.0 TFSI","e":"vw_ea888","c":2,"t":true,"a0":2007,"a1":null},{"m":"1.6 (linha antiga)","e":"vw_ea111","c":1.6,"t":false,"a0":1999,"a1":2013}],"A4":[{"m":"2.0 TFSI","e":"vw_ea888","c":2,"t":true,"a0":2008,"a1":null}],"A5":[{"m":"2.0 TFSI","e":"vw_ea888","c":2,"t":true,"a0":2009,"a1":null}],"Q3":[{"m":"1.4 TFSI","e":"vw_ea211","c":1.4,"t":true,"a0":2015,"a1":null},{"m":"2.0 TFSI","e":"vw_ea888","c":2,"t":true,"a0":2012,"a1":null}],"Q5":[{"m":"2.0 TFSI","e":"vw_ea888","c":2,"t":true,"a0":2009,"a1":null},{"m":"3.0 V6 TFSI","e":"vw_30_v6_tfsi","c":3,"t":true,"a0":2010,"a1":null}],"Q7":[{"m":"3.0 V6 TFSI","e":"vw_30_v6_tfsi","c":3,"t":true,"a0":2011,"a1":null}]},"MINI":{"Cooper":[{"m":"1.5 / 2.0 Turbo","e":"bmw_geral","c":1.5,"t":true,"a0":2014,"a1":null},{"m":"1.6 Turbo (linha anterior)","e":"psa_thp","c":1.6,"t":true,"a0":2007,"a1":2014}],"Countryman":[{"m":"1.5 / 2.0 Turbo","e":"bmw_geral","c":1.5,"t":true,"a0":2011,"a1":null}],"Clubman":[{"m":"1.5 / 2.0 Turbo","e":"bmw_geral","c":1.5,"t":true,"a0":2015,"a1":null}]},"Lexus":{"ES":[{"m":"2.5 Hybrid","e":"toyota_geral","c":2.5,"t":false,"a0":2013,"a1":null},{"m":"3.5 V6","e":"toyota_geral","c":3.5,"t":false,"a0":2007,"a1":null}],"NX":[{"m":"2.0 Turbo","e":"toyota_geral","c":2,"t":true,"a0":2015,"a1":null},{"m":"2.5 Hybrid","e":"toyota_geral","c":2.5,"t":false,"a0":2015,"a1":null}],"RX":[{"m":"3.5 V6","e":"toyota_geral","c":3.5,"t":false,"a0":2008,"a1":null},{"m":"2.5 Hybrid","e":"toyota_geral","c":2.5,"t":false,"a0":2016,"a1":null}],"UX":[{"m":"2.0 Hybrid","e":"toyota_geral","c":2,"t":false,"a0":2019,"a1":null}]},"Porsche":{"911":[{"m":"3.0 / 3.8 Turbo","e":"porsche_geral","c":3,"t":true,"a0":2012,"a1":null}],"Cayenne":[{"m":"3.0 V6","e":"porsche_geral","c":3,"t":true,"a0":2011,"a1":null},{"m":"4.0 V8","e":"porsche_geral","c":4,"t":true,"a0":2011,"a1":null}],"Macan":[{"m":"2.0 Turbo","e":"porsche_geral","c":2,"t":true,"a0":2014,"a1":null},{"m":"3.0 V6","e":"porsche_geral","c":3,"t":true,"a0":2014,"a1":null}],"Panamera":[{"m":"3.0 V6","e":"porsche_geral","c":3,"t":true,"a0":2010,"a1":null},{"m":"4.0 V8","e":"porsche_geral","c":4,"t":true,"a0":2010,"a1":null}],"Boxster":[{"m":"2.0 / 2.5 Turbo","e":"porsche_geral","c":2,"t":true,"a0":2016,"a1":null}],"Cayman":[{"m":"2.0 / 2.5 Turbo","e":"porsche_geral","c":2,"t":true,"a0":2016,"a1":null}]},"Jaguar":{"XE":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2015,"a1":null}],"XF":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2016,"a1":null},{"m":"3.0 V6","e":"jlr_v6_v8","c":3,"t":true,"a0":2010,"a1":null}],"F-Pace":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2016,"a1":null},{"m":"3.0 V6","e":"jlr_v6_v8","c":3,"t":true,"a0":2016,"a1":null}],"E-Pace":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2018,"a1":null}]},"Land Rover":{"Discovery":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2017,"a1":null},{"m":"3.0 V6","e":"jlr_v6_v8","c":3,"t":true,"a0":2010,"a1":null}],"Discovery Sport":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2015,"a1":null}],"Range Rover":[{"m":"3.0 V6","e":"jlr_v6_v8","c":3,"t":true,"a0":2013,"a1":null},{"m":"5.0 V8","e":"jlr_v6_v8","c":5,"t":true,"a0":2010,"a1":null}],"Range Rover Sport":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2018,"a1":null},{"m":"3.0 V6","e":"jlr_v6_v8","c":3,"t":true,"a0":2010,"a1":null}],"Range Rover Evoque":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2016,"a1":null},{"m":"2.0 (linha anterior)","e":"ford_duratec","c":2,"t":true,"a0":2012,"a1":2015}],"Defender":[{"m":"2.0 Ingenium","e":"jlr_ingenium","c":2,"t":true,"a0":2020,"a1":null},{"m":"3.0 Ingenium 6cil","e":"jlr_ingenium","c":3,"t":true,"a0":2020,"a1":null}]},"Volvo":{"XC40":[{"m":"1.5 / 2.0 Turbo (VEA)","e":"volvo_vea","c":1.5,"t":true,"a0":2018,"a1":null},{"m":"2.0 Turbo (VEA)","e":"volvo_vea","c":2,"t":true,"a0":2018,"a1":null}],"XC60":[{"m":"2.0 Turbo (VEA)","e":"volvo_vea","c":2,"t":true,"a0":2015,"a1":null},{"m":"2.0 5cil (linha anterior)","e":"volvo_5cil","c":2,"t":true,"a0":2009,"a1":2015}],"XC90":[{"m":"2.0 Turbo (VEA)","e":"volvo_vea","c":2,"t":true,"a0":2015,"a1":null}],"S60":[{"m":"2.0 Turbo (VEA)","e":"volvo_vea","c":2,"t":true,"a0":2015,"a1":null},{"m":"2.0 5cil (linha anterior)","e":"volvo_5cil","c":2,"t":true,"a0":2009,"a1":2015}],"S90":[{"m":"2.0 Turbo (VEA)","e":"volvo_vea","c":2,"t":true,"a0":2017,"a1":null}],"V40":[{"m":"2.0 Turbo (VEA)","e":"volvo_vea","c":2,"t":true,"a0":2015,"a1":2019},{"m":"1.6 (linha anterior)","e":"volvo_5cil","c":1.6,"t":true,"a0":2012,"a1":2015}],"C40":[{"m":"Elétrico","e":"volvo_vea","c":2,"t":true,"a0":2022,"a1":null}]},"Chrysler":{"300C":[{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2011,"a1":null},{"m":"5.7 V8 Hemi","e":"ram_hemi_57","c":5.7,"t":false,"a0":2005,"a1":null}],"Town & Country":[{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2011,"a1":2016}]},"Dodge":{"Journey":[{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2011,"a1":2020},{"m":"2.4 Tigershark","e":"fiat_tigershark","c":2.4,"t":false,"a0":2009,"a1":2020}],"Durango":[{"m":"3.6 V6 Pentastar","e":"jeep_pentastar","c":3.6,"t":false,"a0":2011,"a1":null},{"m":"5.7 V8 Hemi","e":"ram_hemi_57","c":5.7,"t":false,"a0":2011,"a1":null}],"Dakota":[{"m":"3.7 V6 / 4.7 V8","e":"nao_mapeado","c":3.7,"t":false,"a0":2000,"a1":2011}]},"Alfa Romeo":{"147":[{"m":"1.6 / 2.0 Twin Spark","e":"alfa_ts","c":1.6,"t":false,"a0":2000,"a1":2010}],"156":[{"m":"1.8 / 2.0 Twin Spark","e":"alfa_ts","c":1.8,"t":false,"a0":1997,"a1":2007}]},"Jetour":{"T2":[{"m":"1.5 Turbo","e":"chery_15_turbo","c":1.5,"t":true,"a0":2024,"a1":null},{"m":"2.0 Turbo","e":"chery_16_turbo","c":2,"t":true,"a0":2024,"a1":null}]},"Subaru":{"Forester":[{"m":"2.0 FB","e":"subaru_fb","c":2,"t":false,"a0":2011,"a1":null},{"m":"2.5 FB","e":"subaru_fb","c":2.5,"t":false,"a0":2011,"a1":null},{"m":"2.0 EJ (linha antiga)","e":"subaru_ej","c":2,"t":false,"a0":1998,"a1":2010}],"XV":[{"m":"2.0 FB","e":"subaru_fb","c":2,"t":false,"a0":2012,"a1":null}],"Impreza":[{"m":"2.0 FB","e":"subaru_fb","c":2,"t":false,"a0":2012,"a1":null},{"m":"2.0 EJ (linha antiga)","e":"subaru_ej","c":2,"t":false,"a0":1993,"a1":2011}],"Outback":[{"m":"2.5 FB","e":"subaru_fb","c":2.5,"t":false,"a0":2010,"a1":null},{"m":"3.6 6cil","e":"subaru_fb","c":3.6,"t":false,"a0":2010,"a1":2019}],"WRX":[{"m":"2.0 / 2.4 FA Turbo","e":"subaru_fb","c":2,"t":true,"a0":2014,"a1":null},{"m":"2.0 / 2.5 EJ Turbo","e":"subaru_ej","c":2.5,"t":true,"a0":1994,"a1":2014}]},"Suzuki":{"Jimny":[{"m":"1.3 / 1.5","e":"suzuki_geral","c":1.5,"t":false,"a0":1998,"a1":null}],"Vitara":[{"m":"1.6 / 2.0","e":"suzuki_geral","c":1.6,"t":false,"a0":2000,"a1":null}],"Grand Vitara":[{"m":"2.0 / 2.4","e":"suzuki_geral","c":2,"t":false,"a0":2006,"a1":2015}],"S-Cross":[{"m":"1.4 Turbo","e":"suzuki_geral","c":1.4,"t":true,"a0":2014,"a1":null},{"m":"1.6","e":"suzuki_geral","c":1.6,"t":false,"a0":2014,"a1":null}],"Swift":[{"m":"1.4 / 1.6","e":"suzuki_geral","c":1.4,"t":false,"a0":2005,"a1":null}]},"JAC":{"J3":[{"m":"1.4 / 1.5 (4A91)","e":"jac_4a9","c":1.4,"t":false,"a0":2011,"a1":2018}],"J5":[{"m":"1.5 (4A91)","e":"jac_4a9","c":1.5,"t":false,"a0":2012,"a1":2018}],"T40":[{"m":"1.5 (4A91)","e":"jac_4a9","c":1.5,"t":false,"a0":2017,"a1":2021}],"T50":[{"m":"1.5 (4A91)","e":"jac_4a9","c":1.5,"t":false,"a0":2018,"a1":2021}],"T60":[{"m":"2.0 Turbo","e":"jac_4a9","c":2,"t":true,"a0":2019,"a1":null}]},"Lifan":{"530":[{"m":"1.5","e":"nm_lifan","c":1.5,"t":false,"a0":2014,"a1":2019}],"620":[{"m":"1.6","e":"nm_lifan","c":1.6,"t":false,"a0":2011,"a1":2017}],"X60":[{"m":"1.8","e":"nm_lifan","c":1.8,"t":false,"a0":2013,"a1":2019}]},"EFFA":{"Motors M100":[{"m":"1.0","e":"nm_effa","c":1,"t":false,"a0":2010,"a1":2016}],"Plutus":[{"m":"1.3","e":"nm_effa","c":1.3,"t":false,"a0":2010,"a1":2016}],"Towner":[{"m":"0.8 / 1.0","e":"nm_effa","c":1,"t":false,"a0":2009,"a1":2016}]},"SsangYong":{"Actyon":[{"m":"2.0 Diesel","e":"nm_ssangyong","c":2,"t":true,"a0":2007,"a1":2015}],"Korando":[{"m":"2.0 Diesel","e":"nm_ssangyong","c":2,"t":true,"a0":2011,"a1":2018}],"Kyron":[{"m":"2.0 Diesel","e":"nm_ssangyong","c":2,"t":true,"a0":2006,"a1":2013}],"Rexton":[{"m":"2.7 Diesel","e":"nm_ssangyong","c":2.7,"t":true,"a0":2004,"a1":2015}]},"Troller":{"T4":[{"m":"3.2 Diesel","e":"nm_troller","c":3.2,"t":true,"a0":2015,"a1":2021},{"m":"3.0 Diesel","e":"nm_troller","c":3,"t":true,"a0":2007,"a1":2014}],"TX4":[{"m":"2.8 Diesel","e":"nm_troller","c":2.8,"t":true,"a0":2002,"a1":2007}]}}}</script>
 <script>
 const DB = JSON.parse(document.getElementById('cat').textContent);
+document.getElementById('totalMarcas').textContent = TMyManutencao.marcas(DB.carros).length;
 const $ = i => document.getElementById(i);
 const fmt = n => Math.round(n).toLocaleString('pt-BR');
 const kmInformado = n => Number.isFinite(Number(n)) && Number(n) > 0;
@@ -2958,6 +3000,8 @@ function calc(it, km, ultKm, ultData, peca){
     r.proxData = somarMeses(d, cr.imes);
     r.dias = Math.round((r.proxData - HOJE)/DIA);
     cands.push({q:'data', pct:1 - r.dias/(cr.imes*30.44), venceu:r.dias<=0, alerta:r.dias<=45}); }
+  if(!cands.length && it.revisao && (ultData || ultKm != null))
+    return {vazio:false,pct:0,cl:'nt',rot:'Registrado',txt:'Próximo prazo não definido.',manda:'data'};
   if(!cands.length)
     return { vazio:true, pct:0, cl:'nt', rot:'Sem registro', txt:'registre a última troca', manda:'km' };
   cands.sort((a,b)=>b.pct-a.pct);
@@ -2987,7 +3031,7 @@ function resumoProxima(c){
     c.proxKm != null ? `${fmt(c.proxKm)} km` : null,
     c.proxData ? dataPt(c.proxData) : null
   ].filter(Boolean);
-  return { valor:alvos.join(' · ') || '—', detalhe:c.txt || '' };
+  return { valor:alvos.join(' · ') || 'A definir', detalhe:c.txt || '' };
 }
 
 /* ---------- navegação ---------- */
@@ -3051,6 +3095,7 @@ window.addEventListener('message', evento => {
 
 function go(t, opcoes={}){
   const anterior = telaAtual();
+  if(document.activeElement && typeof document.activeElement.blur==='function') document.activeElement.blur();
   fecharFolhas();
   conferirTeste();   /* o prazo pode ter estourado com o app em qualquer tela */
   if(EMAIL_VERIFICACAO_PENDENTE && !['verificar-email','conta','criar-conta','recuperar-senha','recuperacao-enviada','bemvindo'].includes(t))
@@ -3070,6 +3115,7 @@ function go(t, opcoes={}){
     setTimeout(mostrarPedidoNotificacaoNaEntrada, 700);
   }
   if(t==='painel') pintarPainel();
+  if(t==='servicos') prepararHistoricoServicos();
   $('fabGasto').classList.remove('on');
   if(t==='avisos') pintarAvisos();
   if(t==='fipe') pintarFipe();
@@ -3081,6 +3127,9 @@ function go(t, opcoes={}){
   if(t==='conta-dados') pintarContaDados();
   if(t==='planos') pintarPlanos();
   if(t==='guia') pintarGuia();
+  // O foco em formulários/folhas pode deslocar o contêiner mesmo com overflow:hidden.
+  // Só a tela interna deve rolar; o cabeçalho da próxima tela começa no topo.
+  document.querySelector('.viewport').scrollTop = 0;
 }
 
 /* ================= GARAGEM ================= */
@@ -3211,9 +3260,30 @@ function fecharAvisoLimitePlano(){
 /* ================= CADASTRO ================= */
 let cMotor = null, cSincTocado = false, cOleoTocado = false, cProxTocado = false, cIntTocado = false, cCor = CORES[1][0], cCambio = null;
 let editandoVeic = null;   /* índice quando está corrigindo um carro já cadastrado */
+const cadastroEletrico = () => $('cPropulsao').value === 'eletrico';
+const modeloCadastro = () => $('cModelo').value === '__outro' ? $('cModeloLivre').value.trim() : $('cModelo').value;
+function atualizarMarcasCadastro(){
+  const atual = $('cMarca').value;
+  const marcas = cadastroEletrico() ? TMyManutencao.marcas(DB.carros) : Object.keys(DB.carros).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  $('cMarca').innerHTML = '<option value="">Selecione</option>' + marcas.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  if(marcas.includes(atual)) $('cMarca').value=atual;
+}
+function visualTipoCadastro(){
+  const ev = cadastroEletrico();
+  ['cMotorBox','cTurboRow','cSincBox','cOleoBox'].forEach(id=>$(id).style.display=ev?'none':'');
+  $('cBoxProx').style.display = ev || sincEscolhido()==='corrente' ? 'none' : '';
+  $('cModeloLivreBox').hidden = !ev || $('cModelo').value!=='__outro';
+}
+function mudarTipoCadastro(){
+  cMotor=null; cSincTocado=false; cOleoTocado=false;
+  atualizarMarcasCadastro(); $('cMarca').onchange(); visualTipoCadastro();
+}
 
 function abrirCadastro(edit){
   editandoVeic = (typeof edit === 'number') ? edit : null;
+  $('cPropulsao').value = editandoVeic !== null && TMyManutencao.ehEletrico(VEIC[editandoVeic]) ? 'eletrico' : 'combustao';
+  $('cModeloLivre').value='';
+  atualizarMarcasCadastro();
   cMotor=null; cSincTocado=false; cOleoTocado=false; cProxTocado=false; cIntTocado=false; cCor=CORES[1][0]; cCambio=null;
   ['cAno','cMotor','cInt','cProx','cOleo','cKm','cPlaca'].forEach(i=>$(i).value='');
   $('cModelo').innerHTML='<option>Selecione a marca</option>'; $('cModelo').disabled=true;
@@ -3231,7 +3301,9 @@ function abrirCadastro(edit){
     /* recarrega a tela com o que já está gravado */
     $('cMarca').value = v.marca; $('cMarca').disabled = true;
     $('cMarca').onchange();
-    $('cModelo').value = v.modelo; $('cModelo').onchange();
+    $('cModelo').value = v.modelo;
+    if(cadastroEletrico() && !$('cModelo').value){ $('cModelo').value='__outro'; $('cModeloLivre').value=v.modelo; }
+    $('cModelo').onchange();
     $('cAno').value = v.ano ? String(v.ano) : ''; $('cMotor').disabled = false; $('cTurbo').disabled = false;
     const m = String(v.cilTxt||'').match(/(\d\.\d)/);
     $('cMotor').value = m ? m[1] : '';
@@ -3253,7 +3325,7 @@ function abrirCadastro(edit){
     }
     resolver();
   }
-  pintarCores(); pintarCambioCadastro(); go('cadastro');
+  visualTipoCadastro(); pintarCores(); pintarCambioCadastro(); validarCad(); go('cadastro');
 }
 function pintarCores(){
   $('cCores').innerHTML = CORES.map(([hex,nome])=>
@@ -3286,8 +3358,11 @@ $('cMarca').insertAdjacentHTML('afterbegin','<option value="">Selecione</option>
 $('cMarca').onchange = () => {
   const ma = $('cMarca').value, s = $('cModelo');
   s.innerHTML = '<option value="">Selecione</option>'; s.disabled = !ma;
-  if(ma) Object.keys(DB.carros[ma]).sort((a,b)=>a.localeCompare(b,'pt-BR'))
-    .forEach(mo=>s.insertAdjacentHTML('beforeend',`<option>${mo}</option>`));
+  if(ma){
+    const modelos = cadastroEletrico() ? (TMyManutencao.eletricos[ma] || []) : Object.keys(DB.carros[ma] || {});
+    modelos.slice().sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(mo=>s.insertAdjacentHTML('beforeend',`<option>${esc(mo)}</option>`));
+    if(cadastroEletrico()) s.insertAdjacentHTML('beforeend','<option value="__outro">Outro modelo elétrico…</option>');
+  }
   $('cAno').disabled=true; $('cMotor').disabled=true; $('cAno').value=''; $('cMotor').value='';
   resolver();
 };
@@ -3317,11 +3392,17 @@ $('cPlaca').oninput = e => {
   /* placa é única por lei: repetida quase sempre é engano de digitação */
   const igual = p.length >= 6 && VEIC.find(v => (v.placa||'') === p);
   msg('cMsgPlaca', igual ? 'w' : null,
-    igual ? `Você já tem um <b>${igual.marca} ${igual.modelo}</b> com essa placa. Se for outro carro, confira os caracteres.` : '');
+    igual ? `Você já tem um <b>${esc(igual.marca)} ${esc(igual.modelo)}</b> com essa placa. Se for outro carro, confira os caracteres.` : '');
   validarCad();
 };
 
 function resolver(){
+  visualTipoCadastro();
+  if(cadastroEletrico()){
+    cMotor=null;
+    msg('cMsgMotor','i','Painel elétrico: filtro de cabine, freio, arrefecimento da bateria, redutor, bateria de tração e pneus. Configure apenas os prazos previstos no manual.');
+    validarCad(); return;
+  }
   const ma=$('cMarca').value, mo=$('cModelo').value;
   const ano=parseInt($('cAno').value,10), cil=normCil($('cMotor').value);
   const tb=$('cTurbo').classList.contains('on');
@@ -3404,6 +3485,7 @@ function sincEscolhido(){
        : $('rCorrente').classList.contains('sel') ? 'corrente' : null;
 }
 function atualizarBoxProx(){
+  if(cadastroEletrico()){ $('cBoxProx').style.display='none'; return; }
   const c = sincEscolhido()==='corrente';
   $('cBoxProx').style.display = c ? 'none' : '';
   msg('cInfoSinc', c ? 'i' : null,
@@ -3460,8 +3542,8 @@ function validarCad(){
      quando trocaram. O que não pode é um valor inválido — em branco pode. */
   const proxOk = !px || !km || px > km;
   const anoValido = !$('cAno').value || $('cAno').value.length===4;
-  const ok = $('cMarca').value && $('cModelo').value && anoValido
-    && normCil($('cMotor').value) && s && proxOk;
+  const ok = $('cMarca').value && modeloCadastro() && anoValido
+    && (cadastroEletrico() || (normCil($('cMotor').value) && s && proxOk));
   $('cSalvar').style.opacity = ok?1:.4;
   $('cSalvar').disabled = !ok;
   return ok;
@@ -3482,10 +3564,11 @@ function salvarVeiculo(){
   const prox = parseInt(soD($('cProx').value)||'0',10);
   const intervalo = parseInt(soD($('cInt').value)||'0',10);
   const v = {
-    marca:$('cMarca').value, modelo:$('cModelo').value, ano:$('cAno').value || '',
-    cilTxt: cil.toFixed(1)+(tb?' turbo':''), motorNome: cMotor?cMotor.n:'motor não identificado',
-    km, placa:$('cPlaca').value, cor:cCor, oleo:$('cOleo').value||'—', cambio:cCambio,
-    itens: modelo(s==='corrente' ? {d:'corrente'} : {d:'correia', km:intervalo})
+    marca:$('cMarca').value, modelo:modeloCadastro(), ano:$('cAno').value || '',
+    propulsao:cadastroEletrico()?'eletrico':'combustao',
+    cilTxt: cadastroEletrico() ? 'Elétrico' : cil.toFixed(1)+(tb?' turbo':''), motorNome: cadastroEletrico() ? 'Motor elétrico' : cMotor?cMotor.n:'motor não identificado',
+    km, placa:$('cPlaca').value, cor:cCor, oleo:cadastroEletrico()?'—':$('cOleo').value||'—', cambio:cadastroEletrico()?null:cCambio,
+    itens: cadastroEletrico() ? TMyManutencao.modeloEletrico() : modelo(s==='corrente' ? {d:'corrente'} : {d:'correia', km:intervalo})
   };
   /* só sabemos o que o usuário informou. Nada é deduzido por subtração:
      a próxima troca da correia é a que ele definiu, não uma conta reversa. */
@@ -3521,6 +3604,7 @@ function excluirVeiculo(i){
   const perde = [];
   if(trocas) perde.push(`${trocas} ${trocas===1?'manutenção registrada':'manutenções registradas'}`);
   if(nl) perde.push(`${nl} ${nl===1?'lançamento de gasto':'lançamentos de gasto'}`);
+  if(v.servicos && v.servicos.length) perde.push(`${v.servicos.length} registro(s) no histórico de serviços`);
 
   confirmar(`Excluir ${v.marca} ${v.modelo}`,
     (perde.length ? `Vai embora junto: ${perde.join(' e ')}.\n` : '')
@@ -3566,13 +3650,30 @@ function salvarEdicao(){
   const querCorreia  = s === 'correia';
 
   const aplicar = () => {
-    Object.assign(v, {
-      marca: $('cMarca').value, modelo: $('cModelo').value, ano: $('cAno').value || '',
-      cilTxt: cil.toFixed(1) + (tb ? ' turbo' : ''),
-      motorNome: cMotor ? cMotor.n : 'motor não identificado',
-      km, placa: $('cPlaca').value, cor: cCor, oleo: $('cOleo').value || '—', cambio:cCambio
+    const novoTipo = cadastroEletrico() ? 'eletrico' : 'combustao';
+    const mudouTipo = (TMyManutencao.ehEletrico(v)?'eletrico':'combustao') !== novoTipo;
+    const base = cadastroEletrico() ? TMyManutencao.modeloEletrico() : modelo({d:s,km:intervalo});
+    base.forEach(item=>{
+      if(item.id==='correia'){
+        item.ikm=intervalo||null; item.imes=null;
+        if(prox) item.proxFixo=prox;
+      }
     });
+    TMyManutencao.mudarPropulsao(v, novoTipo, base);
+    if(mudouTipo){ AVISOS=AVISOS.filter(a=>a.veic!==editandoVeic); delete v.fipe; }
+    Object.assign(v, {
+      marca: $('cMarca').value, modelo: modeloCadastro(), ano: $('cAno').value || '',
+      propulsao:novoTipo,
+      cilTxt: cadastroEletrico() ? 'Elétrico' : cil.toFixed(1) + (tb ? ' turbo' : ''),
+      motorNome: cadastroEletrico() ? 'Motor elétrico' : cMotor ? cMotor.n : 'motor não identificado',
+      km, placa: $('cPlaca').value, cor: cCor, oleo: cadastroEletrico() ? '—' : $('cOleo').value || '—', cambio:cadastroEletrico()?null:cCambio
+    });
+    if(cadastroEletrico()){
+      migrarItens(); varrerPrazos(); varrerPendencias(); persistir();
+      editandoVeic=null; go('painel'); toast('Veículo atualizado. Histórico preservado.'); return;
+    }
     const itemCambio = (v.itens||[]).find(i => i.id === 'cambio');
+    const tinhaCorreia = (v.itens||[]).some(i=>i.id==='correia');
     if(itemCambio) itemCambio.tipo = cCambio;
     if(cambioAnterior !== cCambio) delete v.fipe;
 
@@ -3601,7 +3702,7 @@ function salvarEdicao(){
   /* tirar a correia apaga o histórico dela: isso precisa ser dito */
   const co = (v.itens||[]).find(i => i.id === 'correia');
   const temHistorico = co && (co.ultKm != null || co.ultData);
-  if(!querCorreia && tinhaCorreia && temHistorico){
+  if(!cadastroEletrico() && !querCorreia && tinhaCorreia && temHistorico){
     confirmar('Mudar para corrente de comando',
       'A correia dentada sai da lista deste veículo, e o registro de troca dela é perdido. Só siga se tiver certeza de que o motor usa corrente.',
       aplicar, 'Mudar mesmo assim');
@@ -3621,9 +3722,9 @@ function pintarPainel(){
   const v = VEIC[ativo]; if(!v) return go('garagem');
   let h = `<div class="vheader">
     <div style="flex:1;min-width:0">
-      <div style="font-size:16px;font-weight:700">${v.marca} ${v.modelo}${v.ano ? ' ' + v.ano : ''}</div>
+      <div style="font-size:16px;font-weight:700">${esc(v.marca)} ${esc(v.modelo)}${v.ano ? ' ' + esc(v.ano) : ''}</div>
       <div class="vtags"><span class="vcolor" style="background:${v.cor}"></span>
-        <span style="font-size:12px;color:var(--muted)">${v.cilTxt}</span>
+        <span style="font-size:12px;color:var(--muted)">${esc(v.cilTxt)}</span>
         <span class="plate">${v.placa||'———'}</span></div>
     </div>
     <div style="text-align:right"><div class="mono" style="font-size:17px;font-weight:700">${kmInformado(v.km)?fmt(v.km):'—'}</div>
@@ -3643,7 +3744,9 @@ function pintarPainel(){
       </div></div></div>`;
   }
 
-  ['Motor','Filtros','Fluidos','Câmbio'].forEach(gr=>{
+  const ev = TMyManutencao.ehEletrico(v);
+  if(ev) h += '<div class="section ev-note">Painel elétrico · registre revisões e serviços conforme o manual da sua versão. Inspeção não significa troca obrigatória. Bateria e circuitos de alta tensão devem ser atendidos por profissional qualificado.</div>';
+  (ev ? ['Filtros','Fluidos','Tração elétrica','Rodagem'] : ['Motor','Filtros','Fluidos','Câmbio']).forEach(gr=>{
     const lista = v.itens.filter(i=>i.g===gr); if(!lista.length) return;
     h += `<div class="section"><div class="section-title">${gr}</div>`;
     lista.forEach(it=>{
@@ -3687,23 +3790,97 @@ function pintarPainel(){
         <div class="sp-top"><span style="color:var(--ink);font-size:15px;font-weight:700">${esc(it.nome)}</span>
           <span class="status ${c.cl}">${c.rot}</span></div>
         <div class="next-maint ${c.vazio?'is-empty':''}">
-          <span class="next-label">Próxima troca</span>
+          <span class="next-label">${ev?'Próxima revisão':'Próxima troca'}</span>
           ${utilizadoNaTroca ? `<span class="next-used">${esc(utilizadoNaTroca)}</span>` : ''}
           <span class="next-value">${prox.valor}</span>
-          <span class="next-hint ${c.vazio?'':'is-status'}">${esc(prox.detalhe)}</span>
+          <span class="next-hint ${c.vazio?'':'is-status'}">${esc(ev && c.vazio ? 'Informe a última revisão e o próximo prazo, se houver.' : prox.detalhe)}</span>
         </div>
-        <button class="cta outline" style="margin-top:12px;padding:9px;font-size:12.5px" onclick="abrirSheet('${it.id}')">Registrar troca</button>
+        ${ev ? `<div class="ev-note" style="margin:8px 0">${esc(it.obs||'')}<br>Último registro: ${it.ultData?esc(it.ultData.split('-').reverse().join('/')):'—'}${it.ultKm!=null?' · '+fmt(it.ultKm)+' km':''}</div>` : ''}
+        <button class="cta outline" style="margin-top:12px;padding:9px;font-size:12.5px" onclick="abrirSheet('${it.id}')">${ev?'Registrar revisão':'Registrar troca'}</button>
       </div>`;
     });
     h += `</div>`;
   });
   h += `<div class="section">
+    <button class="cta" onclick="abrirServico()">+ Adicionar manutenção</button>
+    <button class="cta outline" style="margin:10px 0 20px" onclick="go('servicos')">Histórico de manutenções${v.servicos && v.servicos.length ? ' · '+v.servicos.length : ''}</button>
     <button class="cta outline" onclick="abrirCadastro(${ativo})">Editar dados do veículo</button>
     <div class="odo-hint" style="text-align:center;margin-top:8px;margin-bottom:14px">Corrigir marca, modelo, ano, placa ou cor não apaga o histórico.</div>
   </div>`;
   h += `<div style="height:20px"></div>`;
   $('pBody').innerHTML = h;
 }
+
+/* ================= SERVIÇOS AVULSOS ================= */
+let SERVICO_EDITANDO = null;
+let SERVICO_VEICULO = null;
+let SERVICO_CONTEXTO = null;
+function abrirServico(id){
+  const v=VEIC[ativo]; if(!v || v.inativo) return go('garagem');
+  const registro = (v.servicos||[]).find(r=>r.id===id);
+  SERVICO_EDITANDO = registro ? registro.id : null;
+  SERVICO_VEICULO=v; SERVICO_CONTEXTO=CONTEXTO_LOCAL;
+  $('svFormTitulo').textContent = registro ? 'Editar manutenção' : 'Adicionar manutenção';
+  $('svNome').value = registro ? registro.servico : '';
+  $('svData').max = iso(new Date());
+  $('svData').value = registro ? registro.data : iso(new Date());
+  $('svKm').value = registro ? fmt(registro.km) : v.km!=null ? fmt(v.km) : '';
+  go('servico-form');
+}
+function salvarServico(){
+  const v=VEIC[ativo];
+  if(!v || v.inativo || v!==SERVICO_VEICULO || CONTEXTO_LOCAL!==SERVICO_CONTEXTO){
+    toast('Abra o formulário novamente nesta conta.'); return;
+  }
+  const servico=$('svNome').value.trim(), data=$('svData').value;
+  const kmTexto=soD($('svKm').value), km=kmTexto ? Number(kmTexto) : NaN;
+  const erro=TMyManutencao.validarServico(servico,data,km,iso(new Date()));
+  if(erro){ toast(erro); return; }
+  v.servicos=Array.isArray(v.servicos)?v.servicos:[];
+  const pos=v.servicos.findIndex(r=>r.id===SERVICO_EDITANDO);
+  if(SERVICO_EDITANDO && pos<0){ toast('Registro não encontrado. Reabra o histórico.'); return; }
+  if(pos<0 && v.servicos.length>=500){ toast('Este veículo atingiu 500 registros de serviços.'); return; }
+  const registro={id:SERVICO_EDITANDO || crypto.randomUUID(),servico,data,km};
+  if(pos>=0) v.servicos[pos]=registro; else v.servicos.push(registro);
+  if(v.km==null || km>v.km){ v.km=km; varrerKm(ativo,km); }
+  persistir(); SERVICO_EDITANDO=null; SERVICO_VEICULO=null;
+  $('svAno').innerHTML=''; $('svTipo').innerHTML='';
+  go('servicos'); toast('Manutenção salva.');
+}
+function prepararHistoricoServicos(){
+  const v=VEIC[ativo]; if(!v || v.inativo) return go('garagem');
+  const registros=v.servicos||[];
+  $('svVeiculo').textContent=[v.marca,v.modelo,v.placa].filter(Boolean).join(' · ');
+  const anos=[...new Set(registros.map(r=>r.data.slice(0,4)))].sort().reverse();
+  const servicos=[...new Set(registros.map(r=>r.servico))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const anoAntes=$('svAno').value, tipoAntes=$('svTipo').value;
+  $('svAno').innerHTML='<option value="">Todos</option>'+anos.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  $('svTipo').innerHTML='<option value="">Todos os serviços</option>'+servicos.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  if(anos.includes(anoAntes)) $('svAno').value=anoAntes;
+  if(servicos.includes(tipoAntes)) $('svTipo').value=tipoAntes;
+  pintarHistoricoServicos();
+}
+function pintarHistoricoServicos(){
+  const v=VEIC[ativo]; if(!v) return;
+  const grupos=TMyManutencao.gruposServicos(v.servicos,$('svAno').value,$('svTipo').value);
+  const total=grupos.reduce((n,g)=>n+g.dias.reduce((s,d)=>s+d.itens.length,0),0);
+  $('svHistorico').innerHTML=`<div class="ev-note">${total} ${total===1?'manutenção registrada':'manutenções registradas'}</div>` + (grupos.length ? grupos.map((g,idx)=>{
+    const titulo=new Date(g.mes+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const count=g.dias.reduce((n,d)=>n+d.itens.length,0);
+    return `<details class="sv-grupo" ${idx===0?'open':''}><summary>${esc(titulo)} <small>${count} ${count===1?'registro':'registros'}</small></summary>${g.dias.map(d=>`<details class="sv-dia" open><summary>${esc(new Date(d.data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}))}</summary>${d.itens.map(r=>`<div class="sv-registro"><div><b>${esc(r.servico)}</b><small>${fmt(r.km)} km</small></div><div class="sv-acoes"><button type="button" data-servico="${esc(r.id)}" data-acao="editar">Editar</button><button type="button" data-servico="${esc(r.id)}" data-acao="excluir">Excluir</button></div></div>`).join('')}</details>`).join('')}</details>`;
+  }).join('') : '<div class="card ev-note">Nenhum serviço para este filtro. Use “Adicionar manutenção” para registrar o que foi feito.</div>');
+}
+$('svHistorico').addEventListener('click',evento=>{
+  const botao=evento.target.closest('button[data-servico]'); if(!botao) return;
+  const id=botao.dataset.servico;
+  if(botao.dataset.acao==='editar') return abrirServico(id);
+  const v=VEIC[ativo], contexto=CONTEXTO_LOCAL;
+  const registro=v && (v.servicos||[]).find(r=>r.id===id); if(!registro) return;
+  confirmar('Excluir manutenção',`Excluir o registro de ${registro.servico}?`,()=>{
+    if(CONTEXTO_LOCAL!==contexto || VEIC[ativo]!==v) return;
+    v.servicos=v.servicos.filter(r=>r.id!==id); persistir(); prepararHistoricoServicos();
+  },'Excluir');
+});
 
 /* ================= TABELA FIPE ================= */
 /* FIPE congelada: o código fica, mas nenhuma porta leva até ela.
@@ -3852,6 +4029,7 @@ function melhorModelo(lista, v){
   const nota = x => {
     const n = String(nomDe(x)||'');
     let p = 0;
+    if(TMyManutencao.ehEletrico(v)) p += /el[eé]trico|electric|\bev\b/i.test(n) ? 20 : -10;
     if(cil && n.includes(cil[1])) p += 10;                 // mesma cilindrada
     if(turbo === /turbo|tsi|tgdi|thp|tce/i.test(n)) p += 4; // turbo bate
     p += notaCambioFipe(n, cambioDoVeiculo(v));             // desempata pelo câmbio
@@ -3864,6 +4042,7 @@ function melhorAno(anos, v){
   const doAno = anos.filter(x => String(nomDe(x)||'').startsWith(String(v.ano))
                              || String(codDe(x)||'').startsWith(String(v.ano)));
   if(!doAno.length) return null;
+  if(TMyManutencao.ehEletrico(v)) return doAno.find(x=>/el[eé]tric/i.test(nomDe(x))) || doAno[0];
   /* entre combustíveis do mesmo ano, prefere flex e gasolina */
   const pref = doAno.find(x => /flex/i.test(nomDe(x))) || doAno.find(x => /gasolina/i.test(nomDe(x)));
   return pref || doAno[0];
@@ -4272,9 +4451,9 @@ function pintarFipe(){
   if(!v) return go('garagem');
   const topo = `<div class="vheader">
     <div style="flex:1">
-      <div style="font-size:15px;font-weight:700">${v.marca} ${v.modelo}${v.ano ? ' ' + v.ano : ''}</div>
+      <div style="font-size:15px;font-weight:700">${esc(v.marca)} ${esc(v.modelo)}${v.ano ? ' ' + esc(v.ano) : ''}</div>
       <div class="vtags"><span class="vcolor" style="background:${v.cor}"></span>
-        <span style="font-size:12px;color:var(--muted)">${v.cilTxt}</span>
+        <span style="font-size:12px;color:var(--muted)">${esc(v.cilTxt)}</span>
         ${v.placa?`<span class="plate">${v.placa}</span>`:''}</div>
     </div></div>`;
 
@@ -4330,7 +4509,7 @@ function pintarFipe(){
   else if(fipeEtapa === 'modelos'){
     const lista = fipeDados.modelos || [];
     c = `<div class="section">
-      <div class="section-title">Qual é a versão do seu ${v.modelo}?</div>
+      <div class="section-title">Qual é a versão do seu ${esc(v.modelo)}?</div>
       ${fipeDados.filtrouSozinho && !(fipeDados.filtro||'').trim() ? `<div class="msgbox i" style="margin-top:0;margin-bottom:11px"><span>Filtrei ${lista.length} ${lista.length===1?'versão que combina':'versões que combinam'} com <b>${esc(v.modelo)}</b>. Se a sua não estiver aqui, use a busca abaixo.</span></div>` : ''}
       <div class="card" style="padding:4px 16px"><div class="field">
         <input id="fpBusca" placeholder="Ex.: 1.0 turbo flex" value="${esc(fipeDados.filtro||'')}"
@@ -4451,6 +4630,10 @@ function abrirSheet(id){
   if(!v) return go('garagem');
   itAtual = (v.itens||[]).find(i=>i.id===id);
   if(!itAtual) return;
+  const ev=TMyManutencao.ehEletrico(v);
+  $('shSalvar').textContent=ev?'Salvar revisão':'Salvar troca';
+  $('shBoxKm').querySelector('label').firstChild.textContent=ev?'KM na revisão ':'KM do carro na troca ';
+  $('shBoxIntervalo').querySelector('label').textContent=ev?'Revisar a cada · opcional':'Trocar a cada';
   const parteUnica = itAtual.partes && parteId ? itAtual.partes.find(p=>p.id===parteId) : null;
   const nomeParte = parteUnica ? nomeDoFiltro(parteUnica) : '';
   $('shTitle').textContent = parteUnica ? `Registrar troca · ${nomeParte}` : (itAtual.partes ? 'Registrar troca de filtros' : itAtual.nome);
@@ -4580,11 +4763,11 @@ function salvarTroca(){
   } else {
     const nIkm  = parseInt(soD($('shIkm').value)||'0',10)  || null;
     const nImes = parseInt(soD($('shImes').value)||'0',10) || null;
-    if(!nIkm && !nImes){
+    if(!nIkm && !nImes && !itAtual.revisao){
       toast('Informe pelo menos um intervalo — em km ou em meses.');
       return;
     }
-    if(!km && !nImes){
+    if(!km && !nImes && nIkm){
       toast('Sem KM informado, defina um intervalo em meses para acompanhar pela data.');
       return;
     }
@@ -4847,7 +5030,7 @@ function pintarDowngrade(){
   $('dgLista').innerHTML = `<div class="radios">${ativos().map(({v,i})=>`
     <div class="radio ${i===dgEscolhido?'sel':''}" onclick="dgEscolhido=${i};pintarDowngrade()">
       <span class="rb"></span>
-      <div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.cor};margin-right:7px"></span>${v.marca} ${v.modelo}${v.ano ? ' ' + v.ano : ''}</b>
+      <div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.cor};margin-right:7px"></span>${esc(v.marca)} ${esc(v.modelo)}${v.ano ? ' ' + esc(v.ano) : ''}</b>
       <small>${v.placa?v.placa+' · ':''}${textoKm(v.km)}</small></div>
     </div>`).join('')}</div>`;
 }
@@ -4878,6 +5061,14 @@ function migrarItens(){
   const base = modelo({ d:'corrente' });   // itens que não dependem do motor
   VEIC.forEach(v => {
     v.itens = v.itens || [];
+    if(TMyManutencao.ehEletrico(v)){
+      TMyManutencao.modeloEletrico().forEach(novo=>{
+        const existente=v.itens.find(i=>i.id===novo.id);
+        if(!existente) v.itens.push(novo);
+        else Object.assign(existente,{nome:novo.nome,g:novo.g,revisao:true,obs:novo.obs});
+      });
+      return;
+    }
     base.forEach(novo => {
       if(!v.itens.some(i => i.id === novo.id)) v.itens.push(JSON.parse(JSON.stringify(novo)));
     });
@@ -5583,7 +5774,7 @@ function formManual(){
     <div class="card manual" style="padding:4px 16px">
       <div class="field"><label class="flabel">Veículo</label>
         <div class="selw"><select id="mVeic">
-          ${ativos().map(({v,i})=>`<option value="${i}" ${i===vi?'selected':''}>${v.marca} ${v.modelo}${v.placa?' · '+v.placa:''}</option>`).join('')}
+          ${ativos().map(({v,i})=>`<option value="${i}" ${i===vi?'selected':''}>${esc(v.marca)} ${esc(v.modelo)}${v.placa?' · '+esc(v.placa):''}</option>`).join('')}
         </select></div></div>
       <div class="field frow">
         <div class="field" style="flex:1;padding:0"><label class="flabel">${cfg.valor}</label>
@@ -5696,7 +5887,7 @@ function caixaVeiculo(){
     <div class="card" style="padding:4px 16px"><div class="field">
       <div class="selw"><select onchange="escolherVeic(this.value)">
         <option value="" ${veicSel===null?'selected':''}>Todos os veículos</option>
-        ${ativos().map(({v,i})=>`<option value="${i}" ${veicSel===i?'selected':''}>${v.marca} ${v.modelo}${v.placa?' · '+v.placa:''}</option>`).join('')}
+        ${ativos().map(({v,i})=>`<option value="${i}" ${veicSel===i?'selected':''}>${esc(v.marca)} ${esc(v.modelo)}${v.placa?' · '+esc(v.placa):''}</option>`).join('')}
       </select></div></div></div></div>`;
 }
 function filtroVeiculoGastos(){
@@ -5798,7 +5989,7 @@ function pintarCategoriaGasto(tipo){
     <div class="card category-total-card">
       <div class="category-total-label">Total em ${anoSel}</div>
       <div class="category-total">${brl(total)}</div>
-      <div class="category-context">${contexto} · ${regs.length} ${regs.length===1?'pagamento':'pagamentos'}</div>
+      <div class="category-context">${esc(contexto)} · ${regs.length} ${regs.length===1?'pagamento':'pagamentos'}</div>
       <button type="button" class="cta category-add" onclick="abrirManual(undefined,'${tipo}')">+ Adicionar ${cfg.nome.toLowerCase()}</button>
     </div>
   </div>
@@ -7330,7 +7521,7 @@ function pintarAvisos(){
     const v = VEIC[g.veic];
     html += `<div class="section-title avisos-veiculo-titulo" style="display:flex;align-items:center;gap:8px;margin-top:4px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">
       <span style="width:9px;height:9px;border-radius:50%;background:${v?v.cor:'var(--dim)'};flex-shrink:0"></span>
-      ${v ? `${v.marca} ${v.modelo}` : (g.veic==='plano' ? 'Seu plano' : 'veículo removido')}
+      ${v ? `${esc(v.marca)} ${esc(v.modelo)}` : (g.veic==='plano' ? 'Seu plano' : 'veículo removido')}
       ${v && v.placa ? `<span class="mplaca">${v.placa}</span>` : ''}</div>
       <div class="card" style="padding:3px 16px;margin-bottom:14px">
       ${g.itens.map(a=>`<div class="av" onclick="${typeof a.veic==='number'?`abrirPainel(${a.veic})`:`go('config')`}">
@@ -7559,6 +7750,7 @@ function repintarDadosSincronizados(){
   const atual = telaAtual();
   if(atual === 'garagem') pintarGaragem();
   if(atual === 'painel') pintarPainel();
+  if(atual === 'servicos') prepararHistoricoServicos();
   if(atual === 'avisos') pintarAvisos();
   if(atual === 'fipe') pintarFipe();
   if(atual === 'gastos') pintarGastos();

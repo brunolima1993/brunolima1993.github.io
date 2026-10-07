@@ -15,7 +15,7 @@ firebase.initializeApp({
 });
 firebase.messaging();
 
-const CACHE_APP = 'tmycar-pwa-v1.5.101-play-billing';
+const CACHE_APP = 'tmycar-pwa-v1.5.102-manutencao-eletricos';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -30,6 +30,7 @@ const ARQUIVOS_APP = [
   new URL('./icons/icon-maskable-512.png', self.registration.scope).href,
   new URL('./icons/apple-touch-icon.png', self.registration.scope).href,
   new URL('./assets/splash.js', self.registration.scope).href,
+  new URL('./assets/manutencao.js', self.registration.scope).href,
   new URL('./assets/splash-screen-fullscreen-v2.webp', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-check-compat.js', self.registration.scope).href,
