@@ -1,86 +1,76 @@
-# TMy Car — pacote PWA para a Play Store
+# TMyCar — integração AdMob de teste 1.6.0 (código 1600)
 
-## O que tem aqui
+## Situação da entrega
 
-```
-index.html               o app inteiro
-manifest.webmanifest     identidade do app para o Android
-sw.js                    funcionamento offline
-icons/                   ícones 192, 512, 1024 e as versões maskable
-```
+Código implementado, ainda NÃO homologado em aparelho e NÃO pronto para produção.
+Nenhum arquivo foi publicado no GitHub, no AdMob ou no Google Play por esta tarefa.
+O AAB novo NÃO foi gerado: o processo AAPT2 encerrou inesperadamente durante a ligação dos recursos, tanto no projeto original quanto na cópia de compilação. A causa exata desse encerramento não foi confirmada. Não renomeie nem reaproveite o AAB 1.5.99 como se contivesse esta integração.
 
-Suba **todos** no seu repositório, na raiz, mantendo a pasta `icons/`.
+Verificações concluídas:
 
----
+- 90 testes automatizados de JavaScript/backend passaram.
+- Teste no Chrome local: cadastro, edição, histórico, elétrico/híbrido/combustão e larguras 320/390/768 passaram; sem conexão ao Firebase real.
+- Fontes Java compilaram separadamente com as dependências locais e SDK Android 36; teste Java da regra de frequência passou. Isso NÃO substitui a montagem do AAB, o teste de ciclo de vida Android ou a exibição de anúncio em aparelho.
+- Quatro certificados existentes foram preservados no assetlinks.json, inclusive a assinatura atual da Google Play. Foi acrescentada a relação `common.use_as_origin` para a comunicação verificada com o Android.
 
-## Atenção: o endereço precisa ser uma raiz
+## O que está implementado
 
-Para empacotar em TWA, o Google exige um arquivo em
-`https://SEU-DOMINIO/.well-known/assetlinks.json` — sempre na **raiz do domínio**,
-nunca dentro de uma subpasta.
+- Mantém TWA, o domínio www.tmycar.com.br e as dependências/serviços de pagamento existentes.
+- Intersticial apenas depois de uma nova manutenção ser gravada localmente, inclusive itens do painel. Edição de um registro manual não exibe anúncio.
+- Pelo menos duas manutenções salvas entre tentativas, intervalo mínimo de cinco minutos persistido no Android e nenhum anúncio na abertura.
+- Conta com assinatura ainda desconhecida, Premium, teste Premium e modo local ficam sem anúncios. O modo local foi excluído por segurança nesta primeira versão.
+- Não exibe durante formulários, ofertas, compras, em segundo plano, após erro de gravação nem após uma espera longa. Se o anúncio não estiver pronto, segue normalmente.
+- Comunicação pela sessão TWA validada. O intent que abre a tela nativa leva somente uma autorização aleatória, descartável e de curta duração, não e-mail, UID, dados de veículo, token Firebase ou compra.
+- O UMP consulta as preferências antes de solicitar anúncios. Se for necessário obter consentimento, os anúncios ficam bloqueados e aparece “Preferências de anúncios” em Dados da conta. Essa opção abre a tela nativa por ação do usuário. Não há consentimento presumido ou formulário aberto em segundo plano.
+- O primeiro pacote tem o ID do seu aplicativo AdMob, mas as solicitações usam EXCLUSIVAMENTE o bloco oficial de teste do Google. O bloco real está registrado no código como referência, sem utilização e sem chave remota para ativá-lo.
 
-Num repositório de projeto (`usuario.github.io/tmycar/`) você não controla a raiz.
-Duas saídas:
+IDs informados:
 
-1. **Renomear o repositório para `SEUUSUARIO.github.io`.** O site passa a ficar em
-   `https://seuusuario.github.io/` e você controla a raiz. É o caminho mais simples.
-2. **Usar domínio próprio** apontando para o GitHub Pages.
+- Aplicativo: `ca-app-pub-7049820367239374~1115140617`
+- Bloco real, ainda desativado: `ca-app-pub-7049820367239374/1029575780`
+- Bloco efetivamente usado neste pacote: `ca-app-pub-3940256099942544/1033173712` (teste)
 
-O `assetlinks.json` é gerado no passo do empacotamento (abaixo) e prova que
-o site e o app pertencem a você.
+## Conteúdo do ZIP
 
----
+- `android/`: projeto Android completo para compilação, sem senhas, keystore, AAB antigo ou dados do Firebase.
+- `site/`: SOMENTE os arquivos web alterados. Não é uma cópia integral do site. Preserve os demais arquivos existentes.
+- `LEIA-ME.md`: estas instruções.
 
-## Passo a passo do empacotamento
+## Próxima etapa: gerar o AAB fora do ambiente de execução do assistente
 
-### 1. Confira o PWA
-Abra o site publicado no Chrome do computador, tecle F12 → aba **Lighthouse** →
-categoria **Progressive Web App**. A nota precisa ficar **em 80 ou mais**.
+1. Extraia o ZIP em uma pasta curta. Não execute dentro do ZIP.
+2. Entre em `android` e execute `GERAR-AAB-ADMOB-TESTE.bat` no Windows. O script procura o Java/SDK já utilizados nesta máquina se as variáveis não estiverem definidas. A primeira execução pode baixar dependências oficiais.
+3. Se terminar com sucesso, o resultado será `android/app/build/outputs/bundle/release/app-release.aab`, versão 1.6.0, código 1600. Ainda precisa ser assinado com SUA chave de upload. Não envie a senha ou a chave no chat.
+4. Se falhar, envie o erro. Não publique arquivo antigo nem tente corrigir usando uma chave nova.
+5. Depois da compilação e assinatura, publicar os arquivos de `site` nos mesmos caminhos do repositório do site: `index.html`, `sw.js`, `politica.html`, `assets/admob.js` e `.well-known/assetlinks.json`. A pasta deve continuar se chamando literalmente `.well-known`.
+6. Confirmar que o JSON publicado contém as duas relações e os quatro certificados; depois enviar o AAB para TESTE INTERNO, não produção. Instalar pela Google Play com a conta testadora.
 
-### 2. Gere o pacote
-Vá em **pwabuilder.com**, cole o endereço do site e escolha empacotar para Android.
-Ele devolve um `.aab` (o arquivo que a loja aceita) e o `assetlinks.json`.
+O ZIP não altera o app publicado sozinho. Atualizar apenas o site não adiciona o SDK Android ao aplicativo 1.5.99.
 
-Alternativa por linha de comando, se preferir: `npx @bubblewrap/cli init --manifest
-https://SEU-SITE/manifest.webmanifest` e depois `npx @bubblewrap/cli build`.
+## Checklist obrigatório no aparelho
 
-### 3. Publique o assetlinks.json
-Coloque o arquivo em `.well-known/assetlinks.json` na raiz do site e confirme que
-ele abre pelo navegador. Sem isso, o app abre com a barra do Chrome aparecendo.
+- Abrir pelo ícone: a barra X/compartilhar não deve retornar. Se retornar, parar e verificar o domínio/assinatura; não publicar.
+- Abrir e cancelar o pagamento Premium; testar restauração com conta testadora de licença. Confirmar que a assinatura e a volta ao app continuam funcionando.
+- Em conta Free confirmada, salvar duas manutenções distintas, aguardando o pré-carregamento entre elas. Confirmar anúncio com identificação de teste, fechar e conferir ambos os registros no histórico.
+- Salvar novamente antes de cinco minutos: não deve mostrar outro anúncio. Após o intervalo, exigir também duas novas manutenções desde a última tentativa.
+- Conta Premium e teste de 14 dias: não devem solicitar/exibir anúncios. Trocar de conta e repetir.
+- Sem internet, sem anúncio disponível, armazenamento indisponível e retorno do segundo plano: não pode aparecer anúncio tardio, sumir registro ou travar a navegação.
+- Testar botão Voltar, fechar anúncio, girar aparelho, abrir link de anúncio de teste, reabrir pelo ícone e matar/restaurar o processo.
+- Configurar e testar as mensagens de privacidade no AdMob. Se o UMP exigir consentimento, abrir Dados da conta → Preferências de anúncios. Testar também recusa e revisão das escolhas. Não simular consentimento por código em produção.
 
-### 4. Play Console
-- Conta de desenvolvedor: taxa única de US$ 25
-- Verificação de identidade: leva de 2 a 7 dias úteis
-- Pessoa física pode ter conta individual (CNPJ só para conta de organização)
-- Envie o `.aab` primeiro no **teste interno**, para você mesmo instalar
+## Antes de ativar anúncios reais
 
-### 5. Teste fechado
-Se sua conta foi criada depois de 13/11/2023, é obrigatório: **12 testadores
-reais, em aparelhos Android físicos, por 14 dias consecutivos**, com uso natural.
+Ainda precisam de confirmação na conta: associação com a loja, situação/aprovação do app AdMob, mensagens de privacidade, público-alvo e restrições de conteúdo. Atualize “Contém anúncios” e a declaração de Segurança dos dados no Play Console conforme o SDK efetivamente integrado. Revise o texto de privacidade incluído antes de publicar; ele não substitui avaliação jurídica.
 
-Emuladores e contas falsas são detectados e podem custar o banimento da conta.
+Copie o trecho EXATO de AdMob → Apps → Todos os aplicativos → app-ads.txt → Como configurar. Precisaremos publicá-lo em `/app-ads.txt` do site de desenvolvedor que consta na loja e verificar o rastreamento. Esse arquivo não foi inventado ou publicado nesta entrega.
 
----
+Só depois de a versão de teste funcionar no aparelho, mudar deliberadamente para o bloco real, gerar outro AAB com código superior e realizar a liberação. Não clique em anúncios reais para testar.
 
-## O que preparar para a ficha da loja
+## Referências oficiais
 
-- Ícone 512×512 → use `icons/icon-512.png`
-- Imagem de destaque 1024×500 → **ainda não existe**
-- Capturas de tela do app (mínimo 2)
-- **Política de privacidade numa página pública** → hoje o texto só existe
-  dentro do app; a loja exige um endereço acessível
-- Formulário de segurança de dados
-- Classificação indicativa
-- Público-alvo: 18 anos ou mais
-
----
-
-## Antes de subir, decida uma coisa
-
-O app mostra preços de assinatura (R$ 3,99 e R$ 29,99), mas **nada é cobrado** —
-não há integração de pagamento. Publicar assim pode confundir o testador e
-levantar dúvida na revisão.
-
-Para a fase de teste, o mais limpo é deixar o Premium liberado e sem preço,
-tratando-o como recurso em avaliação. A cobrança entra quando houver
-Faturamento Play integrado.
+- TWA/postMessage e relação de origem: https://developer.chrome.com/docs/android/post-message-twa
+- Consentimento UMP: https://developers.google.com/admob/android/privacy
+- Anúncios de teste: https://developers.google.com/admob/android/test-ads
+- Declaração de dados do SDK: https://developers.google.com/admob/android/privacy/play-data-disclosure
+- app-ads.txt: https://support.google.com/admob/answer/9363762?hl=pt-BR
+- SDK 25.4 mantém Android 6 (API 23); 25.5 aumenta o mínimo: https://developers.google.com/admob/android/rel-notes

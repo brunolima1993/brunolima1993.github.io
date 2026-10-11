@@ -1,0 +1,51 @@
+{
+  "packageId": "br.com.tmycar.app",
+  "host": "www.tmycar.com.br",
+  "name": "TMy Car",
+  "launcherName": "TMy Car",
+  "display": "standalone",
+  "themeColor": "#061A35",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#061A35",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://www.tmycar.com.br/icons/icon-512.png",
+  "maskableIconUrl": "https://www.tmycar.com.br/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 140,
+  "signingKey": {
+    "path": "android.keystore",
+    "alias": "tmycar"
+  },
+  "appVersionName": "1.6.0",
+  "appVersionCode": 1600,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://www.tmycar.com.br/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://www.tmycar.com.br/",
+  "minSdkVersion": 23,
+  "orientation": "any",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.6.0"
+}

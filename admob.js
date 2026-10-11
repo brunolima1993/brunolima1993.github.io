@@ -1,0 +1,90 @@
+/* Optional native TWA bridge. No ad SDK, account identifiers or ad requests in the website. */
+(function(root, factory) {
+  if(typeof module === 'object' && module.exports) module.exports = factory;
+  else root.TMyAdmob = factory;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createAdBridge(env) {
+  'use strict';
+  const ORIGIN = 'https://www.tmycar.com.br';
+  const uuid = () => env.randomUUID();
+  const validToken = v => typeof v === 'string' && /^[a-f0-9-]{36}$/.test(v);
+  let port = null, epoch = uuid(), key = null, ready = false, privacyToken = '';
+  let pending = null, openingUntil = 0, disposed = false;
+  function read() {
+    try { return env.getState(); } catch(_) { return {free:false,safe:false,key:null}; }
+  }
+  function send(message) {
+    if(!port || disposed) return false;
+    try { port.postMessage(JSON.stringify({...message,tmycarAds:1,epoch})); return true; }
+    catch(_) { ready=false; return false; }
+  }
+  function refresh() {
+    const state = read();
+    if(key !== state.key) { key=state.key; epoch=uuid(); ready=false; cancel(); }
+    if(!state.free) { ready=false; cancel(); }
+    // Chrome becomes hidden while the capability's foreground Activity is opening.
+    // Preserve only this short, already-authorized transition; account changes still revoke it.
+    if(state.free && env.now() < openingUntil) return state;
+    send({type:'state',free:state.free===true,safe:state.safe===true});
+    return state;
+  }
+  function cancel() {
+    if(pending) { env.clearTimeout(pending.timer); pending.resolve(false); pending=null; }
+  }
+  function open(host, token) {
+    if(!validToken(token) || !env.userActive()) return false;
+    openingUntil=env.now()+1500;
+    try {
+      env.navigate('intent://'+host+'?token='+encodeURIComponent(token)+
+        '#Intent;scheme=tmycar-ads;package=br.com.tmycar.app;end');
+      return true;
+    } catch(_) { openingUntil=0; return false; }
+  }
+  function message(event) {
+    let data;
+    try { if(typeof event.data !== 'string' || event.data.length>2048) return; data=JSON.parse(event.data); }
+    catch(_) { return; }
+    if(data.tmycarAds!==1) return;
+    if(data.type==='status') {
+      ready=data.ready===true && data.testMode===true;
+      privacyToken=validToken(data.privacyToken)?data.privacyToken:'';
+      env.privacyChanged(!!privacyToken && data.privacyRequired===true);
+    }
+    if(data.type==='armed' && pending && data.request===pending.id) {
+      const request=pending; pending=null; env.clearTimeout(request.timer);
+      const state=read();
+      const ok=state.free && state.safe && state.key===request.key && epoch===request.epoch
+        && env.now()-request.at<=250 && env.userActive();
+      ready=false;
+      request.resolve(!!ok && open('maintenance',data.token));
+    }
+  }
+  function hello(event) {
+    if(disposed || env.origin!==ORIGIN || event.origin!==ORIGIN || !event.ports || event.ports.length!==1) return;
+    let data;
+    try { data=JSON.parse(event.data); } catch(_) { return; }
+    if(data.tmycarAds!==1 || data.type!=='hello' || data.testMode!==true) return;
+    cancel(); if(port) port.close();
+    port=event.ports[0]; ready=false; privacyToken='';
+    port.onmessage=message; if(port.start) port.start(); refresh();
+  }
+  async function saved() {
+    const state=refresh();
+    if(!port || !state.free || !state.safe || pending || !env.userActive()) return false;
+    const id=uuid();
+    if(!ready) { send({type:'saved',request:id}); return false; } // Count, but never wait for an ad to load.
+    return new Promise(resolve => {
+      pending={id,resolve,at:env.now(),epoch,key:state.key,timer:env.setTimeout(cancel,250)};
+      if(!send({type:'saved',request:id})) cancel();
+    });
+  }
+  function privacy() {
+    if(!port || !privacyToken || !env.userActive()) return false;
+    return open('privacy',privacyToken);
+  }
+  const removeListener=env.listen(hello);
+  const timer=env.setInterval(refresh,2000);
+  return {saved,refresh,privacy,dispose() {
+    disposed=true; cancel(); env.clearInterval(timer); removeListener();
+    if(port) port.close(); port=null; env.privacyChanged(false);
+  }};
+});
