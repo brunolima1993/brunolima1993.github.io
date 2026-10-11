@@ -5146,7 +5146,11 @@ const PRODUTOS_GOOGLE_PLAY = Object.freeze({
   anual:'tmycar_premium_anual'
 });
 let SERVICO_GOOGLE_PLAY = null;
+let PROMESSA_SERVICO_GOOGLE_PLAY = null;
 let DETALHES_GOOGLE_PLAY = {};
+let PREPARACAO_GOOGLE_PLAY = null;
+let SESSAO_OFERTA_PLAY = 0;
+const VALIDADE_PREPARACAO_PLAY_MS = 30000;
 let RESTAURACAO_PLAY_UID = null;
 let ATIVANDO_ASSINATURA = false;
 const planoAtual = () => PLANO === 'free' ? 'free' : CICLO;
@@ -5440,19 +5444,19 @@ function formatarPrecoGooglePlay(preco){
 async function obterServicoGooglePlay(){
   if(SERVICO_GOOGLE_PLAY) return SERVICO_GOOGLE_PLAY;
   if(typeof window.getDigitalGoodsService !== 'function') return null;
-  try{
-    SERVICO_GOOGLE_PLAY = await window.getDigitalGoodsService(METODO_GOOGLE_PLAY);
-    return SERVICO_GOOGLE_PLAY || null;
-  }catch(e){
-    console.warn('Google Play Billing não está disponível neste ambiente.', e);
-    return null;
+  if(!PROMESSA_SERVICO_GOOGLE_PLAY){
+    PROMESSA_SERVICO_GOOGLE_PLAY = Promise.resolve()
+      .then(() => window.getDigitalGoodsService(METODO_GOOGLE_PLAY))
+      .then(servico => (SERVICO_GOOGLE_PLAY = servico || null))
+      .catch(e => {
+        console.warn('Google Play Billing não está disponível neste ambiente.', e);
+        return null;
+      }).finally(() => { PROMESSA_SERVICO_GOOGLE_PLAY = null; });
   }
+  return PROMESSA_SERVICO_GOOGLE_PLAY;
 }
-async function atualizarPrecosGooglePlay(){
-  const servico = await obterServicoGooglePlay();
-  if(!servico) return false;
+function atualizarPrecosGooglePlay(detalhes){
   const produtos = Object.values(PRODUTOS_GOOGLE_PLAY);
-  const detalhes = await servico.getDetails(produtos);
   if(!Array.isArray(detalhes) || !detalhes.length) return false;
   DETALHES_GOOGLE_PLAY = {};
   detalhes.forEach(item => {
@@ -5487,7 +5491,59 @@ async function atualizarPrecosGooglePlay(){
   if($('s-planos').classList.contains('active')) pintarPlanos();
   return true;
 }
+function invalidarPreparacaoGooglePlay(){
+  SESSAO_OFERTA_PLAY++;
+  PREPARACAO_GOOGLE_PLAY = null;
+  DETALHES_GOOGLE_PLAY = {};
+}
+function contaGooglePlayAtual(uid){
+  return !!uid && !CONTA.local && AUTH && AUTH.currentUser &&
+    AUTH.currentUser.uid === uid && contextoDeUsuarioAtivo(uid);
+}
+function preparacaoProntaGooglePlay(uid){
+  const p = PREPARACAO_GOOGLE_PLAY;
+  return p && p.uid === uid && p.sessao === SESSAO_OFERTA_PLAY &&
+    contaGooglePlayAtual(uid) && p.expira > Date.now() ? p.dados : null;
+}
+function limitarConsultaGooglePlay(promessa){
+  let timer;
+  const limite = new Promise((_, rejeitar) => {
+    timer = setTimeout(() => rejeitar(new Error('Tempo de consulta da Google Play esgotado.')), 20000);
+  });
+  return Promise.race([promessa, limite]).finally(() => clearTimeout(timer));
+}
+function prepararCompraGooglePlay(){
+  const uid = AUTH && AUTH.currentUser && AUTH.currentUser.uid;
+  if(!contaGooglePlayAtual(uid)) return Promise.resolve(null);
+  const anterior = PREPARACAO_GOOGLE_PLAY;
+  if(anterior && anterior.uid === uid && anterior.sessao === SESSAO_OFERTA_PLAY &&
+     (!anterior.dados || anterior.expira > Date.now())) return anterior.promessa;
+  const p = {uid, sessao:SESSAO_OFERTA_PLAY, dados:null, expira:0, promessa:null};
+  PREPARACAO_GOOGLE_PLAY = p;
+  // Apenas consultas: nunca abre pagamento nem concede Premium no pré-carregamento.
+  p.promessa = limitarConsultaGooglePlay((async() => {
+    const servico = await obterServicoGooglePlay();
+    if(!servico) return null;
+    const [detalhes, compras] = await Promise.all([
+      servico.getDetails(Object.values(PRODUTOS_GOOGLE_PLAY)),
+      servico.listPurchases()
+    ]);
+    if(!Array.isArray(detalhes) || !detalhes.length || !Array.isArray(compras))
+      throw new Error('Não foi possível preparar a compra na Google Play.');
+    return {servico, detalhes, compras};
+  })()).then(dados => {
+    if(!dados || PREPARACAO_GOOGLE_PLAY !== p || !contaGooglePlayAtual(uid)) return null;
+    atualizarPrecosGooglePlay(dados.detalhes);
+    p.dados = {...dados, detalhes:{...DETALHES_GOOGLE_PLAY}};
+    p.expira = Date.now() + VALIDADE_PREPARACAO_PLAY_MS;
+    return p.dados;
+  }).finally(() => {
+    if(!p.dados && PREPARACAO_GOOGLE_PLAY === p) PREPARACAO_GOOGLE_PLAY = null;
+  });
+  return p.promessa;
+}
 function abrirOferta(origem){
+  invalidarPreparacaoGooglePlay();
   ofOrigem = origem || 'gastos';
   const atual = document.querySelector('.screen.active');
   ofTelaAnterior = (atual && atual.id) ? atual.id.replace('s-','') : 'garagem';
@@ -5510,14 +5566,19 @@ function abrirOferta(origem){
   $('ofPlanosTitulo').style.display = testeDisponivel ? 'none' : '';
   $('ofPlanos').style.display = testeDisponivel ? 'none' : '';
   $('ofTrialHint').style.display = testeDisponivel ? '' : 'none';
-  $('ofBotao').textContent = testeDisponivel ? 'Ativar 14 dias grátis' : 'Assinar Premium';
+  $('ofBotao').disabled = ATIVANDO_ASSINATURA || ATIVANDO_TESTE;
+  $('ofBotao').textContent = ATIVANDO_ASSINATURA ? 'Abrindo Google Play…'
+    : (testeDisponivel ? 'Ativar 14 dias grátis' : 'Assinar Premium');
   escolherPreco(precoEscolhido);   // deixa o visual sempre igual ao estado
   fecharFolhas();
   $('ofBg').classList.add('on'); $('of').classList.add('on');
-  if(!testeDisponivel) atualizarPrecosGooglePlay().catch(e =>
-    console.warn('Não foi possível consultar os preços da Google Play.', e));
+  if(!testeDisponivel && !ATIVANDO_ASSINATURA) prepararCompraGooglePlay().catch(e =>
+    console.warn('Não foi possível antecipar a consulta da Google Play.', e));
 }
-function fecharOferta(){ $('ofBg').classList.remove('on'); $('of').classList.remove('on'); }
+function fecharOferta(){
+  invalidarPreparacaoGooglePlay();
+  $('ofBg').classList.remove('on'); $('of').classList.remove('on');
+}
 let ATIVANDO_TESTE = false;
 async function chamarFuncaoProtegida(nome, dados={}){
   const permitidas = ['ativarTesteGratis', 'validarAssinaturaGooglePlay'];
@@ -5654,12 +5715,6 @@ async function restaurarAssinaturaGooglePlay(uidEsperado){
   if(restaurou) await puxarAssinatura();
   return restaurou;
 }
-async function detalheDoPlanoGooglePlay(ciclo){
-  const productId = PRODUTOS_GOOGLE_PLAY[ciclo];
-  if(!productId) return null;
-  if(!DETALHES_GOOGLE_PLAY[productId]) await atualizarPrecosGooglePlay();
-  return DETALHES_GOOGLE_PLAY[productId] || null;
-}
 function mensagemErroAssinaturaGooglePlay(e){
   const codigo = String(e && e.code || e && e.name || '');
   if(codigo.includes('AbortError') || codigo.includes('NotAllowedError') ||
@@ -5687,24 +5742,35 @@ async function ativarPremium(){
     return;
   }
   if(ATIVANDO_ASSINATURA) return;
+  const uidCompra = AUTH && AUTH.currentUser && AUTH.currentUser.uid;
+  if(!contaGooglePlayAtual(uidCompra)){
+    toast('Entre novamente na sua conta para assinar.');
+    return;
+  }
+  const cicloCompra = precoEscolhido;
+  const sessaoCompra = SESSAO_OFERTA_PLAY;
   ATIVANDO_ASSINATURA = true;
   const bt = $('ofBotao');
   if(bt){ bt.disabled = true; bt.textContent = 'Abrindo Google Play…'; }
   let respostaPagamento = null;
   try{
-    const servico = await obterServicoGooglePlay();
-    if(!servico || typeof PaymentRequest !== 'function'){
+    // Com a preparação pronta, show() é chamado no próprio toque, sem nova consulta.
+    let preparado = preparacaoProntaGooglePlay(uidCompra);
+    if(!preparado) preparado = await prepararCompraGooglePlay();
+    if(!contaGooglePlayAtual(uidCompra) || sessaoCompra !== SESSAO_OFERTA_PLAY ||
+       !$('of').classList.contains('on')) return;
+    if(!preparado || typeof PaymentRequest !== 'function'){
       toast('Para assinar, abra o TMy Car instalado pela Google Play.');
       return;
     }
-    const productId = PRODUTOS_GOOGLE_PLAY[precoEscolhido];
-    const detalhe = await detalheDoPlanoGooglePlay(precoEscolhido);
+    const productId = PRODUTOS_GOOGLE_PLAY[cicloCompra];
+    const detalhe = preparado.detalhes[productId];
     const preco = precoDetalheGooglePlay(detalhe);
     if(!productId || !detalhe || !preco)
       throw new Error('Produto indisponível na Google Play.');
 
     const dadosMetodo = {sku:productId};
-    const compras = await comprasAtuaisGooglePlay(servico);
+    const compras = preparado.compras;
     const compraAnterior = compras.find(compra => {
       const id = produtoDaCompraGooglePlay(compra);
       return Object.values(PRODUTOS_GOOGLE_PLAY).includes(id) && id !== productId &&
@@ -5724,16 +5790,20 @@ async function ativarPremium(){
       }}
     );
     respostaPagamento = await pedido.show();
+    if(!contaGooglePlayAtual(uidCompra))
+      throw new Error('A conta mudou durante o pagamento. Entre na conta original para restaurar a compra.');
     const purchaseToken = tokenDaCompraGooglePlay(respostaPagamento && respostaPagamento.details);
     if(!purchaseToken) throw new Error('A Google Play não devolveu o comprovante da compra.');
     await validarCompraGooglePlay(productId, purchaseToken);
     try{ await respostaPagamento.complete('success'); }catch(e){}
     respostaPagamento = null;
+    if(!contaGooglePlayAtual(uidCompra)) return;
     await puxarAssinatura();
+    if(!contaGooglePlayAtual(uidCompra)) return;
     fecharOferta();
     atualizarNav();
     go(ofTelaAnterior || 'garagem');
-    toast(`Premium ${precoEscolhido === 'anual' ? 'anual' : 'mensal'} ativado com sucesso.`);
+    toast(`Premium ${cicloCompra === 'anual' ? 'anual' : 'mensal'} ativado com sucesso.`);
   }catch(e){
     if(respostaPagamento){
       try{ await respostaPagamento.complete('fail'); }catch(ignorado){}
@@ -5741,6 +5811,7 @@ async function ativarPremium(){
     const mensagem = mensagemErroAssinaturaGooglePlay(e);
     if(mensagem) toast(mensagem);
   }finally{
+    PREPARACAO_GOOGLE_PLAY = null;
     ATIVANDO_ASSINATURA = false;
     if(bt){ bt.disabled = false; bt.textContent = 'Assinar Premium'; }
   }
@@ -6432,6 +6503,7 @@ function iniciarAppCheck(){
 }
 
 async function tratarEstadoAuth(u){
+  invalidarPreparacaoGooglePlay();
   await PERSISTENCIA_NUVEM;
   if(u){
     if(contaPrecisaVerificacao(u)){
