@@ -7,13 +7,13 @@
   const ORIGIN = 'https://www.tmycar.com.br';
   const uuid = () => env.randomUUID();
   const validToken = v => typeof v === 'string' && /^[a-f0-9-]{36}$/.test(v);
-  let port = null, epoch = uuid(), key = null, ready = false, privacyToken = '';
+  let port = null, confirmed = false, epoch = uuid(), key = null, ready = false, privacyToken = '';
   let pending = null, openingUntil = 0, disposed = false;
   let statusAt = null, lastSave = 'nenhum evento nesta sessao';
   function diagnostics() {
     const state=read();
     return {
-      channel:disposed?'encerrado':(!port?'aguardando Android':(statusAt===null?'conectado; sem resposta de estado':(env.now()-statusAt>10000?'sem resposta recente':'respondendo'))),
+      channel:disposed?'encerrado':(!port?'aguardando Android':(!confirmed?'canal recebido; aguardando identificacao Android':(statusAt===null?'conectado; sem resposta de estado':(env.now()-statusAt>10000?'sem resposta recente':'respondendo')))),
       free:state.free===true, safe:state.safe===true,
       ready:statusAt!==null && env.now()-statusAt<=10000 && ready,
       statusAgeSeconds:statusAt===null?null:Math.max(0,Math.floor((env.now()-statusAt)/1000)),
@@ -24,7 +24,7 @@
     try { return env.getState(); } catch(_) { return {free:false,safe:false,key:null}; }
   }
   function send(message) {
-    if(!port || disposed) return false;
+    if(!port || !confirmed || disposed) return false;
     try { port.postMessage(JSON.stringify({...message,tmycarAds:1,epoch})); return true; }
     catch(_) { ready=false; return false; }
   }
@@ -54,7 +54,11 @@
     let data;
     try { if(typeof event.data !== 'string' || event.data.length>2048) return; data=JSON.parse(event.data); }
     catch(_) { return; }
-    if(data.tmycarAds!==1) return;
+    if(!data || data.tmycarAds!==1) return;
+    if(!confirmed) {
+      if(data.type!=='hello' || data.testMode!==true) return;
+      confirmed=true; refresh(); return;
+    }
     if(data.type==='status') {
       statusAt=env.now();
       ready=data.ready===true && data.testMode===true;
@@ -71,20 +75,23 @@
       request.resolve(!!ok && open('maintenance',data.token));
     }
   }
-  function hello(event) {
+  function acceptChannel(event) {
     if(disposed || env.origin!==ORIGIN || event.origin!==ORIGIN || !event.ports || event.ports.length!==1) return;
-    let data;
-    try { data=JSON.parse(event.data); } catch(_) { return; }
-    if(data.tmycarAds!==1 || data.type!=='hello' || data.testMode!==true) return;
+    // Chrome transfers the port in an EMPTY window message. The native JSON hello
+    // arrives later ON that port, not on window. Do not send state until it is checked.
+    if(event.data!=='') return;
+    const incoming=event.ports[0];
+    if(!incoming || typeof incoming.postMessage!=='function' || typeof incoming.close!=='function') return;
     cancel(); if(port) port.close();
-    port=event.ports[0]; ready=false; privacyToken='';
-    statusAt=null;
-    port.onmessage=message; if(port.start) port.start(); refresh();
+    port=incoming; confirmed=false; ready=false; privacyToken='';
+    statusAt=null; openingUntil=0; env.privacyChanged(false);
+    port.onmessage=event=>{ if(!disposed && port===incoming) message(event); };
+    if(port.start) port.start();
   }
   async function saved() {
     const state=refresh();
-    if(!port || !state.free || !state.safe || pending || !env.userActive()) {
-      lastSave=!port?'sem canal Android':!state.free?'conta nao elegivel':!state.safe?'tela bloqueada':pending?'tentativa em andamento':'gesto de toque expirou';
+    if(!port || !confirmed || !state.free || !state.safe || pending || !env.userActive()) {
+      lastSave=!port || !confirmed?'sem canal Android':!state.free?'conta nao elegivel':!state.safe?'tela bloqueada':pending?'tentativa em andamento':'gesto de toque expirou';
       return false;
     }
     lastSave=ready?'solicitando autorizacao':'evento enviado; anuncio ainda nao pronto';
@@ -99,10 +106,10 @@
     if(!port || !privacyToken || !env.userActive()) return false;
     return open('privacy',privacyToken);
   }
-  const removeListener=env.listen(hello);
+  const removeListener=env.listen(acceptChannel);
   const timer=env.setInterval(refresh,2000);
   return {saved,refresh,privacy,diagnostics,dispose() {
     disposed=true; cancel(); env.clearInterval(timer); removeListener();
-    if(port) port.close(); port=null; env.privacyChanged(false);
+    if(port) port.close(); port=null; confirmed=false; env.privacyChanged(false);
   }};
 });
