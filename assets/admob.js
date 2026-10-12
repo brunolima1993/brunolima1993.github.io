@@ -5,6 +5,9 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createAdBridge(env) {
   'use strict';
   const ORIGIN = 'https://www.tmycar.com.br';
+  // Chrome can serialize its DAL-verified app source using the android-app scheme.
+  // Accept only the exact origin observed on-device; never a prefix, wildcard or null.
+  const ANDROID_ORIGIN = 'android-app://www.tmycar.com.br';
   const uuid = () => env.randomUUID();
   const validToken = v => typeof v === 'string' && /^[a-f0-9-]{36}$/.test(v);
   let port = null, confirmed = false, epoch = uuid(), key = null, ready = false, privacyToken = '';
@@ -16,7 +19,7 @@
   function originLabel(origin) {
     if(origin===ORIGIN) return 'HTTPS TMyCar';
     if(origin==='android-app://www.tmycar.com.br/br.com.tmycar.app') return 'android-app TMyCar com pacote';
-    if(origin==='android-app://www.tmycar.com.br') return 'android-app TMyCar sem pacote';
+    if(origin===ANDROID_ORIGIN) return 'android-app TMyCar sem pacote';
     if(origin==='null' || origin==='') return 'opaca ou vazia';
     return 'outra origem';
   }
@@ -30,7 +33,7 @@
       free:state.free===true, safe:state.safe===true,
       ready:statusAt!==null && env.now()-statusAt<=10000 && ready,
       statusAgeSeconds:statusAt===null?null:Math.max(0,Math.floor((env.now()-statusAt)/1000)),
-      lastSave, scriptVersion:'1.6.2-diag-4', windowMessages, transfers, rejected,
+      lastSave, scriptVersion:'1.6.2-diag-5', windowMessages, transfers, rejected,
       lastTransfer, portMessages, lastPortEvent, stateSends, sendErrors
     };
   }
@@ -100,7 +103,7 @@
     const shape=originLabel(event.origin)+'; '+dataLabel(event.data)+'; canais: '+Math.min(event.ports.length,9);
     const reject=reason=>{rejected++;lastTransfer=shape+'; recusada: '+reason;};
     if(env.origin!==ORIGIN) {reject('pagina fora do dominio permitido');return;}
-    if(event.origin!==ORIGIN) {reject('origem diferente da permitida');return;}
+    if(event.origin!==ORIGIN && event.origin!==ANDROID_ORIGIN) {reject('origem diferente da permitida');return;}
     if(event.ports.length!==1) {reject('quantidade de canais');return;}
     // Chrome transfers the port in an EMPTY window message. The native JSON hello
     // arrives later ON that port, not on window. Do not send state until it is checked.
