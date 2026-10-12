@@ -10,6 +10,19 @@
   let port = null, confirmed = false, epoch = uuid(), key = null, ready = false, privacyToken = '';
   let pending = null, openingUntil = 0, disposed = false;
   let statusAt = null, lastSave = 'nenhum evento nesta sessao';
+  // Memory-only counters and fixed labels. Never retain message bodies or raw origins.
+  let windowMessages=0, transfers=0, rejected=0, portMessages=0, stateSends=0, sendErrors=0;
+  let lastTransfer='nenhuma desde a inicializacao do script', lastPortEvent='nenhuma';
+  function originLabel(origin) {
+    if(origin===ORIGIN) return 'HTTPS TMyCar';
+    if(origin==='android-app://www.tmycar.com.br/br.com.tmycar.app') return 'android-app TMyCar com pacote';
+    if(origin==='android-app://www.tmycar.com.br') return 'android-app TMyCar sem pacote';
+    if(origin==='null' || origin==='') return 'opaca ou vazia';
+    return 'outra origem';
+  }
+  function dataLabel(data) {
+    return data===''?'texto vazio':data===null?'nulo':typeof data==='string'?'texto nao vazio':'outro tipo';
+  }
   function diagnostics() {
     const state=read();
     return {
@@ -17,7 +30,8 @@
       free:state.free===true, safe:state.safe===true,
       ready:statusAt!==null && env.now()-statusAt<=10000 && ready,
       statusAgeSeconds:statusAt===null?null:Math.max(0,Math.floor((env.now()-statusAt)/1000)),
-      lastSave
+      lastSave, scriptVersion:'1.6.2-diag-4', windowMessages, transfers, rejected,
+      lastTransfer, portMessages, lastPortEvent, stateSends, sendErrors
     };
   }
   function read() {
@@ -25,8 +39,8 @@
   }
   function send(message) {
     if(!port || !confirmed || disposed) return false;
-    try { port.postMessage(JSON.stringify({...message,tmycarAds:1,epoch})); return true; }
-    catch(_) { ready=false; return false; }
+    try { port.postMessage(JSON.stringify({...message,tmycarAds:1,epoch})); if(message.type==='state') stateSends++; return true; }
+    catch(_) { sendErrors++; ready=false; return false; }
   }
   function refresh() {
     const state = read();
@@ -51,14 +65,17 @@
     } catch(_) { openingUntil=0; return false; }
   }
   function message(event) {
+    portMessages++;
     let data;
-    try { if(typeof event.data !== 'string' || event.data.length>2048) return; data=JSON.parse(event.data); }
-    catch(_) { return; }
-    if(!data || data.tmycarAds!==1) return;
+    try { if(typeof event.data !== 'string' || event.data.length>2048) {lastPortEvent='tipo ou tamanho recusado';return;} data=JSON.parse(event.data); }
+    catch(_) { lastPortEvent='JSON invalido';return; }
+    if(!data || data.tmycarAds!==1) {lastPortEvent='protocolo recusado';return;}
     if(!confirmed) {
-      if(data.type!=='hello' || data.testMode!==true) return;
+      if(data.type!=='hello' || data.testMode!==true) {lastPortEvent='identificacao de teste ausente';return;}
+      lastPortEvent='identificacao Android aceita';
       confirmed=true; refresh(); return;
     }
+    lastPortEvent=data.type==='status'?'estado recebido':data.type==='armed'?'resposta de autorizacao recebida':'tipo ignorado';
     if(data.type==='status') {
       statusAt=env.now();
       ready=data.ready===true && data.testMode===true;
@@ -76,12 +93,21 @@
     }
   }
   function acceptChannel(event) {
-    if(disposed || env.origin!==ORIGIN || event.origin!==ORIGIN || !event.ports || event.ports.length!==1) return;
+    if(disposed) return;
+    windowMessages++;
+    if(!event.ports || !event.ports.length) return;
+    transfers++;
+    const shape=originLabel(event.origin)+'; '+dataLabel(event.data)+'; canais: '+Math.min(event.ports.length,9);
+    const reject=reason=>{rejected++;lastTransfer=shape+'; recusada: '+reason;};
+    if(env.origin!==ORIGIN) {reject('pagina fora do dominio permitido');return;}
+    if(event.origin!==ORIGIN) {reject('origem diferente da permitida');return;}
+    if(event.ports.length!==1) {reject('quantidade de canais');return;}
     // Chrome transfers the port in an EMPTY window message. The native JSON hello
     // arrives later ON that port, not on window. Do not send state until it is checked.
-    if(event.data!=='') return;
+    if(event.data!=='') {reject('mensagem inicial nao vazia');return;}
     const incoming=event.ports[0];
-    if(!incoming || typeof incoming.postMessage!=='function' || typeof incoming.close!=='function') return;
+    if(!incoming || typeof incoming.postMessage!=='function' || typeof incoming.close!=='function') {reject('canal invalido');return;}
+    lastTransfer=shape+'; aceita';
     cancel(); if(port) port.close();
     port=incoming; confirmed=false; ready=false; privacyToken='';
     statusAt=null; openingUntil=0; env.privacyChanged(false);

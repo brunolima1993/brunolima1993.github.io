@@ -1448,7 +1448,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
 .sv-acoes{display:flex;flex-shrink:0;gap:6px}.sv-acoes button{padding:10px;border-radius:10px;border:1px solid rgba(0,153,255,.3);background:rgba(0,153,255,.08);color:#39b5ff;cursor:pointer;font:inherit;font-size:12px}
 #s-servicos .section-title,#s-servico-form .section-title{text-align:center}
 .ev-note{font-size:12px;line-height:1.6;color:var(--muted);text-align:center;margin-bottom:16px}
-</style><script src="assets/manutencao.js"></script><script src="assets/admob.js?v=1.6.2-diag-3"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
+</style><script src="assets/manutencao.js"></script><script src="assets/admob.js?v=1.6.2-diag-4"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-app-check-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-auth-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-firestore-compat.js"></script>
@@ -2599,7 +2599,8 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
             <summary>Diagnóstico de anúncios · teste</summary>
             <p>Somente leitura. Não exibe anúncios nem altera sua conta. Envie um print para verificarmos a integração.</p>
             <pre id="cdDiagnosticoTexto" aria-live="polite"></pre>
-            <button type="button" onclick="atualizarDiagnosticoAnuncios()">Atualizar diagnóstico do site</button>
+            <p id="cdDiagnosticoLeitura" role="status" aria-live="polite"></p>
+            <button type="button" onclick="atualizarDiagnosticoAnuncios()">Atualizar leitura do diagnóstico</button>
             <button type="button" onclick="abrirDiagnosticoAndroid()">Abrir diagnóstico Android (1.6.2 ou superior)</button>
           </details>
           <button type="button" class="item" id="cdPrivacidadeAnuncios" hidden onclick="ANUNCIOS_TWA && ANUNCIOS_TWA.privacy()">
@@ -7728,7 +7729,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.6.2-diagnostico-r3';
+const VERSAO_APP = '1.6.2-diagnostico-r4';
 let ONBOARD = false;
 let carregado = false;
 
@@ -8010,6 +8011,7 @@ const ANUNCIOS_TWA = typeof TMyAdmob==='function' ? TMyAdmob({
   setTimeout:(fn,ms)=>setTimeout(fn,ms), clearTimeout:id=>clearTimeout(id),
   setInterval:(fn,ms)=>setInterval(fn,ms), clearInterval:id=>clearInterval(id)
 }) : null;
+let LEITURAS_DIAGNOSTICO=0;
 function atualizarDiagnosticoAnuncios(){
   const d=ANUNCIOS_TWA && typeof ANUNCIOS_TWA.diagnostics==='function' ? ANUNCIOS_TWA.diagnostics() : null;
   const sim=v=>v?'sim':'não';
@@ -8017,7 +8019,13 @@ function atualizarDiagnosticoAnuncios(){
     'Site: '+VERSAO_APP,
     'Android instalado: confira nas Informações do app ou no botão abaixo.',
     'Script de anúncios: '+(d?'diagnóstico disponível':ANUNCIOS_TWA?'versão antiga, sem diagnóstico':'não carregado'),
+    'Versão do script: '+(d && d.scriptVersion || 'anterior à r4 ou indisponível'),
     'Canal Android: '+(d?d.channel:'não foi possível verificar sem o script atualizado'),
+    'Mensagens na página: '+(d && d.windowMessages!==undefined?d.windowMessages:'não identificado'),
+    'Transferências de canal: '+(d && d.transfers!==undefined?d.transfers:'não identificado')+'; recusadas: '+(d && d.rejected!==undefined?d.rejected:'não identificado'),
+    'Última transferência: '+(d && d.lastTransfer || 'não identificado'),
+    'Mensagens no canal: '+(d && d.portMessages!==undefined?d.portMessages:'não identificado')+'; '+(d && d.lastPortEvent || 'não identificado'),
+    'Estados enviados: '+(d && d.stateSends!==undefined?d.stateSends:'não identificado')+'; erros de envio: '+(d && d.sendErrors!==undefined?d.sendErrors:'não identificado'),
     'Dados locais carregados: '+sim(carregado),
     'Login ativo: '+sim(AUTH && AUTH.currentUser && contextoDeUsuarioAtivo(AUTH.currentUser.uid)),
     'Modo sem conta: '+sim(CONTA.local),
@@ -8030,6 +8038,7 @@ function atualizarDiagnosticoAnuncios(){
     'Último evento de manutenção: '+(d?d.lastSave:'não identificado'),
     'Esta tela de ajustes não é um local de exibição de anúncios.'
   ].join('\n');
+  $('cdDiagnosticoLeitura').textContent='Leitura '+(++LEITURAS_DIAGNOSTICO)+' atualizada às '+new Date().toLocaleTimeString('pt-BR')+'. Este botão relê os estados; não recarrega o site.';
 }
 function abrirDiagnosticoAndroid(){
   if(location.origin!=='https://www.tmycar.com.br' || !navigator.userActivation || !navigator.userActivation.isActive) return;
