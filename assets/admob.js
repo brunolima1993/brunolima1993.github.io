@@ -9,6 +9,17 @@
   const validToken = v => typeof v === 'string' && /^[a-f0-9-]{36}$/.test(v);
   let port = null, epoch = uuid(), key = null, ready = false, privacyToken = '';
   let pending = null, openingUntil = 0, disposed = false;
+  let statusAt = null, lastSave = 'nenhum evento nesta sessao';
+  function diagnostics() {
+    const state=read();
+    return {
+      channel:disposed?'encerrado':(!port?'aguardando Android':(statusAt===null?'conectado; sem resposta de estado':(env.now()-statusAt>10000?'sem resposta recente':'respondendo'))),
+      free:state.free===true, safe:state.safe===true,
+      ready:statusAt!==null && env.now()-statusAt<=10000 && ready,
+      statusAgeSeconds:statusAt===null?null:Math.max(0,Math.floor((env.now()-statusAt)/1000)),
+      lastSave
+    };
+  }
   function read() {
     try { return env.getState(); } catch(_) { return {free:false,safe:false,key:null}; }
   }
@@ -45,6 +56,7 @@
     catch(_) { return; }
     if(data.tmycarAds!==1) return;
     if(data.type==='status') {
+      statusAt=env.now();
       ready=data.ready===true && data.testMode===true;
       privacyToken=validToken(data.privacyToken)?data.privacyToken:'';
       env.privacyChanged(!!privacyToken && data.privacyRequired===true);
@@ -55,6 +67,7 @@
       const ok=state.free && state.safe && state.key===request.key && epoch===request.epoch
         && env.now()-request.at<=250 && env.userActive();
       ready=false;
+      lastSave=ok && validToken(data.token)?'autorizacao recebida; tentativa de abertura':'Android nao autorizou ou contexto mudou';
       request.resolve(!!ok && open('maintenance',data.token));
     }
   }
@@ -65,15 +78,20 @@
     if(data.tmycarAds!==1 || data.type!=='hello' || data.testMode!==true) return;
     cancel(); if(port) port.close();
     port=event.ports[0]; ready=false; privacyToken='';
+    statusAt=null;
     port.onmessage=message; if(port.start) port.start(); refresh();
   }
   async function saved() {
     const state=refresh();
-    if(!port || !state.free || !state.safe || pending || !env.userActive()) return false;
+    if(!port || !state.free || !state.safe || pending || !env.userActive()) {
+      lastSave=!port?'sem canal Android':!state.free?'conta nao elegivel':!state.safe?'tela bloqueada':pending?'tentativa em andamento':'gesto de toque expirou';
+      return false;
+    }
+    lastSave=ready?'solicitando autorizacao':'evento enviado; anuncio ainda nao pronto';
     const id=uuid();
     if(!ready) { send({type:'saved',request:id}); return false; } // Count, but never wait for an ad to load.
     return new Promise(resolve => {
-      pending={id,resolve,at:env.now(),epoch,key:state.key,timer:env.setTimeout(cancel,250)};
+      pending={id,resolve,at:env.now(),epoch,key:state.key,timer:env.setTimeout(()=>{lastSave='Android nao respondeu em 250 ms';cancel();},250)};
       if(!send({type:'saved',request:id})) cancel();
     });
   }
@@ -83,7 +101,7 @@
   }
   const removeListener=env.listen(hello);
   const timer=env.setInterval(refresh,2000);
-  return {saved,refresh,privacy,dispose() {
+  return {saved,refresh,privacy,diagnostics,dispose() {
     disposed=true; cancel(); env.clearInterval(timer); removeListener();
     if(port) port.close(); port=null; env.privacyChanged(false);
   }};

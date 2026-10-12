@@ -1766,6 +1766,10 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
 #s-conta-dados #cdVincular{width:100%;font:inherit;color:inherit;text-align:left}
 #s-conta-dados #cdVincular[hidden]{display:none}
 #s-conta-dados #cdPrivacidadeAnuncios[hidden]{display:none}
+#cdDiagnosticoAnuncios{margin:16px 0;padding:16px;border:1px solid #2378aa;border-radius:18px;background:#061a35;color:#fff}
+#cdDiagnosticoAnuncios summary{cursor:pointer;font-weight:700;color:#8bd8ff}
+#cdDiagnosticoTexto{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 monospace;margin:16px 0}
+#cdDiagnosticoAnuncios button{display:block;width:100%;margin-top:10px;padding:12px;border:1px solid #2378aa;border-radius:12px;background:#0c2b49;color:#fff;font:inherit}
 #s-conta-dados .account-data-list .item{min-height:68px}
 #s-documento-legal.screen.active{display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
 #s-documento-legal .topbar{flex:0 0 auto}
@@ -2591,6 +2595,13 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
             <div class="ibody"><div class="ititle">Política de privacidade</div><div class="isub">Como protegemos e utilizamos seus dados</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
+          <details id="cdDiagnosticoAnuncios" ontoggle="if(this.open) atualizarDiagnosticoAnuncios()">
+            <summary>Diagnóstico de anúncios · teste</summary>
+            <p>Somente leitura. Não exibe anúncios nem altera sua conta. Envie um print para verificarmos a integração.</p>
+            <pre id="cdDiagnosticoTexto" aria-live="polite"></pre>
+            <button type="button" onclick="atualizarDiagnosticoAnuncios()">Atualizar diagnóstico do site</button>
+            <button type="button" onclick="abrirDiagnosticoAndroid()">Abrir diagnóstico Android (1.6.2 ou superior)</button>
+          </details>
           <button type="button" class="item" id="cdPrivacidadeAnuncios" hidden onclick="ANUNCIOS_TWA && ANUNCIOS_TWA.privacy()">
             <span class="ibody"><span class="ititle">Preferências de anúncios</span><span class="isub">Revisar suas escolhas de privacidade</span></span>
           </button>
@@ -5371,7 +5382,7 @@ function pintarConfig(){
     : (CONTA.email || 'Acesso, termos e exclusão da conta');
   sincronizarNotifUI();
   $('cfVersao').innerHTML = `TMy Car &middot; Manutenção na palma da mão<br>
-    versão ${VERSAO_APP} &middot; dados da Tabela FIPE fornecidos pela API pública`;
+    versão do site ${VERSAO_APP} &middot; dados da Tabela FIPE fornecidos pela API pública`;
 }
 
 function pintarNotificacoes(){
@@ -7717,7 +7728,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.5.99';
+const VERSAO_APP = '1.6.2-diagnostico';
 let ONBOARD = false;
 let carregado = false;
 
@@ -7999,6 +8010,30 @@ const ANUNCIOS_TWA = typeof TMyAdmob==='function' ? TMyAdmob({
   setTimeout:(fn,ms)=>setTimeout(fn,ms), clearTimeout:id=>clearTimeout(id),
   setInterval:(fn,ms)=>setInterval(fn,ms), clearInterval:id=>clearInterval(id)
 }) : null;
+function atualizarDiagnosticoAnuncios(){
+  const d=ANUNCIOS_TWA && typeof ANUNCIOS_TWA.diagnostics==='function' ? ANUNCIOS_TWA.diagnostics() : null;
+  const sim=v=>v?'sim':'não';
+  $('cdDiagnosticoTexto').textContent=[
+    'Site: '+VERSAO_APP,
+    'Android instalado: confira nas Informações do app ou no botão abaixo.',
+    'Canal Android: '+(d?d.channel:'script de diagnóstico indisponível; reabra o app conectado à internet'),
+    'Dados locais carregados: '+sim(carregado),
+    'Login ativo: '+sim(AUTH && AUTH.currentUser && contextoDeUsuarioAtivo(AUTH.currentUser.uid)),
+    'Modo sem conta: '+sim(CONTA.local),
+    'Plano confirmado: '+sim(ASSINATURA_CARREGADA),
+    'Plano Free: '+sim(PLANO==='free'),
+    'Teste Premium vigente: '+sim(CICLO==='teste' || Number(TRIAL.fim)>Date.now()),
+    'Elegível para anúncios: '+(d?sim(d.free):'não identificado'),
+    'Anúncio pronto: '+(d?sim(d.ready):'não identificado'),
+    'Última resposta Android: '+(d && d.statusAgeSeconds!==null?d.statusAgeSeconds+' s atrás':'nenhuma'),
+    'Último evento de manutenção: '+(d?d.lastSave:'não identificado'),
+    'Esta tela de ajustes não é um local de exibição de anúncios.'
+  ].join('\n');
+}
+function abrirDiagnosticoAndroid(){
+  if(location.origin!=='https://www.tmycar.com.br' || !navigator.userActivation || !navigator.userActivation.isActive) return;
+  location.href='intent://diagnostics#Intent;scheme=tmycar-ads;package=br.com.tmycar.app;end';
+}
 document.addEventListener('visibilitychange',()=>{ if(ANUNCIOS_TWA) ANUNCIOS_TWA.refresh(); });
 carregar();
 </script>
