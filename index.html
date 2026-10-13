@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TMy Car">
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./assets/ferramentas.css?v=1">
+<script src="./assets/ferramentas.js?v=1"></script>
+<script src="./assets/ferramentas-ui.js?v=1"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="preload" as="image" href="./assets/splash-screen-fullscreen-v2.webp" fetchpriority="high">
@@ -2523,6 +2526,11 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
             <span class="plan-entry-copy"><b>Conta e dados</b><small id="cfContaResumo"></small></span>
             <span class="plan-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
+          <button type="button" class="plan-entry" onclick="go('ferramentas')">
+            <span class="plan-entry-icon" id="cfFerramentasEntryIcon"></span>
+            <span class="plan-entry-copy"><b>Ferramentas</b><small>Postos, combustível, veículos e corridas</small></span>
+            <span class="plan-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span>
+          </button>
         </div>
       </div>
 
@@ -3150,6 +3158,8 @@ function go(t, opcoes={}){
   if(t==='conta-dados') pintarContaDados();
   if(t==='planos') pintarPlanos();
   if(t==='guia') pintarGuia();
+  if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.render(t);
+  if(t==='veiculos') exigirEscolha();
   // O foco em formulários/folhas pode deslocar o contêiner mesmo com overflow:hidden.
   // Só a tela interna deve rolar; o cabeçalho da próxima tela começa no topo.
   document.querySelector('.viewport').scrollTop = 0;
@@ -5099,6 +5109,7 @@ function confirmarDowngrade(){
   AVISOS = AVISOS.filter(a => VEIC[a.veic] && !VEIC[a.veic].inativo);
   PLANO = 'free';
   corrigirAtivo(); fecharDowngrade(); persistir(); atualizarNav(); atualizarPlanoVisivel();
+  if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.render(telaAtual());
   toast(guardados===1 ? '1 veículo guardado — volta com o Premium.'
                       : `${guardados} veículos guardados — voltam com o Premium.`);
 }
@@ -5378,6 +5389,7 @@ function pintarConfig(){
   $('cfPlanoEntryIcon').innerHTML = ico('crown');
   $('cfNotifEntryIcon').innerHTML = ico('bell');
   $('cfContaEntryIcon').innerHTML = ico('account-data');
+  $('cfFerramentasEntryIcon').innerHTML = ico('wrench');
   $('cfContaResumo').textContent = CONTA.local
     ? 'Sem conta · dados somente neste aparelho'
     : (CONTA.email || 'Acesso, termos e exclusão da conta');
@@ -7729,7 +7741,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.6.2-diagnostico-r5';
+const VERSAO_APP = '1.6.2-diagnostico-r5-ferramentas-1';
 let ONBOARD = false;
 let carregado = false;
 
@@ -7761,6 +7773,7 @@ async function lerEstadoLocal(chave){
 }
 
 function resetarEstadoEmMemoria(){
+  if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.reset();
   if(typeof TIMER_DOWNGRADE !== 'undefined'){
     clearTimeout(TIMER_DOWNGRADE); TIMER_DOWNGRADE = null;
   }
@@ -7891,6 +7904,7 @@ function repintarDadosSincronizados(){
   if(atual === 'config') pintarConfig();
   if(atual === 'notificacoes') pintarNotificacoes();
   if(atual === 'conta-dados') pintarContaDados();
+  if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.render(atual);
 }
 
 let ULTIMA_CONSULTA_AO_RETORNAR = 0;
@@ -8045,6 +8059,17 @@ function abrirDiagnosticoAndroid(){
   location.href='intent://diagnostics#Intent;scheme=tmycar-ads;package=br.com.tmycar.app;end';
 }
 document.addEventListener('visibilitychange',()=>{ if(ANUNCIOS_TWA) ANUNCIOS_TWA.refresh(); });
+var FERRAMENTAS = typeof TMyFerramentasUI==='function' ? TMyFerramentasUI({
+  go,
+  state:()=>({veiculos:VEIC,plano:PLANO,pending:planoDaContaPendente()}),
+  chooseVehicle:abrirDowngrade,
+  openVehicle:i=>{
+    conferirTeste();
+    if(planoDaContaPendente() || !VEIC[i] || VEIC[i].inativo) return;
+    if(ativos().length>LIMITE()){abrirDowngrade();return;}
+    abrirPainel(i);
+  }
+}) : null;
 carregar();
 </script>
 </body></html>
