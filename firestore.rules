@@ -19,11 +19,13 @@ service cloud.firestore {
         ])
         && d.keys().hasOnly([
           'schemaVersion', 'VEIC', 'REGISTROS', 'NOTIF', 'USUARIO',
-          'ativo', 'ONBOARD', 'CONSENT', 'AVISOS', 'em'
+          'ativo', 'ONBOARD', 'CONSENT', 'AVISOS', 'em', 'CLIENTES', 'COMPROVANTES'
         ])
         && d.schemaVersion == 2
         && d.VEIC is list && d.VEIC.size() <= 3
         && d.REGISTROS is list && d.REGISTROS.size() <= 2000
+        && (!('CLIENTES' in d) || (d.CLIENTES is list && d.CLIENTES.size() <= 100))
+        && (!('COMPROVANTES' in d) || (d.COMPROVANTES is list && d.COMPROVANTES.size() <= 200))
         && d.AVISOS is list && d.AVISOS.size() <= 500
         && d.NOTIF is map
         && d.NOTIF.keys().hasAll(['nGeral', 'nData', 'nKm'])

@@ -9,11 +9,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TMy Car">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./assets/ferramentas.css?v=2">
-<script src="./assets/ferramentas.js?v=1"></script>
+<link rel="stylesheet" href="./assets/ferramentas.css?v=4">
+<script src="./assets/ferramentas.js?v=2"></script>
+<script src="./assets/gastos.js?v=1"></script>
 <script src="./assets/maps-config.js?v=2"></script>
-<script src="./assets/postos.js?v=1"></script>
-<script src="./assets/ferramentas-ui.js?v=2"></script>
+<script src="./assets/postos.js?v=3"></script>
+<script src="./assets/ferramentas-ui.js?v=4"></script>
+<script src="./assets/transferencia.js?v=1"></script>
+<script src="./assets/transferencia-ui.js?v=1"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="preload" as="image" href="./assets/splash-screen-fullscreen-v2.webp" fetchpriority="high">
@@ -2530,7 +2533,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
           </button>
           <button type="button" class="plan-entry" onclick="go('ferramentas')">
             <span class="plan-entry-icon" id="cfFerramentasEntryIcon"></span>
-            <span class="plan-entry-copy"><b>Ferramentas</b><small>Postos, combustível, veículos e corridas</small></span>
+            <span class="plan-entry-copy"><b>Ferramentas</b><small>Postos, restaurantes, veículos e mais</small></span>
             <span class="plan-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
         </div>
@@ -2595,6 +2598,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
       <div class="section">
         <div id="cfSemConta"></div>
         <div class="list account-data-list">
+          <button type="button" class="item transfer-entry" onclick="go('transferencia')"><span class="ibody"><span class="ititle">Exportar dados</span><span class="isub">Enviar ou receber o histórico de um veículo</span></span></button>
           <div class="item" onclick="abrirDocumentoLegal('./termos.html','Termos de Uso')">
             <div class="iicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg></div>
             <div class="ibody"><div class="ititle">Termos de Uso</div><div class="isub">Regras e condições para utilizar o TMy Car</div></div>
@@ -3153,11 +3157,11 @@ function go(t, opcoes={}){
   if(t==='avisos') pintarAvisos();
   if(t==='fipe') pintarFipe();
   if(t==='gastos') pintarGastos();
-  if(t==='gasto-ipva') pintarCategoriaGasto('ipva');
-  if(t==='gasto-combustivel') pintarCategoriaGasto('combustivel');
+  if(t.startsWith('gasto-')) pintarCategoriaGasto(t.slice(6));
   if(t==='config') pintarConfig();
   if(t==='notificacoes') pintarNotificacoes();
   if(t==='conta-dados') pintarContaDados();
+  if(typeof TRANSFERENCIA!=='undefined' && TRANSFERENCIA) TRANSFERENCIA.render(t);
   if(t==='planos') pintarPlanos();
   if(t==='guia') pintarGuia();
   if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.render(t);
@@ -4985,7 +4989,7 @@ async function mostrarPushEmPrimeiroPlano(payload){
   await registro.showNotification(notificacao.title || 'TMy Car', {
     body:notificacao.body || 'Abra o TMy Car para conferir.',
     icon:'./icons/icon-192.png', badge:'./icons/icon-192.png',
-    tag:`tmycar-${dados.item || 'manutencao'}-${dados.vencimento || 'agora'}`,
+    tag:dados.tag || `tmycar-${dados.item || 'manutencao'}-${dados.vencimento || 'agora'}`,
     renotify:false,
     data:{url:dados.url || './?abrir=avisos'}
   });
@@ -4996,7 +5000,7 @@ async function notificarNoCelular(aviso){
     body:aviso.texto || 'Abra o TMy Car para conferir.',
     icon:'./icons/icon-192.png', badge:'./icons/icon-192.png',
     tag:`tmycar-${aviso.k || 'aviso'}`, renotify:false,
-    data:{ url:'./?abrir=avisos' }
+    data:{ url:aviso.url || './?abrir=avisos' }
   };
   try{
     if('serviceWorker' in navigator){
@@ -5182,7 +5186,7 @@ function corrigirAtivo(){
 }
 /* o cliente troca de plano quando quiser, direto na conta */
 const PLANOS = [
-  { id:'free',   nome:'Plano grátis',   preco:'R$ 0',     nota:'1 veículo · com anúncios' },
+  { id:'free',   nome:'Plano grátis',   preco:'R$ 0,00',  nota:'1 veículo · com anúncios' },
   { id:'mensal', nome:'Premium mensal', preco:'R$ 4,99',  nota:'3 veículos · Tabela FIPE · sem anúncios',
     selo:'Mais escolhido' },
   { id:'anual',  nome:'Premium anual',  preco:'R$ 39,99', nota:'Tudo do mensal por R$ 3,33/mês',
@@ -5867,18 +5871,32 @@ async function ativarPremium(){
 }
 
 let REGISTROS = [];
+let CLIENTES = [], COMPROVANTES = [];
+async function salvarDadosFerramentas(tipo, lista){
+  if(!['clientes','comprovantes'].includes(tipo)||!Array.isArray(lista))return false;
+  if(lista.length>(tipo==='clientes'?100:200))return false;
+  const contexto=CONTEXTO_LOCAL;
+  const anterior=tipo==='clientes'?CLIENTES:COMPROVANTES;
+  if(tipo==='clientes')CLIENTES=lista;else COMPROVANTES=lista;
+  const ok=await persistirLocal();
+  if(CONTEXTO_LOCAL!==contexto)return false;
+  if(!ok){if(tipo==='clientes')CLIENTES=anterior;else COMPROVANTES=anterior;return false;}
+  mandarParaNuvem();
+  return true;
+}
 let anoSel = new Date().getFullYear();
 let veicSel = null;          /* null = todos os veículos */
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-const brl = c => (c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const brl = c => (c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
 /* máscara de moeda: digita 10000 -> R$ 100,00 */
 function maskKm(el){
   const d = String(el.value).replace(/\D/g,'').slice(0,7);
   el.value = d ? parseInt(d,10).toLocaleString('pt-BR') : '';
 }
 function maskMoeda(el){
-  const c = parseInt(soD(el.value)||'0',10);
-  el.value = c ? brl(c) : '';
+  const digits = soD(el.value).slice(0,9);
+  const c = parseInt(digits||'0',10);
+  el.value = digits ? brl(c) : '';
   el.dataset.cent = c;
 }
 const centavos = el => parseInt(el.dataset.cent||'0',10);
@@ -5892,8 +5910,17 @@ const TIPOS_GASTO = {
     valor:'Valor total', km:true, dica:'O valor cheio que a oficina cobrou — <b>peças + mão de obra juntos</b>.',
     desc:'O que foi trocado', placeholder:'Pastilhas de freio dianteiras, fluido de freio e alinhamento' },
   ipva:{ nome:'IPVA', sigla:'IPVA', titulo:'Registrar IPVA', editar:'Editar IPVA', botao:'Salvar IPVA',
-    valor:'Valor pago', km:false, dica:'Informe o valor efetivamente pago. Se quiser, detalhe parcela, licenciamento ou taxa nas observações.',
+    valor:'Valor do IPVA', km:false, dica:'Informe o vencimento e marque como pago somente depois de quitar. Para parcelas, cadastre cada vencimento separadamente.',
     desc:'Observação (opcional)', placeholder:'Parcela única, primeira parcela, licenciamento...' },
+  multas:{ nome:'Multas', sigla:'MULTA', titulo:'Registrar multa', editar:'Editar multa', botao:'Salvar multa',
+    valor:'Valor da multa', km:false, dica:'Cadastre o valor e vencimento. Marcar como pago é apenas um registro no app, não realiza pagamento.',
+    desc:'Observação (opcional)', placeholder:'Descrição, número do auto...' },
+  seguro:{ nome:'Seguro', sigla:'SEGURO', titulo:'Registrar seguro', editar:'Editar seguro', botao:'Salvar seguro',
+    valor:'Valor do seguro', km:false, dica:'Para pagamentos parcelados, registre cada parcela com seu vencimento.',
+    desc:'Observação (opcional)', placeholder:'Seguradora, apólice, parcela...' },
+  outros:{ nome:'Outros', sigla:'OUTROS', titulo:'Registrar outro gasto', editar:'Editar gasto', botao:'Salvar gasto',
+    valor:'Valor pago', km:false, dica:'Registre outros valores já pagos relacionados ao veículo.',
+    desc:'Descrição', placeholder:'Estacionamento, pedágio, lavagem...' },
   combustivel:{ nome:'Combustível', sigla:'COMB.', titulo:'Registrar combustível', editar:'Editar combustível', botao:'Salvar combustível',
     valor:'Valor do abastecimento', km:false, dica:'Registre o valor total pago no abastecimento.',
     desc:'Combustível e observações', placeholder:'Gasolina comum, etanol, diesel, posto...' }
@@ -5911,6 +5938,8 @@ function formManual(){
   const r = editandoIdx !== null ? REGISTROS[editandoIdx] : null;
   const tipo = r ? tipoDoRegistro(r) : tipoGastoAtual;
   const cfg = TIPOS_GASTO[tipo];
+  const agendavel=TMyGastos.AGENDAVEIS.includes(tipo);
+  const pago=r?TMyGastos.pago(r):!agendavel;
   const vi = r ? r.veic : (veicSel !== null ? veicSel : (ativos()[0] ? ativos()[0].i : 0));
   const kmSugerido = r ? null : (VEIC[vi] ? VEIC[vi].km : 0);
   return `<div class="section" style="padding-top:8px">
@@ -5924,9 +5953,13 @@ function formManual(){
         <div class="field" style="flex:1;padding:0"><label class="flabel">${cfg.valor}</label>
           <input class="mono" id="mValor" inputmode="numeric" placeholder="R$ 0,00" oninput="maskMoeda(this)"
             value="${r ? brl(r.valor) : ''}" data-cent="${r ? r.valor : 0}"></div>
-        <div class="field" style="flex:1;padding:0"><label class="flabel">Data</label>
-          <input class="mono" id="mData" type="date" value="${r ? r.data : iso(HOJE)}"></div>
+        <div class="field" style="flex:1;padding:0"><label class="flabel">${agendavel?'Data do pagamento':'Data'}</label>
+          <input class="mono" id="mData" type="date" ${pago?'':'disabled'} value="${r && pago ? esc(r.data) : iso(new Date())}"></div>
       </div>
+      ${agendavel?`<div class="field"><label class="flabel" for="mVencimento">Vencimento</label><input id="mVencimento" type="date" value="${r?esc(r.vencimento||r.data):''}">
+        <label class="gasto-check"><input id="mPago" type="checkbox" ${pago?'checked':''} onchange="atualizarStatusGasto()">Já foi pago</label>
+        <label class="gasto-check"><input id="mNotificar" type="checkbox" ${r&&r.lembrete&&!pago?'checked':''} ${pago?'disabled':''} onchange="ativarLembreteGasto()">Lembrar 7 dias antes e no vencimento</label>
+        <p id="mNotifInfo" class="tools-note">O lembrete depende das notificações permitidas e dos dados sincronizados com sua conta. Pagamentos marcados como pagos não geram lembretes.</p></div>`:''}
       ${cfg.km ? `<div class="field"><label class="flabel">KM</label>
         <input class="mono" id="mKm" inputmode="numeric" placeholder="opcional"
           value="${r && r.km ? fmt(r.km) : (kmSugerido ? fmt(kmSugerido) : '')}"
@@ -5945,12 +5978,25 @@ function formManual(){
 }
 
 function abrirManual(i, tipo = 'manutencao'){
+  if(!ativos().length){toast('Cadastre ou ative um veículo primeiro.');return;}
   editandoIdx = (typeof i === 'number') ? i : null;
   tipoGastoAtual = editandoIdx !== null ? tipoDoRegistro(REGISTROS[editandoIdx]) : (TIPOS_GASTO[tipo] ? tipo : 'manutencao');
   $('mnCorpo').innerHTML = formManual();
   fecharFolhas();
   $('mnBg').classList.add('on'); $('mn').classList.add('on');
-  setTimeout(()=>$('mValor') && $('mValor').focus(), 260);
+  $('mn').scrollTop=0;
+  setTimeout(()=>{if($('mValor')&&$('mn').classList.contains('on'))$('mValor').focus({preventScroll:true});},260);
+}
+function atualizarStatusGasto(){
+  const pago=$('mPago').checked;$('mData').disabled=!pago;$('mNotificar').disabled=pago;
+  if(pago)$('mNotificar').checked=false;
+}
+async function ativarLembreteGasto(){
+  const checkbox=$('mNotificar'), info=$('mNotifInfo');if(!checkbox||!checkbox.checked)return;
+  if(CONTA.local){info.textContent='No modo sem conta, o lembrete aparece ao abrir o app. Entre em sua conta para receber com o app fechado.';return;}
+  if(!NOTIF.nGeral||!NOTIF.nData){info.textContent='Ative também os avisos gerais e por data em Ajustes → Notificações.';return;}
+  const permissao=await pedirPermissaoNotificacoes();
+  if($('mNotifInfo')===info)info.textContent=permissao==='granted'?'Permissão concedida. Salve o gasto para programar o lembrete.':'Sem permissão no celular. Você pode ativá-la em Ajustes; os avisos continuam dentro do app.';
 }
 function fecharManual(){
   $('mnBg').classList.remove('on'); $('mn').classList.remove('on'); editandoIdx = null; tipoGastoAtual = 'manutencao';
@@ -5959,27 +6005,40 @@ function fecharManual(){
 function salvarManual(){
   const cfg = TIPOS_GASTO[tipoGastoAtual];
   const valor = centavos($('mValor'));
-  const data = $('mData').value;
+  const agendavel=TMyGastos.AGENDAVEIS.includes(tipoGastoAtual);
+  const pago=agendavel?$('mPago').checked:true;
+  const vencimento=agendavel?$('mVencimento').value:null;
+  const data = pago?$('mData').value:vencimento;
   const desc = $('mDesc').value.trim() || cfg.nome;
   const erro = t => $('mMsg').innerHTML = `<div class="msgbox e"><span>${t}</span></div>`;
-  if(!valor){ erro('Informe o valor do lançamento.'); $('mValor').focus(); return; }
-  if(!data){ erro('Informe a data.'); return; }
+  try{TMyGastos.validar({valor,data,tipo:tipoGastoAtual,vencimento});}catch(e){erro(e.message);return;}
   const vi = $('mVeic') ? +$('mVeic').value : 0;
+  if(!VEIC[vi]||VEIC[vi].inativo){erro('Selecione um veículo ativo.');return;}
+  const campos={pago,vencimento,lembrete:agendavel&&!pago&&$('mNotificar').checked};
 
   const kmInfo = $('mKm') ? (parseInt(soD($('mKm').value)||'0',10) || null) : null;
   if(editandoIdx !== null){
     Object.assign(REGISTROS[editandoIdx], { veic:vi, tipo:tipoGastoAtual, item:tipoGastoAtual,
-      nome:cfg.nome, data, desc, valor, km:kmInfo, manual:true });
+      nome:cfg.nome, data, desc, valor, km:kmInfo, manual:true, ...campos });
+    if(!REGISTROS[editandoIdx].id)REGISTROS[editandoIdx].id=crypto.randomUUID();
   } else {
+    if(REGISTROS.length>=2000){erro('Limite de lançamentos atingido.');return;}
     REGISTROS.push({ veic:vi, tipo:tipoGastoAtual, item:tipoGastoAtual, nome:cfg.nome, desc, data,
-                     km:kmInfo, valor, manual:true });
+                     km:kmInfo, valor, manual:true, id:crypto.randomUUID(), ...campos });
   }
   const novoAno = +data.slice(0,4);
   if(anoSel !== novoAno) resetMesesAbertos();
   anoSel = novoAno;
   if(mesesAbertos[tipoGastoAtual] === null) mesesAbertos[tipoGastoAtual] = new Set();
   mesesAbertos[tipoGastoAtual].add(+data.slice(5,7)-1);
-  persistir(); fecharManual(); repintarGastoAtual();
+  limparAvisosGastos();varrerGastos();persistir(); fecharManual(); repintarGastoAtual();
+}
+function marcarGastoPago(i){
+  const r=REGISTROS[i];if(!r||r.pago!==false||!VEIC[r.veic]||VEIC[r.veic].inativo)return;
+  confirmar('Marcar como pago',`${TIPOS_GASTO[tipoDoRegistro(r)].nome}: ${brl(r.valor)}. Registrar pagamento hoje? Isso não realiza o pagamento.`,()=>{
+    if(!REGISTROS.includes(r))return;r.pago=true;r.lembrete=false;r.data=iso(new Date());
+    anoSel=Number(r.data.slice(0,4));resetMesesAbertos();limparAvisosGastos();persistir();repintarGastoAtual();pintarSino();
+  },'Marcar pago');
 }
 
 function excluirLanc(i){
@@ -5990,6 +6049,7 @@ function excluirLanc(i){
     `${brl(r.valor)} em ${dt}. Isso não pode ser desfeito.`,
     () => {
       REGISTROS.splice(i,1);
+      limparAvisosGastos();
       persistir(); repintarGastoAtual();
       toast('Lançamento excluído.');
     }, 'Excluir');
@@ -6003,7 +6063,7 @@ function registrosCategoriaNoAno(tipo){
     +r.data.slice(0,4) === anoSel && tipoDoRegistro(r) === tipo);
 }
 function totalCategoriaNoAno(tipo){
-  return registrosCategoriaNoAno(tipo).reduce((s,r)=>s+r.valor,0);
+  return registrosCategoriaNoAno(tipo).filter(TMyGastos.pago).reduce((s,r)=>s+r.valor,0);
 }
 function abrirCategoriaGasto(tipo){
   if(!TIPOS_GASTO[tipo] || tipo === 'manutencao') return;
@@ -6011,18 +6071,14 @@ function abrirCategoriaGasto(tipo){
 }
 function atalhosGastos(){
   return `<div class="section gastos-actions-section">
-    <div class="section-title">Adicionar gasto</div>
-    <div class="gastos-actions">
-      <div class="gasto-action-wrap">
-        <button type="button" class="gasto-action" onclick="abrirCategoriaGasto('ipva')"><span>IPVA</span></button>
-        <div class="gasto-action-total"><strong>${brl(totalCategoriaNoAno('ipva'))}</strong></div>
-      </div>
-      <div class="gasto-action-wrap">
-        <button type="button" class="gasto-action" onclick="abrirCategoriaGasto('combustivel')"><span>Combustível</span></button>
-        <div class="gasto-action-total"><strong>${brl(totalCategoriaNoAno('combustivel'))}</strong></div>
-      </div>
-    </div>
+    <button type="button" class="cta" onclick="go('adicionar-gasto')">Adicionar gastos</button>
+    ${resumoGastosPendentes()}
   </div>`;
+}
+function resumoGastosPendentes(){
+  const lista=REGISTROS.filter(r=>r.pago===false&&veicAtivo(r.veic));
+  if(!lista.length)return '';
+  return `<div class="tools-note">A pagar: <b>${brl(lista.reduce((s,r)=>s+r.valor,0))}</b> · ${lista.length} lançamento(s). Estes valores não entram no total pago.</div>`;
 }
 
 
@@ -6039,9 +6095,9 @@ function filtroVeiculoGastos(){
     + caixaVeiculo();
 }
 
-let mesesAbertos = { manutencao:null, ipva:null, combustivel:null };
+let mesesAbertos = { manutencao:null, ipva:null, combustivel:null, multas:null, seguro:null, outros:null };
 function resetMesesAbertos(){
-  mesesAbertos = { manutencao:null, ipva:null, combustivel:null };
+  mesesAbertos = { manutencao:null, ipva:null, combustivel:null, multas:null, seguro:null, outros:null };
 }
 function toggleMes(m, tipo = 'manutencao'){
   if(!TIPOS_GASTO[tipo]) tipo = 'manutencao';
@@ -6077,6 +6133,7 @@ function cardLancamento(r, pos = -1){
       </div>
     </div>
     <div class="mcard-detail">
+      ${TMyGastos.AGENDAVEIS.includes(tipo)?`<span class="gasto-status ${TMyGastos.pago(r)?'pago':''}">${TMyGastos.pago(r)?'Pago':'A pagar'}${r.vencimento?' · Vencimento: '+esc(r.vencimento.split('-').reverse().join('/')):''}${r.lembrete&&!TMyGastos.pago(r)?' · Lembrete ativado':''}</span>${!TMyGastos.pago(r)?`<button type="button" class="gasto-pay" onclick="marcarGastoPago(${i})">Marcar pago</button>`:''}`:''}
       <div class="mdesc ${r.desc?'':'vazio'}">${r.desc ? esc(r.desc) : 'Nada descrito ainda.'}</div>
     </div>
   </div>`;
@@ -6087,17 +6144,18 @@ function renderMesesGasto(registros, tipo){
   if(!meses.length){
     const vazio = tipo === 'manutencao'
       ? `Nenhuma manutenção lançada em ${anoSel}.`
-      : `Nenhum pagamento de ${TIPOS_GASTO[tipo].nome.toLowerCase()} em ${anoSel}.`;
+      : `Nenhum lançamento de ${TIPOS_GASTO[tipo].nome.toLowerCase()} em ${anoSel}.`;
     return `<div class="month-list-empty">${vazio}</div>`;
   }
   if(mesesAbertos[tipo] === null) mesesAbertos[tipo] = new Set(meses.length ? [meses[0]] : []);
   const nomeMes = m => new Date(anoSel,m,1).toLocaleDateString('pt-BR',{month:'long'});
   return meses.map(m=>{
     const itens = ordenados.filter(r=>+r.data.slice(5,7)-1===m);
-    const total = itens.reduce((s,r)=>s+r.valor,0);
+    const total = itens.filter(TMyGastos.pago).reduce((s,r)=>s+r.valor,0);
+    const pendente = itens.filter(r=>!TMyGastos.pago(r)).reduce((s,r)=>s+r.valor,0);
     const aberto = mesesAbertos[tipo].has(m);
     const cores = [...new Set(itens.map(r=>VEIC[r.veic] && VEIC[r.veic].cor).filter(Boolean))];
-    const rotulo = tipo === 'manutencao' ? (itens.length===1?'manutenção':'manutenções') : (itens.length===1?'pagamento':'pagamentos');
+    const rotulo = tipo === 'manutencao' ? (itens.length===1?'manutenção':'manutenções') : (itens.length===1?'lançamento':'lançamentos');
     return `<div class="mesbox ${aberto?'aberto':''}">
       <button class="mesh" onclick="toggleMes(${m},'${tipo}')">
         <span class="cv">▾</span>
@@ -6106,7 +6164,7 @@ function renderMesesGasto(registros, tipo){
           <span class="qt" style="display:block">${itens.length} ${rotulo}</span>
           ${!aberto && cores.length>1 ? `<span class="mesdots">${cores.map(c=>`<i style="background:${c}"></i>`).join('')}</span>` : ''}
         </span>
-        <span class="tt">${itens.length ? brl(total) : '—'}</span>
+        <span class="tt">${brl(total)}${pendente?`<small style="display:block;font-size:10px;margin-top:5px">A pagar: ${brl(pendente)}</small>`:''}</span>
       </button>
       ${aberto ? `<div class="mesbody">${itens.length ? itens.map((r,pos)=>cardLancamento(r,pos)).join('') : `<div class="month-empty">Nenhum ${tipo==='manutencao'?'lançamento de manutenção':'pagamento'} neste mês.</div>`}</div>` : ''}
     </div>`;
@@ -6123,17 +6181,18 @@ function listaLancamentos(doAno){
 function pintarCategoriaGasto(tipo){
   if(!TIPOS_GASTO[tipo] || tipo === 'manutencao') return;
   const cfg = TIPOS_GASTO[tipo];
-  const alvoId = tipo === 'ipva' ? 'gastoIpvaBody' : 'gastoCombustivelBody';
+  const alvoId = {ipva:'gastoIpvaBody',combustivel:'gastoCombustivelBody',multas:'gastoMultasBody',seguro:'gastoSeguroBody',outros:'gastoOutrosBody'}[tipo];
   const regs = registrosCategoriaNoAno(tipo);
-  const total = regs.reduce((s,r)=>s+r.valor,0);
+  const total = regs.filter(TMyGastos.pago).reduce((s,r)=>s+r.valor,0);
+  const pendente = regs.filter(r=>!TMyGastos.pago(r)).reduce((s,r)=>s+r.valor,0);
   const contexto = veicSel !== null && VEIC[veicSel]
     ? `${VEIC[veicSel].marca} ${VEIC[veicSel].modelo}`
     : 'Todos os veículos';
   $(alvoId).innerHTML = `<div class="section">
     <div class="card category-total-card">
-      <div class="category-total-label">Total em ${anoSel}</div>
+      <div class="category-total-label">Total pago em ${anoSel}</div>
       <div class="category-total">${brl(total)}</div>
-      <div class="category-context">${esc(contexto)} · ${regs.length} ${regs.length===1?'pagamento':'pagamentos'}</div>
+      <div class="category-context">${esc(contexto)} · ${regs.length} lançamento(s)${pendente?' · A pagar: '+brl(pendente):''}</div>
       <button type="button" class="cta category-add" onclick="abrirManual(undefined,'${tipo}')">+ Adicionar ${cfg.nome.toLowerCase()}</button>
     </div>
   </div>
@@ -6144,8 +6203,7 @@ function pintarCategoriaGasto(tipo){
 }
 function repintarGastoAtual(){
   const ativa = document.querySelector('.screen.active');
-  if(ativa && ativa.id === 's-gasto-ipva') pintarCategoriaGasto('ipva');
-  else if(ativa && ativa.id === 's-gasto-combustivel') pintarCategoriaGasto('combustivel');
+  if(ativa && ativa.id.startsWith('s-gasto-')) pintarCategoriaGasto(ativa.id.slice(8));
   else pintarGastos();
 }
 
@@ -6184,7 +6242,7 @@ function pintarGastos(){
     `<span class="g-year-value">${anoSel}</span>` +
     `<span class="arr" aria-hidden="true"><svg viewBox="0 0 18 18"><path d="m5 7 4 4 4-4"/></svg></span>`;
 
-  const regs = REGISTROS.filter(r => r.valor > 0 && veicAtivo(r.veic));
+  const regs = REGISTROS.filter(r => r.valor > 0 && veicAtivo(r.veic) && TMyGastos.pago(r));
   if(!temVeiculos){
     $('gtSub').textContent = '';
     $('gtSub').className = 'gsub';
@@ -6195,11 +6253,12 @@ function pintarGastos(){
     return;
   }
   if(!regs.length){
-    $('gtSub').textContent = 'Nada registrado ainda.';
+    const temPendentes=REGISTROS.some(r=>r.pago===false&&veicAtivo(r.veic));
+    $('gtSub').textContent = temPendentes?'Você tem valores a pagar.':'Nada registrado ainda.';
     $('gtSub').className = 'gsub';
     $('gtBody').innerHTML = atalhosGastos() + filtroVeiculoGastos() + `<div class="empty" style="padding-top:32px;padding-bottom:6px">
-      <div class="empty-title">Sem gastos registrados</div>
-      <div class="empty-text">Registre uma manutenção, o IPVA ou um abastecimento para começar a acompanhar os custos.</div></div>`
+      <div class="empty-title">${temPendentes?'Nenhum pagamento registrado':'Sem gastos registrados'}</div>
+      <div class="empty-text">${temPendentes?'Abra Adicionar gastos, escolha a categoria e marque como pago quando quitar.':'Registre uma manutenção, o IPVA ou um abastecimento para começar a acompanhar os custos.'}</div></div>`
       + `<div class="cta-wrap" style="padding-top:0"><button class="cta" onclick="abrirManual()">+ Adicionar manutenção</button></div>`
       + `<div style="height:100px"></div>`;
     $('fabGasto').classList.add('on');
@@ -7245,7 +7304,7 @@ async function excluirConta(){
    cobrança entrar, esses campos ficarão em /assinaturas/{uid} e só o servidor
    da loja poderá escrevê-los. */
 function dadosUsuarioAtual(){
-  return { schemaVersion:2, VEIC, REGISTROS, NOTIF, USUARIO, ativo,
+  return { schemaVersion:2, VEIC, REGISTROS, CLIENTES, COMPROVANTES, NOTIF, USUARIO, ativo,
            ONBOARD, CONSENT, AVISOS, em: ULTIMA_GRAVACAO || Date.now() };
 }
 
@@ -7314,7 +7373,7 @@ async function puxarDaNuvem(){
     if(!atual || atual.uid !== uidConsulta || !contextoDeUsuarioAtivo(uidConsulta))
       return { existe:false, perfilConcluido:!!ONBOARD, descartado:true };
     if(!doc.exists){
-      const temCacheDaConta = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length) || ONBOARD;
+      const temCacheDaConta = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length) || CLIENTES.length || COMPROVANTES.length || ONBOARD;
       if(temCacheDaConta){
         /* O cache já pertence a este UID: pode reconstruir o documento sem
            consultar ou misturar o espaço anônimo. */
@@ -7339,8 +7398,8 @@ async function puxarDaNuvem(){
     if(d.CONSENT) Object.assign(CONSENT, d.CONSENT);
     const resultado = { existe:true, perfilConcluido };
 
-    const temAquiDados  = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length);
-    const temNuvemDados = (d.VEIC && d.VEIC.length) || (d.REGISTROS && d.REGISTROS.length);
+    const temAquiDados  = (VEIC && VEIC.length) || (REGISTROS && REGISTROS.length) || CLIENTES.length || COMPROVANTES.length;
+    const temNuvemDados = (d.VEIC && d.VEIC.length) || (d.REGISTROS && d.REGISTROS.length) || (d.CLIENTES && d.CLIENTES.length) || (d.COMPROVANTES && d.COMPROVANTES.length);
 
     const remotoEm = Number(d.em) || 0;
     const localEm = Number(ULTIMA_GRAVACAO) || 0;
@@ -7375,6 +7434,8 @@ async function puxarDaNuvem(){
 function aplicarEstado(d){
   if(Array.isArray(d.VEIC))      VEIC = d.VEIC;
   if(Array.isArray(d.REGISTROS)) REGISTROS = d.REGISTROS;
+  CLIENTES = Array.isArray(d.CLIENTES)?d.CLIENTES.slice(0,100):[];
+  COMPROVANTES = Array.isArray(d.COMPROVANTES)?d.COMPROVANTES.slice(0,200):[];
   if(Array.isArray(d.AVISOS))    AVISOS = d.AVISOS;
   if(d.NOTIF) Object.assign(NOTIF, d.NOTIF);
   if(d.USUARIO) Object.assign(USUARIO, d.USUARIO);
@@ -7391,7 +7452,9 @@ async function temDadosAnonimosParaImportar(){
   const d = await lerEstadoLocal(CHAVE_ANONIMA);
   return !!(d && d.CONTA && d.CONTA.local !== false &&
     ((Array.isArray(d.VEIC) && d.VEIC.length) ||
-     (Array.isArray(d.REGISTROS) && d.REGISTROS.length)));
+     (Array.isArray(d.REGISTROS) && d.REGISTROS.length) ||
+     (Array.isArray(d.CLIENTES) && d.CLIENTES.length) ||
+     (Array.isArray(d.COMPROVANTES) && d.COMPROVANTES.length)));
 }
 
 function oferecerImportacaoAnonima(){
@@ -7519,7 +7582,7 @@ function pecasDe(it){
 /* varredura por prazo — roda ao abrir o app e depois de cada registro */
 function varrerPrazos(){
   if(!NOTIF.nGeral || !NOTIF.nData) return 0;
-  let novos = 0;
+  let novos = varrerGastos();
   ativos().forEach(({v, i:vi}) => {          /* veículo guardado não avisa */
     (v.itens||[]).forEach(it => {
       if(!it.imes) return;
@@ -7542,6 +7605,20 @@ function varrerPrazos(){
     });
   });
   return novos;
+}
+
+function limparAvisosGastos(){
+  AVISOS=AVISOS.filter(a=>a.tipo!=='gasto'||REGISTROS.some(r=>r.id===a.registroId&&r.pago===false&&r.lembrete&&r.vencimento===a.vencimento&&VEIC[r.veic]&&!VEIC[r.veic].inativo));
+}
+function varrerGastos(){
+  limparAvisosGastos();
+  if(!NOTIF.nGeral||!NOTIF.nData)return 0;
+  let novos=0;const hoje=iso(new Date());
+  REGISTROS.forEach(r=>{
+    if(!r.id||r.pago!==false||r.lembrete!==true||!TMyGastos.AGENDAVEIS.includes(r.tipo)||!VEIC[r.veic]||VEIC[r.veic].inativo)return;
+    const fase=TMyGastos.fase(r.vencimento,hoje);if(!fase)return;
+    novos+=addAviso({k:`gasto|${r.id}|${r.vencimento}|${fase}`,tipo:'gasto',registroId:r.id,vencimento:r.vencimento,veic:r.veic,cl:fase==='vence-hoje'?'bad':'warn',titulo:TIPOS_GASTO[r.tipo].nome,texto:`${brl(r.valor)} ${fase==='vence-hoje'?'vence hoje':'vence em 7 dias'}. Confira em Gastos e marque como pago após quitar.`,url:'./?abrir=gastos'})?1:0;
+  });return novos;
 }
 
 /* o app precisa pedir o histórico que não tem, senão fica mudo
@@ -7743,7 +7820,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.6.2-diagnostico-r5-ferramentas-3';
+const VERSAO_APP = '1.6.2-web.20261014';
 let ONBOARD = false;
 let carregado = false;
 
@@ -7775,12 +7852,13 @@ async function lerEstadoLocal(chave){
 }
 
 function resetarEstadoEmMemoria(){
+  if(typeof TRANSFERENCIA!=='undefined' && TRANSFERENCIA) TRANSFERENCIA.reset();
   if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.reset();
   if(typeof TIMER_DOWNGRADE !== 'undefined'){
     clearTimeout(TIMER_DOWNGRADE); TIMER_DOWNGRADE = null;
   }
   if(typeof fecharDowngrade === 'function') fecharDowngrade();
-  VEIC = []; REGISTROS = []; AVISOS = [];
+  VEIC = []; REGISTROS = []; AVISOS = []; CLIENTES = []; COMPROVANTES = [];
   ativo = null; veicSel = null;
   PLANO = 'free'; CICLO = 'anual';
   TRIAL = { fim:null, usado:false, av3:false, av1:false };
@@ -7799,6 +7877,8 @@ function aplicarEstadoLocalCompleto(d){
   if(!d || typeof d !== 'object') return;
   if(Array.isArray(d.VEIC))       VEIC = d.VEIC;
   if(Array.isArray(d.REGISTROS))  REGISTROS = d.REGISTROS;
+  if(Array.isArray(d.CLIENTES)) CLIENTES = d.CLIENTES.slice(0,100);
+  if(Array.isArray(d.COMPROVANTES)) COMPROVANTES = d.COMPROVANTES.slice(0,200);
   if(Array.isArray(d.AVISOS))     AVISOS = d.AVISOS;
   /* PLANO/CICLO/TRIAL de versões anteriores são ignorados. Esses valores
      locais causavam exatamente a divergência entre Safari e Chrome. */
@@ -7901,11 +7981,12 @@ function repintarDadosSincronizados(){
   if(atual === 'avisos') pintarAvisos();
   if(atual === 'fipe') pintarFipe();
   if(atual === 'gastos') pintarGastos();
-  if(atual === 'gasto-ipva') pintarCategoriaGasto('ipva');
-  if(atual === 'gasto-combustivel') pintarCategoriaGasto('combustivel');
+  if(atual.startsWith('gasto-')) pintarCategoriaGasto(atual.slice(6));
   if(atual === 'config') pintarConfig();
   if(atual === 'notificacoes') pintarNotificacoes();
   if(atual === 'conta-dados') pintarContaDados();
+  if(typeof TRANSFERENCIA!=='undefined' && TRANSFERENCIA) TRANSFERENCIA.reset();
+  if(typeof TRANSFERENCIA!=='undefined' && TRANSFERENCIA) TRANSFERENCIA.render(atual);
   if(typeof FERRAMENTAS!=='undefined' && FERRAMENTAS) FERRAMENTAS.render(atual);
 }
 
@@ -7978,6 +8059,7 @@ async function carregar(){
     go(ONBOARD ? 'garagem' : 'bemvindo');
   }
   if(ONBOARD && new URLSearchParams(location.search).get('abrir') === 'avisos') go('avisos');
+  if(ONBOARD && new URLSearchParams(location.search).get('abrir') === 'gastos') go('gastos');
   window.dispatchEvent(new Event('tmycar:rota-pronta'));
   window.dispatchEvent(new Event('tmycar:pronto'));
 }
@@ -8002,7 +8084,10 @@ function registrarPwa(){
   window.addEventListener('load', ()=>obterRegistroPwa());
 }
 navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', evento => {
-  if(evento.data && evento.data.tipo === 'tmycar:abrir-avisos' && ONBOARD) go('avisos');
+  if(evento.data && evento.data.tipo === 'tmycar:abrir-avisos' && ONBOARD){
+    const destino=new URL(evento.data.url||'./?abrir=avisos',location.href);
+    go(destino.searchParams.get('abrir')==='gastos'?'gastos':'avisos');
+  }
 });
 window.addEventListener('offline', ()=>toast('Você está sem internet. Os dados salvos neste aparelho continuam disponíveis.'));
 window.addEventListener('online', ()=>toast('Conexão restabelecida.'));
@@ -8061,9 +8146,17 @@ function abrirDiagnosticoAndroid(){
   location.href='intent://diagnostics#Intent;scheme=tmycar-ads;package=br.com.tmycar.app;end';
 }
 document.addEventListener('visibilitychange',()=>{ if(ANUNCIOS_TWA) ANUNCIOS_TWA.refresh(); });
+// New expense screens are initialized locally; this does not publish or contact services.
+['multas','seguro','outros'].forEach(tipo=>{
+  const body={multas:'gastoMultasBody',seguro:'gastoSeguroBody',outros:'gastoOutrosBody'}[tipo];
+  $('s-config').parentElement.insertAdjacentHTML('beforeend',`<div class="screen gasto-category-screen" id="s-gasto-${tipo}"><div class="topbar"><div class="topbar-left"><button class="tools-back" type="button" onclick="go('adicionar-gasto')" aria-label="Voltar">‹</button><span class="title">${TIPOS_GASTO[tipo].nome}</span></div></div><div id="${body}"></div></div>`);
+});
+$('s-config').parentElement.insertAdjacentHTML('beforeend',`<div class="screen" id="s-adicionar-gasto"><div class="topbar"><div class="topbar-left"><button class="tools-back" type="button" onclick="go('gastos')" aria-label="Voltar">‹</button><span class="title">Adicionar gastos</span></div></div><div class="gastos-menu">${['combustivel','ipva','multas','seguro','outros'].map(tipo=>`<button type="button" onclick="abrirCategoriaGasto('${tipo}')">${TIPOS_GASTO[tipo].nome}</button>`).join('')}</div></div>`);
 var FERRAMENTAS = typeof TMyFerramentasUI==='function' ? TMyFerramentasUI({
   go,
-  state:()=>({veiculos:VEIC,plano:PLANO,pending:planoDaContaPendente()}),
+  state:()=>({veiculos:VEIC,plano:PLANO,pending:planoDaContaPendente(),clientes:CLIENTES,comprovantes:COMPROVANTES}),
+  saveTools:salvarDadosFerramentas,
+  confirm:(title,text,action)=>confirmar(title,text,action,'Excluir'),
   chooseVehicle:abrirDowngrade,
   openVehicle:i=>{
     conferirTeste();
@@ -8072,6 +8165,28 @@ var FERRAMENTAS = typeof TMyFerramentasUI==='function' ? TMyFerramentasUI({
     abrirPainel(i);
   }
 }) : null;
+async function importarVeiculoDoArquivo(pacote,contexto){
+  return enfileirarMudancaContexto(async()=>{
+    if(CONTEXTO_LOCAL!==contexto||!carregado||EXCLUINDO_CONTA)throw new Error('A conta mudou. Abra o arquivo novamente.');
+    conferirTeste();
+    const p=TMyTransferencia.checkImport(pacote,VEIC,REGISTROS,LIMITE(),planoDaContaPendente());
+    const anterior={veiculos:VEIC,registros:REGISTROS,ativo,em:ULTIMA_GRAVACAO,pendente:ALTERACOES_PENDENTES};
+    const index=VEIC.length;
+    const v={...p.veiculo,transferenciaId:p.id};
+    v.servicos=v.servicos.map(s=>({...s,id:crypto.randomUUID()}));
+    // Keep original indices untouched; all received expenses belong to the appended vehicle.
+    VEIC=[...VEIC,v];REGISTROS=[...REGISTROS,...p.gastos.map(r=>({...r,veic:index,id:crypto.randomUUID(),lembrete:false}))];ativo=index;
+    const ok=await persistirLocal();
+    if(!ok){VEIC=anterior.veiculos;REGISTROS=anterior.registros;ativo=anterior.ativo;ULTIMA_GRAVACAO=anterior.em;ALTERACOES_PENDENTES=anterior.pendente;throw new Error('Não foi possível salvar neste aparelho. Nenhum veículo foi importado.');}
+    mandarParaNuvem();
+    return true;
+  });
+}
+var TRANSFERENCIA=typeof TMyTransferenciaUI==='function'?TMyTransferenciaUI({
+  go,state:()=>({veiculos:VEIC,registros:REGISTROS,context:CONTEXTO_LOCAL}),
+  confirm:(title,message,action)=>confirmar(title,message,action,'Importar'),
+  importVehicle:importarVeiculoDoArquivo
+}):null;
 carregar();
 </script>
 </body></html>
