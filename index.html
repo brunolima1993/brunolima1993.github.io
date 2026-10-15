@@ -1456,7 +1456,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
 .sv-acoes{display:flex;flex-shrink:0;gap:6px}.sv-acoes button{padding:10px;border-radius:10px;border:1px solid rgba(0,153,255,.3);background:rgba(0,153,255,.08);color:#39b5ff;cursor:pointer;font:inherit;font-size:12px}
 #s-servicos .section-title,#s-servico-form .section-title{text-align:center}
 .ev-note{font-size:12px;line-height:1.6;color:var(--muted);text-align:center;margin-bottom:16px}
-</style><script src="assets/manutencao.js"></script><script src="assets/admob.js?v=1.6.2-diag-5"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
+</style><script src="assets/manutencao.js"></script><script src="assets/admob.js?v=1.6.2-diag-6"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-app-check-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-auth-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-firestore-compat.js"></script>
@@ -3898,13 +3898,12 @@ async function salvarServico(){
   if(pos>=0) v.servicos[pos]=registro; else v.servicos.push(registro);
   if(v.km==null || km>v.km){ v.km=km; varrerKm(ativo,km); }
   const contextoSalvo=CONTEXTO_LOCAL;
-  const inicioGravacao=performance.now();
   const gravado=await persistirLocal();
   if(CONTEXTO_LOCAL!==contextoSalvo || VEIC[ativo]!==v || telaAtual()!=='servico-form') return;
   mandarParaNuvem(); SERVICO_EDITANDO=null; SERVICO_VEICULO=null;
   $('svAno').innerHTML='';
   go('servicos'); toast('Manutenção salva.');
-  if(gravado && pos<0 && performance.now()-inicioGravacao<500 && ANUNCIOS_TWA) ANUNCIOS_TWA.saved();
+  if(pos<0 && ANUNCIOS_TWA) ANUNCIOS_TWA.saved({persisted:gravado});
   } finally { GRAVANDO_MANUTENCAO=false; }
 }
 function prepararHistoricoServicos(){
@@ -4877,11 +4876,11 @@ async function salvarTroca(){
      Uma troca histórica abaixo do KM atual é guardada sem reduzir o odômetro. */
   if(km && (!kmInformado(v.km) || km > v.km)) v.km = km;
   varrerPrazos(); varrerPendencias();
-  const contextoSalvo=CONTEXTO_LOCAL, itemSalvo=itAtual, inicioGravacao=performance.now();
+  const contextoSalvo=CONTEXTO_LOCAL, itemSalvo=itAtual;
   const gravado=await persistirLocal();
   if(CONTEXTO_LOCAL!==contextoSalvo || VEIC[ativo]!==v || itAtual!==itemSalvo) return;
   mandarParaNuvem(); fecharSheet(); pintarPainel(); pintarSino();
-  if(gravado && performance.now()-inicioGravacao<500 && ANUNCIOS_TWA) ANUNCIOS_TWA.saved();
+  if(ANUNCIOS_TWA) ANUNCIOS_TWA.saved({persisted:gravado});
   } finally { GRAVANDO_MANUTENCAO=false; }
 }
 function abrirOdo(){
@@ -5773,11 +5772,25 @@ function mensagemErroAssinaturaGooglePlay(e){
   if(codigo.includes('AbortError') || codigo.includes('NotAllowedError') ||
      codigo.includes('USER_CANCELED')) return null;
   if(codigo.includes('unauthenticated')) return 'Entre novamente na sua conta para assinar.';
-  if(codigo.includes('permission-denied')) return 'Esta compra já está vinculada a outra conta.';
+  if(codigo.includes('permission-denied')) return 'Não foi possível validar a compra para esta conta. Confira a verificação do e-mail e tente novamente.';
   if(codigo.includes('not-found')) return 'A Google Play ainda não encontrou essa compra. Tente novamente em instantes.';
   if(codigo.includes('failed-precondition'))
     return (e && e.message) || 'A assinatura ainda não está ativa na Google Play.';
   return 'Não foi possível concluir a assinatura agora. Verifique a conexão e tente novamente.';
+}
+function compraVinculadaOutraConta(e){
+  return String(e && e.code || '').includes('permission-denied') &&
+    String(e && e.message || '').includes('Esta compra já está vinculada a outra conta.');
+}
+function explicarVinculoGooglePlay(){
+  abrirTexto('Assinatura vinculada a outra conta',
+    'A compra encontrada na Google Play pertence a outra conta do TMyCar.<br><br>'+
+    'A conta da Play Store que paga pode ser diferente da conta usada para entrar no app. '+
+    'Trocar o login no TMyCar não troca a conta da loja.<br><br>'+
+    'Para usar esse Premium, entre na conta do TMyCar em que a compra foi ativada. '+
+    'Você também pode continuar usando esta conta no plano que ela já possui.<br><br>'+
+    'Não transferimos nem cancelamos a assinatura. Não faça outra compra para recuperar esse Premium. '+
+    'Se não conseguir acessar a conta original, fale com o suporte em Ajustes.');
 }
 async function ativarPremium(){
   if(CONTA.local){
@@ -5806,8 +5819,9 @@ async function ativarPremium(){
   const bt = $('ofBotao');
   if(bt){ bt.disabled = true; bt.textContent = 'Abrindo Google Play…'; }
   let respostaPagamento = null;
+  let preservarPreparacao = false, rotuloFinal = 'Assinar Premium';
   try{
-    // Com a preparação pronta, show() é chamado no próprio toque, sem nova consulta.
+    // Sem compra anterior, a preparação pronta permite show() no próprio toque.
     let preparado = preparacaoProntaGooglePlay(uidCompra);
     if(!preparado) preparado = await prepararCompraGooglePlay();
     if(!contaGooglePlayAtual(uidCompra) || sessaoCompra !== SESSAO_OFERTA_PLAY ||
@@ -5824,6 +5838,40 @@ async function ativarPremium(){
 
     const dadosMetodo = {sku:productId};
     const compras = preparado.compras;
+    const existentes = compras.filter(compra =>
+      Object.values(PRODUTOS_GOOGLE_PLAY).includes(produtoDaCompraGooglePlay(compra)));
+    // Nunca reutilizar o token de outra conta numa troca de plano. A validação
+    // no servidor já protege o vínculo; aqui ela ocorre ANTES de abrir cobrança.
+    const precisaConferirVinculos = existentes.length > 0 && !preparado.vinculosVerificados;
+    for(const compra of precisaConferirVinculos ? existentes : []){
+      if(!contaGooglePlayAtual(uidCompra) || sessaoCompra !== SESSAO_OFERTA_PLAY ||
+         !$('of').classList.contains('on')) return;
+      const token = tokenDaCompraGooglePlay(compra);
+      if(!token) throw new Error('Compra existente sem comprovante para validação.');
+      if(bt) bt.textContent = 'Verificando assinatura existente…';
+      const resultado = await limitarConsultaGooglePlay(validarCompraGooglePlay(produtoDaCompraGooglePlay(compra), token));
+      if(!contaGooglePlayAtual(uidCompra) || sessaoCompra !== SESSAO_OFERTA_PLAY ||
+         !$('of').classList.contains('on')) return;
+      if(!resultado || resultado.ok !== true) throw new Error('Não foi possível validar a assinatura existente.');
+    }
+    if(existentes.some(compra => produtoDaCompraGooglePlay(compra) === productId)){
+      await puxarAssinatura();
+      if(!contaGooglePlayAtual(uidCompra) || sessaoCompra !== SESSAO_OFERTA_PLAY ||
+         !$('of').classList.contains('on')) return;
+      fecharOferta(); atualizarNav(); go(ofTelaAnterior || 'garagem');
+      toast('Sua assinatura existente foi restaurada. Nenhuma nova compra foi aberta.');
+      return;
+    }
+    if(precisaConferirVinculos){
+      // A consulta pode consumir a ativação temporária do navegador. Exigir novo
+      // toque para mudar plano, reutilizando somente esta sessão/conta por 30 s.
+      preparado.vinculosVerificados = true;
+      PREPARACAO_GOOGLE_PLAY.expira = Date.now() + VALIDADE_PREPARACAO_PLAY_MS;
+      preservarPreparacao = true;
+      rotuloFinal = 'Confirmar mudança de plano';
+      toast('Assinatura conferida nesta conta. Toque em Confirmar mudança de plano para continuar.');
+      return;
+    }
     const compraAnterior = compras.find(compra => {
       const id = produtoDaCompraGooglePlay(compra);
       return Object.values(PRODUTOS_GOOGLE_PLAY).includes(id) && id !== productId &&
@@ -5861,12 +5909,16 @@ async function ativarPremium(){
     if(respostaPagamento){
       try{ await respostaPagamento.complete('fail'); }catch(ignorado){}
     }
+    if(!contaGooglePlayAtual(uidCompra) || sessaoCompra !== SESSAO_OFERTA_PLAY) return;
+    if(compraVinculadaOutraConta(e)){
+      fecharOferta(); explicarVinculoGooglePlay(); return;
+    }
     const mensagem = mensagemErroAssinaturaGooglePlay(e);
     if(mensagem) toast(mensagem);
   }finally{
-    PREPARACAO_GOOGLE_PLAY = null;
+    if(!preservarPreparacao) PREPARACAO_GOOGLE_PLAY = null;
     ATIVANDO_ASSINATURA = false;
-    if(bt){ bt.disabled = false; bt.textContent = 'Assinar Premium'; }
+    if(bt){ bt.disabled = false; bt.textContent = rotuloFinal; }
   }
 }
 
@@ -7820,7 +7872,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.6.2-web.20261014';
+const VERSAO_APP = '1.6.2-web.20261014.1';
 let ONBOARD = false;
 let carregado = false;
 

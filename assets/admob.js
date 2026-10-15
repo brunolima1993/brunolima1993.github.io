@@ -33,7 +33,7 @@
       free:state.free===true, safe:state.safe===true,
       ready:statusAt!==null && env.now()-statusAt<=10000 && ready,
       statusAgeSeconds:statusAt===null?null:Math.max(0,Math.floor((env.now()-statusAt)/1000)),
-      lastSave, scriptVersion:'1.6.2-diag-5', windowMessages, transfers, rejected,
+      lastSave, scriptVersion:'1.6.2-diag-6', windowMessages, transfers, rejected,
       lastTransfer, portMessages, lastPortEvent, stateSends, sendErrors
     };
   }
@@ -117,7 +117,8 @@
     port.onmessage=event=>{ if(!disposed && port===incoming) message(event); };
     if(port.start) port.start();
   }
-  async function saved() {
+  async function saved({persisted=true}={}) {
+    if(!persisted) { lastSave='registro nao confirmado no armazenamento local'; return false; }
     const state=refresh();
     if(!port || !confirmed || !state.free || !state.safe || pending || !env.userActive()) {
       lastSave=!port || !confirmed?'sem canal Android':!state.free?'conta nao elegivel':!state.safe?'tela bloqueada':pending?'tentativa em andamento':'gesto de toque expirou';
