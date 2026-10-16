@@ -15,7 +15,7 @@ firebase.initializeApp({
 });
 firebase.messaging();
 
-const CACHE_APP = 'tmycar-pwa-v1.6.2-admob-diagnostico-r6-web.20261014.1';
+const CACHE_APP = 'tmycar-pwa-v1.6.3-web.20261016';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -39,7 +39,7 @@ const ARQUIVOS_APP = [
   new URL('./assets/gastos.js?v=1', self.registration.scope).href,
   new URL('./assets/maps-config.js?v=2', self.registration.scope).href,
   new URL('./assets/postos.js?v=3', self.registration.scope).href,
-  new URL('./assets/admob.js?v=1.6.2-diag-6', self.registration.scope).href,
+  new URL('./assets/admob.js?v=1.6.3-production', self.registration.scope).href,
   new URL('./assets/splash-screen-fullscreen-v2.webp', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-compat.js', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-check-compat.js', self.registration.scope).href,
