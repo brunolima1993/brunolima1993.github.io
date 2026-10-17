@@ -1456,7 +1456,7 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
 .sv-acoes{display:flex;flex-shrink:0;gap:6px}.sv-acoes button{padding:10px;border-radius:10px;border:1px solid rgba(0,153,255,.3);background:rgba(0,153,255,.08);color:#39b5ff;cursor:pointer;font:inherit;font-size:12px}
 #s-servicos .section-title,#s-servico-form .section-title{text-align:center}
 .ev-note{font-size:12px;line-height:1.6;color:var(--muted);text-align:center;margin-bottom:16px}
-</style><script src="assets/manutencao.js"></script><script src="assets/admob.js?v=1.6.3-production"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
+</style><script src="assets/manutencao.js"></script><script src="assets/admob.js?v=1.6.3-diag-1"></script><script src="vendor/firebase-12.18.0/firebase-app-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-app-check-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-auth-compat.js"></script>
 <script src="vendor/firebase-12.18.0/firebase-firestore-compat.js"></script>
@@ -1774,6 +1774,10 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
 #s-conta-dados #cdVincular{width:100%;font:inherit;color:inherit;text-align:left}
 #s-conta-dados #cdVincular[hidden]{display:none}
 #s-conta-dados #cdPrivacidadeAnuncios[hidden]{display:none}
+#cdDiagnosticoAnuncios{margin:16px 0;padding:16px;border:1px solid #2378aa;border-radius:18px;background:#061a35;color:#fff}
+#cdDiagnosticoAnuncios summary{cursor:pointer;font-weight:700;color:#8bd8ff}
+#cdDiagnosticoTexto{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.55 monospace;margin:14px 0}
+#cdDiagnosticoAnuncios p{font-size:13px;line-height:1.5;color:#b9d7ee}
 #s-conta-dados .account-data-list .item{min-height:68px}
 #s-documento-legal.screen.active{display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
 #s-documento-legal .topbar{flex:0 0 auto}
@@ -2605,6 +2609,11 @@ label[for="cPropulsao"],label[for="svNome"],label[for="svKm"],label[for="svData"
             <div class="ibody"><div class="ititle">Política de privacidade</div><div class="isub">Como protegemos e utilizamos seus dados</div></div>
             <div class="iright"><span class="seta-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
           </div>
+          <details id="cdDiagnosticoAnuncios" ontoggle="alternarDiagnosticoAnuncios(this.open)">
+            <summary>Diagnóstico de anúncios · temporário</summary>
+            <p>Somente leitura. Não exibe anúncios nem altera sua conta. Atualiza sozinho a cada segundo.</p>
+            <pre id="cdDiagnosticoTexto" aria-live="polite"></pre>
+          </details>
           <button type="button" class="item" id="cdPrivacidadeAnuncios" hidden onclick="ANUNCIOS_TWA && ANUNCIOS_TWA.privacy()">
             <span class="ibody"><span class="ititle">Preferências de anúncios</span><span class="isub">Revisar suas escolhas de privacidade</span></span>
           </button>
@@ -7860,7 +7869,7 @@ function enfileirarMudancaContexto(acao){
 }
 /* Suba este número a cada publicação. Ele aparece em Ajustes e é o que
    permite saber qual versão a pessoa está usando quando ela relatar algo. */
-const VERSAO_APP = '1.6.3-web.20261016';
+const VERSAO_APP = '1.6.3-web.20261016-diag1';
 let ONBOARD = false;
 let carregado = false;
 
@@ -8152,6 +8161,56 @@ const ANUNCIOS_TWA = typeof TMyAdmob==='function' ? TMyAdmob({
   setTimeout:(fn,ms)=>setTimeout(fn,ms), clearTimeout:id=>clearTimeout(id),
   setInterval:(fn,ms)=>setInterval(fn,ms), clearInterval:id=>clearInterval(id)
 }) : null;
+/* TEMPORÁRIO: painel somente leitura do diagnóstico de anúncios. Remover após a investigação. */
+let TIMER_DIAGNOSTICO=null;
+function alternarDiagnosticoAnuncios(aberto){
+  clearInterval(TIMER_DIAGNOSTICO); TIMER_DIAGNOSTICO=null;
+  if(!aberto) return;
+  atualizarDiagnosticoAnuncios();
+  TIMER_DIAGNOSTICO=setInterval(()=>{
+    const det=$('cdDiagnosticoAnuncios');
+    if(!det || !det.open || telaAtual()!=='conta-dados'){ clearInterval(TIMER_DIAGNOSTICO); TIMER_DIAGNOSTICO=null; return; }
+    atualizarDiagnosticoAnuncios();
+  },1000);
+}
+function atualizarDiagnosticoAnuncios(){
+  const d=ANUNCIOS_TWA && typeof ANUNCIOS_TWA.diagnostics==='function' ? ANUNCIOS_TWA.diagnostics() : null;
+  const sim=v=>v?'sim':'não';
+  const linhas=['Site: '+VERSAO_APP, 'Hora: '+new Date().toLocaleTimeString('pt-BR')];
+  if(!d){
+    linhas.push('Script de anúncios: '+(ANUNCIOS_TWA?'sem diagnóstico':'não carregado'));
+  } else {
+    linhas.push(
+      'Script: '+d.scriptVersion,
+      '',
+      '— CONEXÃO COM O APP ANDROID —',
+      'Canal: '+d.channel,
+      'Identificação do Android: '+d.helloMode,
+      'Transferências de canal: '+d.transfers+' (recusadas: '+d.rejected+')',
+      'Última transferência: '+d.lastTransfer,
+      'Mensagens no canal: '+d.portMessages+' · última: '+d.lastPortEvent,
+      'Última resposta do Android: '+(d.statusAgeSeconds===null?'nenhuma':d.statusAgeSeconds+' s atrás'),
+      '',
+      '— CONTA —',
+      'Plano confirmado: '+sim(ASSINATURA_CARREGADA)+' · Free: '+sim(PLANO==='free')+' · Teste Premium: '+sim(CICLO==='teste' || Number(TRIAL.fim)>Date.now()),
+      'Elegível para anúncios: '+sim(d.free),
+      'Anúncio carregado no Android: '+sim(d.ready),
+      '',
+      '— MANUTENÇÕES SALVAS NESTA SESSÃO —',
+      'Avisos enviados ao Android: '+d.savesSent
+    );
+    if(d.saveLog.length) linhas.push(...d.saveLog); else linhas.push('nenhuma ainda');
+    linhas.push('', '— TENTATIVA DE ABRIR O ANÚNCIO —');
+    if(d.attempts){
+      linhas.push(
+        'Tentativas: '+d.attempts+' · a última foi há '+d.attemptAgeSeconds+' s',
+        'Respostas do Android depois da última tentativa: '+d.statusAfterAttempt
+      );
+    } else linhas.push('Nenhuma tentativa nesta sessão');
+    linhas.push('Autorizações que chegaram fora do prazo: '+d.lateArmed);
+  }
+  $('cdDiagnosticoTexto').textContent=linhas.join('\n');
+}
 document.addEventListener('visibilitychange',()=>{ if(ANUNCIOS_TWA) ANUNCIOS_TWA.refresh(); });
 // New expense screens are initialized locally; this does not publish or contact services.
 ['multas','seguro','outros'].forEach(tipo=>{
