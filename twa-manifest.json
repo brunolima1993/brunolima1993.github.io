@@ -6,10 +6,10 @@
   "display": "standalone",
   "themeColor": "#061A35",
   "themeColorDark": "#000000",
-  "navigationColor": "#000000",
-  "navigationColorDark": "#000000",
-  "navigationDividerColor": "#000000",
-  "navigationDividerColorDark": "#000000",
+  "navigationColor": "#02050C",
+  "navigationColorDark": "#02050C",
+  "navigationDividerColor": "#02050C",
+  "navigationDividerColorDark": "#02050C",
   "backgroundColor": "#061A35",
   "enableNotifications": true,
   "startUrl": "/",
@@ -20,8 +20,8 @@
     "path": "android.keystore",
     "alias": "tmycar"
   },
-  "appVersionName": "1.6.0",
-  "appVersionCode": 1600,
+  "appVersionName": "1.6.4",
+  "appVersionCode": 1604,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://www.tmycar.com.br/manifest.webmanifest",
@@ -38,7 +38,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://www.tmycar.com.br/",
-  "minSdkVersion": 23,
+  "minSdkVersion": 24,
   "orientation": "any",
   "fingerprints": [],
   "additionalTrustedOrigins": [],
@@ -47,5 +47,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.6.0"
+  "appVersion": "1.6.4"
 }
