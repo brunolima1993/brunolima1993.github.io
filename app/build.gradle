@@ -76,7 +76,7 @@ android {
         }
     }
     defaultConfig {
-        buildConfigField "boolean", "PRODUCTION_ADS", "false"
+        buildConfigField "boolean", "PRODUCTION_ADS", "true"
         applicationId "br.com.tmycar.app"
         resValue "string", "google_app_id", nativeClient?.client_info?.mobilesdk_app_id ?: ""
         resValue "string", "google_api_key", nativeClient?.api_key?.getAt(0)?.current_key ?: ""
@@ -84,8 +84,8 @@ android {
         resValue "string", "project_id", nativeFirebase?.project_info?.project_id ?: ""
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 1605
-        versionName "1.6.5-banner-test"
+        versionCode 1608
+        versionName "1.6.8"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

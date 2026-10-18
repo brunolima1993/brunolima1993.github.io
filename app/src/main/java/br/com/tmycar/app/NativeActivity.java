@@ -181,7 +181,7 @@ public final class NativeActivity extends Activity {
             reply.done(null,"Toque novamente no botão para continuar."); return;
         }
         switch(op) {
-            case "hello": reply.done(new JSONObject().put("version","1.6.5").put("testAds",!BuildConfig.PRODUCTION_ADS)
+            case "hello": reply.done(new JSONObject().put("version","1.6.8").put("testAds",!BuildConfig.PRODUCTION_ADS)
                 .put("pushConfigured",NativePush.configured(this)).put("notificationPermission",NativePush.permission(this)),null); break;
             case "pushPermission":
                 if(Build.VERSION.SDK_INT>=33 && !"granted".equals(NativePush.permission(this))) {
