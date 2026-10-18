@@ -22,6 +22,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     
         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -35,7 +37,7 @@
 
     <application
         android:name="Application"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/appName"
         android:resizeableActivity="true"
@@ -97,7 +99,7 @@
             </activity>
         
 
-        <activity android:name="LauncherActivity"
+        <activity android:name=".NativeActivity"
             android:alwaysRetainTaskState="true"
             android:label="@string/launcherName"
             android:theme="@style/Theme.TMyCar.Starting"
@@ -244,5 +246,10 @@
             </intent-filter>
         </service> 
         
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="maintenance" />
+        <service android:name=".NativePush" android:exported="false"><intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter></service>
     </application>
 </manifest>
+
+

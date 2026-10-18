@@ -15,4 +15,6 @@
 -->
 <paths>
     <files-path path="twa_splash/" name="twa_splash" />
+    <cache-path path="exports/" name="exports" />
 </paths>
+

@@ -15,6 +15,7 @@
  */
 
 import groovy.xml.MarkupBuilder
+import groovy.json.JsonSlurper
 
 plugins {
     id 'com.android.application'
@@ -50,12 +51,18 @@ def twaManifest = [
     orientation: 'any',
 ]
 
+// Public Firebase Android configuration, supplied by the project owner.
+def nativeFirebase = file('google-services.json').exists() ? new JsonSlurper().parse(file('google-services.json')) : null
+def nativeClient = nativeFirebase?.client?.find { it.client_info.android_client_info.package_name == 'br.com.tmycar.app' }
+if (nativeFirebase && !nativeClient) throw new GradleException('google-services.json does not contain br.com.tmycar.app')
+if (nativeFirebase && nativeFirebase.project_info.project_id != 'tmycar-222e5') throw new GradleException('Use the TMy Car Firebase project tmycar-222e5')
 def releaseKeystoreFile = System.getenv('TMYCAR_KEYSTORE_FILE')
 def releaseStorePassword = System.getenv('TMYCAR_STORE_PASSWORD')
 def releaseKeyPassword = System.getenv('TMYCAR_KEY_PASSWORD')
 def hasReleaseSigning = releaseKeystoreFile && releaseStorePassword && releaseKeyPassword
 
 android {
+    buildFeatures { buildConfig true }
     compileSdkVersion 36
     namespace "br.com.tmycar.app"
     signingConfigs {
@@ -69,11 +76,16 @@ android {
         }
     }
     defaultConfig {
+        buildConfigField "boolean", "PRODUCTION_ADS", "false"
         applicationId "br.com.tmycar.app"
+        resValue "string", "google_app_id", nativeClient?.client_info?.mobilesdk_app_id ?: ""
+        resValue "string", "google_api_key", nativeClient?.api_key?.getAt(0)?.current_key ?: ""
+        resValue "string", "gcm_defaultSenderId", nativeFirebase?.project_info?.project_number ?: ""
+        resValue "string", "project_id", nativeFirebase?.project_info?.project_id ?: ""
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 1604
-        versionName "1.6.4"
+        versionCode 1605
+        versionName "1.6.5-banner-test"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
@@ -233,6 +245,12 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.google.firebase:firebase-messaging:25.0.1'
+    implementation 'androidx.webkit:webkit:1.12.1'
+    implementation 'androidx.credentials:credentials:1.5.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.5.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    implementation 'com.android.billingclient:billing:8.3.0'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     
         implementation 'com.google.androidbrowserhelper:billing:1.2.0'
@@ -246,3 +264,5 @@ dependencies {
         implementation 'com.google.android.ump:user-messaging-platform:4.0.0'
     
 }
+
+

@@ -21,8 +21,8 @@ import java.util.UUID;
 
 /** Main-thread only. The website receives capabilities, never auth or purchase tokens. */
 final class AdCoordinator {
-    // Fixed production placement; no remote switch or demo ad fallback.
-    static final String AD_UNIT = "ca-app-pub-7049820367239374/1029575780";
+    // Build-selected placement; the website cannot change ad unit IDs.
+    static final String AD_UNIT = BuildConfig.PRODUCTION_ADS ? "ca-app-pub-7049820367239374/1029575780" : "ca-app-pub-3940256099942544/1033173712";
     static AdCoordinator current;
     interface Sender { void send(JSONObject message); }
     private final Context context;
@@ -117,6 +117,7 @@ final class AdCoordinator {
             loading = false; ad = null; nextLoadAt = SystemClock.elapsedRealtime()+60_000L; status();
         }
     }
+    boolean bannerAllowed() { return !closed && free && consentUpdated && consent.canRequestAds() && initialized; }
     boolean ready() {
         return !closed && free && consentUpdated && consent.canRequestAds() && ad != null
             && SystemClock.elapsedRealtime() - loadedAt < 50 * 60_000L;
@@ -177,3 +178,4 @@ final class AdCoordinator {
         catch (Exception ignored) { }
     }
 }
+
