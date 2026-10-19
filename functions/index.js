@@ -9,7 +9,7 @@ const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue, Timestamp} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 const {normalizarCompraPlay, produtoValido} = require("./billing");
-const {hojeEmBrasilia, lembretesDoPerfil} = require("./notificacoes");
+const {hojeEmBrasilia, lembretesDoPerfil, montarNotificacao} = require("./notificacoes");
 
 initializeApp();
 
@@ -19,7 +19,8 @@ const COLECAO_DISPOSITIVOS = "dispositivosPush";
 const COLECAO_ENVIOS = "enviosNotificacao";
 const CENTO_E_VINTE_DIAS_MS = 120 * 24 * 60 * 60 * 1000;
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
-const URL_APP = "https://tmycar.com.br/";
+const URL_APP = "https://www.tmycar.com.br/";
+const USUARIOS_EM_PARALELO = 10;
 const PACOTE_ANDROID = "br.com.tmycar.app";
 const ESCOPO_PLAY = "https://www.googleapis.com/auth/androidpublisher";
 const googleAuth = new GoogleAuth({scopes: [ESCOPO_PLAY]});
@@ -478,9 +479,18 @@ async function reservarEnvio(banco, ref, lembrete) {
   return reservado;
 }
 
-async function enviarLembrete(banco, lembrete, dispositivos) {
-  const envioRef = banco.collection(COLECAO_ENVIOS).doc(hash(lembrete.chave));
-  if (!(await reservarEnvio(banco, envioRef, lembrete))) return false;
+/* Envia UMA notificação por usuário com todos os lembretes do dia.
+   Cada lembrete continua com sua própria reserva, então nada se repete. */
+async function enviarResumo(banco, lembretes, dispositivos, hoje) {
+  const reservados = [];
+  for (const lembrete of lembretes) {
+    const ref = banco.collection(COLECAO_ENVIOS).doc(hash(lembrete.chave));
+    if (await reservarEnvio(banco, ref, lembrete)) reservados.push({lembrete, ref});
+  }
+  if (!reservados.length) return 0;
+  const aviso = montarNotificacao(reservados.map(r => r.lembrete), hoje);
+  const primeiro = reservados[0].lembrete;
+  const desfazer = () => Promise.all(reservados.map(r => r.ref.delete().catch(() => false)));
 
   let sucessos = 0;
   try {
@@ -488,25 +498,31 @@ async function enviarLembrete(banco, lembrete, dispositivos) {
       const lote = dispositivos.slice(inicio, inicio + 500);
       const resposta = await getMessaging().sendEachForMulticast({
         tokens: lote.map(item => item.token),
-        notification: {title: lembrete.titulo, body: lembrete.texto},
+        notification: {title: aviso.titulo, body: aviso.texto},
         data: {
-          tipo: lembrete.itemId.startsWith('gasto-') ? 'gasto' : 'manutencao',
-          tag: lembrete.tag || `tmycar-${hash(lembrete.chave).slice(0, 24)}`,
-          url: lembrete.url,
-          veic: String(lembrete.indiceVeiculo),
-          item: lembrete.itemId,
-          parte: lembrete.parteId || "",
-          vencimento: lembrete.vencimento
+          tipo: reservados.length > 1 ? "resumo" :
+            (primeiro.itemId.startsWith("gasto-") ? "gasto" : "manutencao"),
+          tag: aviso.tag,
+          url: aviso.url,
+          veic: reservados.length > 1 ? "" : String(primeiro.indiceVeiculo),
+          item: reservados.length > 1 ? "" : primeiro.itemId,
+          parte: reservados.length > 1 ? "" : (primeiro.parteId || ""),
+          vencimento: reservados.length > 1 ? "" : primeiro.vencimento,
+          quantidade: String(reservados.length)
+        },
+        android: {
+          priority: "high",
+          notification: {channelId: "maintenance", tag: aviso.tag}
         },
         webpush: {
           headers: {Urgency: "high"},
           notification: {
             icon: `${URL_APP}icons/icon-192.png`,
             badge: `${URL_APP}icons/icon-192.png`,
-            tag: lembrete.tag || `tmycar-${hash(lembrete.chave).slice(0, 24)}`,
+            tag: aviso.tag,
             renotify: false
           },
-          fcmOptions: {link: lembrete.url}
+          fcmOptions: {link: aviso.url}
         }
       });
       sucessos += resposta.successCount;
@@ -520,23 +536,24 @@ async function enviarLembrete(banco, lembrete, dispositivos) {
     }
 
     if (!sucessos) {
-      await envioRef.delete();
-      return false;
+      await desfazer();
+      return 0;
     }
-    await envioRef.set({
+    await Promise.all(reservados.map(r => r.ref.set({
       status: "enviado",
       aparelhos: sucessos,
       atualizadoEm: FieldValue.serverTimestamp()
-    }, {merge: true});
-    return true;
+    }, {merge: true})));
+    return reservados.length;
   } catch (erro) {
-    await envioRef.delete().catch(() => false);
+    await desfazer();
     throw erro;
   }
 }
 
-/* Roda às 09:00 de Brasília. Para cada ciclo envia no máximo uma vez em cada
-   etapa: manutenção em 15 dias, 3 dias, no vencimento e semanal após vencer;
+/* Roda às 09:00 de Brasília. Junta tudo do dia numa notificação por usuário.
+   Para cada ciclo envia no máximo uma vez em cada etapa: manutenção em 15 dias,
+   3 dias, no vencimento, semanal no 1º mês vencido e mensal até 6 meses;
    IPVA, multas e seguro somente 7 dias antes e no vencimento, enquanto não pagos. */
 exports.processarNotificacoesManutencao = onSchedule(
   {
@@ -571,24 +588,25 @@ exports.processarNotificacoesManutencao = onSchedule(
     const hoje = hojeEmBrasilia();
     let enviados = 0;
     let avaliados = 0;
-    for (const [uid, dispositivos] of porUsuario) {
+    const usuarios = [...porUsuario];
+    const processarUsuario = async ([uid, dispositivos]) => {
       const perfilDoc = await banco.collection("usuarios").doc(uid).get();
-      if (!perfilDoc.exists) continue;
+      if (!perfilDoc.exists) return;
       const lembretes = lembretesDoPerfil(uid, perfilDoc.data(), hoje);
       avaliados += lembretes.length;
-      for (const lembrete of lembretes) {
-        try {
-          if (await enviarLembrete(banco, lembrete, dispositivos)) enviados++;
-        } catch (erro) {
-          logger.error("Falha ao enviar lembrete de manutenção.", {
-            uid,
-            itemId: lembrete.itemId,
-            vencimento: lembrete.vencimento,
-            erro: String(erro && erro.message || erro)
-          });
-        }
+      if (!lembretes.length) return;
+      try {
+        enviados += await enviarResumo(banco, lembretes, dispositivos, hoje);
+      } catch (erro) {
+        logger.error("Falha ao enviar lembretes de manutenção.", {
+          uid,
+          itens: lembretes.map(l => l.itemId),
+          erro: String(erro && erro.message || erro)
+        });
       }
-    }
+    };
+    for (let i = 0; i < usuarios.length; i += USUARIOS_EM_PARALELO)
+      await Promise.all(usuarios.slice(i, i + USUARIOS_EM_PARALELO).map(processarUsuario));
     logger.info("Varredura diária de manutenção concluída.", {
       hoje,
       usuariosComAparelho: porUsuario.size,

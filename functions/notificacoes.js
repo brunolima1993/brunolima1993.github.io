@@ -2,6 +2,9 @@
 
 const FUSO_BRASILIA = "America/Sao_Paulo";
 const DIA_MS = 24 * 60 * 60 * 1000;
+const URL_BASE = "https://www.tmycar.com.br/";
+const MAX_DIAS_VENCIDO = 178;
+const MAX_LINHAS_RESUMO = 4;
 /* Todos os itens por data exibidos no painel de manutenção. Os quatro filtros
    continuam independentes porque cada parte guarda seu próprio intervalo. */
 const ITENS_PRIORITARIOS = new Set([
@@ -76,7 +79,12 @@ function faseDoLembrete(dias) {
   if (dias > 3) return "15-dias";
   if (dias > 0) return "3-dias";
   if (dias === 0) return "vence-hoje";
-  return `vencido-semana-${Math.floor((Math.abs(dias) - 1) / 7) + 1}`;
+  const atraso = Math.abs(dias);
+  /* Vencido: um lembrete por semana no primeiro mês, depois um por mês
+     (dias 29, 59, 89...) e para de insistir após 6 meses. */
+  if (atraso <= 28) return `vencido-semana-${Math.floor((atraso - 1) / 7) + 1}`;
+  if (atraso <= MAX_DIAS_VENCIDO) return `vencido-mes-${Math.floor((atraso - 29) / 30) + 2}`;
+  return null;
 }
 
 function nomeVeiculo(veiculo) {
@@ -118,6 +126,37 @@ function textoDoLembrete(rotulo, veiculo, vencimentoISO, dias, revisao = false) 
   return `${rotulo} do ${veiculo} venceu há ${atraso} ${atraso === 1 ? "dia" : "dias"}. Registre a ${revisao ? "revisão" : "troca"} quando fizer a manutenção.`;
 }
 
+function situacaoCurta(dias) {
+  if (dias > 1) return `vence em ${dias} dias`;
+  if (dias === 1) return "vence amanhã";
+  if (dias === 0) return "vence hoje";
+  const atraso = Math.abs(dias);
+  return `vencido há ${atraso} ${atraso === 1 ? "dia" : "dias"}`;
+}
+
+/* Junta todos os lembretes do dia de um usuário em UMA notificação.
+   Um item só: mantém o texto completo e o link direto para ele.
+   Vários: título com a contagem e uma linha curta por item, vencidos primeiro. */
+function montarNotificacao(lembretes, hojeISO) {
+  if (!Array.isArray(lembretes) || !lembretes.length) return null;
+  if (lembretes.length === 1) {
+    const unico = lembretes[0];
+    return {titulo: unico.titulo, texto: unico.texto, url: unico.url,
+      tag: unico.tag || `tmycar-${unico.itemId}-${unico.vencimento}`};
+  }
+  const ordenados = lembretes.slice().sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+  const linhas = ordenados.slice(0, MAX_LINHAS_RESUMO).map(l => `• ${l.resumo || l.titulo}`);
+  const resto = ordenados.length - linhas.length;
+  if (resto > 0) linhas.push(`e mais ${resto} ${resto === 1 ? "item" : "itens"}.`);
+  const soGastos = ordenados.every(l => String(l.itemId).startsWith("gasto-"));
+  return {
+    titulo: `TMy Car · ${ordenados.length} ${soGastos ? "contas pedem" : "manutenções pedem"} atenção`,
+    texto: limitarTexto(linhas.join("\n"), 400),
+    url: `${URL_BASE}?abrir=${soGastos ? "gastos" : "avisos"}`,
+    tag: `tmycar-resumo-${hojeISO}`
+  };
+}
+
 function lembretesDoPerfil(uid, perfil, hojeISO = hojeEmBrasilia()) {
   const notificacoes = perfil && perfil.NOTIF;
   if (!perfil || perfil.ONBOARD !== true || !notificacoes ||
@@ -156,7 +195,8 @@ function lembretesDoPerfil(uid, perfil, hojeISO = hojeEmBrasilia()) {
           fase,
           titulo: limitarTexto(`${rotulo} · ${nome}`, 90),
           texto: limitarTexto(textoDoLembrete(rotulo, nome, vencimento, dias, item.revisao === true), 220),
-          url: `https://tmycar.com.br/?${parametros.toString()}`
+          resumo: limitarTexto(`${rotulo} (${nome}): ${situacaoCurta(dias)}`, 90),
+          url: `${URL_BASE}?${parametros.toString()}`
         });
       });
     });
@@ -175,7 +215,8 @@ function lembretesGastos(uid, perfil, hojeISO) {
     return [{chave:[uid,'gasto',r.id,r.vencimento,fase].join('|'),tag:['tmycar-gasto',r.id,r.vencimento,fase].join('|'),uid,indiceVeiculo:r.veic,itemId:'gasto-'+r.tipo,parteId:'',vencimento:r.vencimento,fase,
       titulo:limitarTexto(`${nomes[r.tipo]} · ${nomeVeiculo(v)}`,90),
       texto:`${nomes[r.tipo]} ${dias===7?'vence em 7 dias':'vence hoje'}. Confira em Gastos e marque como pago após quitar.`,
-      url:'https://www.tmycar.com.br/?abrir=gastos'}];
+      resumo:limitarTexto(`${nomes[r.tipo]} (${nomeVeiculo(v)}): ${situacaoCurta(dias)}`,90),
+      url:`${URL_BASE}?abrir=gastos`}];
   });
 }
 
@@ -185,6 +226,7 @@ module.exports = {
   diferencaDiasISO,
   hojeEmBrasilia,
   faseDoLembrete,
+  montarNotificacao,
   lembretesGastos,
   lembretesDoPerfil
 };
