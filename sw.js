@@ -15,7 +15,7 @@ firebase.initializeApp({
 });
 firebase.messaging();
 
-const CACHE_APP = 'tmycar-pwa-v1.6.3-web.20261018';
+const CACHE_APP = 'tmycar-pwa-v1.6.3-web.20261018.1';
 const INICIO = new URL('./', self.registration.scope).href;
 const HTML_PRINCIPAL = new URL('./index.html', self.registration.scope).href;
 const ARQUIVOS_APP = [
@@ -32,12 +32,12 @@ const ARQUIVOS_APP = [
   new URL('./assets/splash.js', self.registration.scope).href,
   new URL('./assets/manutencao.js', self.registration.scope).href,
   new URL('./assets/ferramentas.js?v=2', self.registration.scope).href,
-  new URL('./assets/ferramentas-ui.js?v=5', self.registration.scope).href,
-  new URL('./assets/ferramentas.css?v=5', self.registration.scope).href,
+  new URL('./assets/ferramentas-ui.js?v=6', self.registration.scope).href,
+  new URL('./assets/ferramentas.css?v=6', self.registration.scope).href,
   new URL('./assets/transferencia.js?v=1', self.registration.scope).href,
   new URL('./assets/transferencia-ui.js?v=1', self.registration.scope).href,
   new URL('./assets/gastos.js?v=1', self.registration.scope).href,
-  new URL('./assets/postos.js?v=4', self.registration.scope).href,
+  new URL('./assets/postos.js?v=5', self.registration.scope).href,
   new URL('./assets/admob.js?v=1.6.3-production', self.registration.scope).href,
   new URL('./assets/splash-screen-fullscreen-v2.webp', self.registration.scope).href,
   new URL('./vendor/firebase-12.18.0/firebase-app-compat.js', self.registration.scope).href,
