@@ -21,14 +21,12 @@
     $('s-config').parentElement.insertAdjacentHTML('beforeend',
       screen('clientes','Clientes','<p class="tools-intro">Cadastre o nome e, se quiser, telefone e CPF/CNPJ. Use somente dados que você tem autorização para guardar.</p><form id="toolsClientForm" class="tools-form"><label>Nome do cliente<input id="clientNome" maxlength="100" required></label><label>Telefone (opcional)<input id="clientTelefone" type="tel" maxlength="24"></label><label>CPF/CNPJ (opcional)<input id="clientDocumento" maxlength="18"></label><button class="tools-action" type="submit">Salvar cliente</button><p id="toolsClientStatus" class="tools-note" role="status"></p></form><div id="toolsClients"></div>','corrida')+
       screen('comprovantes','Comprovantes salvos','<p class="tools-intro">Abra um comprovante para baixar o PDF ou compartilhar. O histórico preserva os dados da corrida original.</p><p id="toolsArchiveStatus" class="tools-note" role="status"></p><div id="toolsReceipts"></div>','corrida'));
-    const postos=root.TMyPostos.create(document,navigator,root.TMyMapsConfig||{});
-    const restaurantes=root.TMyPostos.restaurantes.create(document,navigator,root.TMyMapsConfig||{});
     document.querySelectorAll('.tools-screen [data-back],.tools-screen [data-tool]').forEach(b=>b.addEventListener('click',()=>api.go(b.dataset.back||b.dataset.tool)));
     let file=null,receipt=null,lastRoute='',generation=0,busy=false;
     const id=()=>crypto.randomUUID();
     function cleanRide(){generation++;busy=false;invalidate();$('toolsRideForm').reset();$('rideMensagem').value=F.MENSAGEM;$('toolsRideError').textContent='';$('toolsRideForm').querySelector('button[type="submit"]').disabled=false;}
     function invalidate(){file=null;receipt=null;$('toolsRideOutput').hidden=true;$('toolsRidePreview').textContent='';$('toolsWhatsApp').removeAttribute('href');$('toolsShareStatus').textContent='No compartilhamento, escolha o WhatsApp. Se não estiver disponível, baixe o PDF e anexe na conversa.';}
-    function reset(){postos.reset();restaurantes.reset();cleanRide();lastRoute='';$('toolsClientForm').reset();$('toolsClients').replaceChildren();$('toolsReceipts').replaceChildren();$('toolsClientStatus').textContent='';$('toolsArchiveStatus').textContent='';$('rideCliente').replaceChildren(new Option('Sem cliente selecionado',''));$('toolsFuelForm').reset();$('toolsFuelResult').hidden=true;$('toolsFuelError').textContent='';$('toolsVehicles').replaceChildren();}
+    function reset(){cleanRide();lastRoute='';$('toolsClientForm').reset();$('toolsClients').replaceChildren();$('toolsReceipts').replaceChildren();$('toolsClientStatus').textContent='';$('toolsArchiveStatus').textContent='';$('rideCliente').replaceChildren(new Option('Sem cliente selecionado',''));$('toolsFuelForm').reset();$('toolsFuelResult').hidden=true;$('toolsFuelError').textContent='';$('toolsVehicles').replaceChildren();}
     $('rideMensagem').value=F.MENSAGEM;
     ['toolsEtanol','toolsGasolina','rideValor'].forEach(name=>{const input=$(name);input.maxLength=18;input.placeholder='R$ 0,00';input.inputMode='numeric';input.addEventListener('input',()=>F.mascaraMoeda(input));});
     $('toolsRideForm').autocomplete='off';
@@ -146,6 +144,6 @@
         list.append(box);
       });
     }
-    return {reset,render(t){postos.render(t);restaurantes.render(t);if(t==='veiculos')vehicles();if(t!==lastRoute){if(t==='corrida'||lastRoute==='corrida')cleanRide();if(t==='clientes'){$('toolsClientForm').reset();$('toolsClientStatus').textContent='';}}if(t==='corrida')clientOptions();if(t==='clientes')clients();if(t==='comprovantes')archive();lastRoute=t;}};
+    return {reset,render(t){if(t==='veiculos')vehicles();if(t!==lastRoute){if(t==='corrida'||lastRoute==='corrida')cleanRide();if(t==='clientes'){$('toolsClientForm').reset();$('toolsClientStatus').textContent='';}}if(t==='corrida')clientOptions();if(t==='clientes')clients();if(t==='comprovantes')archive();lastRoute=t;}};
   };
 })(window);
