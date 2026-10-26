@@ -9,7 +9,7 @@
   <style>
     :root{color-scheme:dark;--bg:#020711;--panel:#08182c;--line:#173552;--ink:#f1f6fc;--muted:#a6b7cd;--blue:#1baaff;--amber:#f0b45a}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#0b2c55 0,#020711 48%,#000 100%);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.65}
-    main{width:min(820px,calc(100% - 32px));margin:0 auto;padding:44px 0 64px}.brand{font-size:13px;font-weight:800;letter-spacing:.28em;color:#a9bbd3}.brand b{color:var(--blue)}
+    main{width:min(820px,calc(100% - 32px));margin:0 auto;padding:44px 0 64px}.brand{font-size:13px;font-weight:800;letter-spacing:.28em;color:#fff}.brand b{color:var(--blue)}
     h1{margin:13px 0 7px;font-size:clamp(29px,6vw,46px);line-height:1.1}header p{margin:0;color:var(--muted)}
     .card{margin-top:25px;padding:clamp(20px,4vw,34px);border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,rgba(9,28,51,.94),rgba(3,12,25,.95));box-shadow:0 24px 70px rgba(0,0,0,.28)}
     h2{margin:27px 0 7px;font-size:18px}h2:first-child{margin-top:0}p,li{color:var(--muted)}ul{padding-left:22px}strong{color:var(--ink)}a{color:var(--blue)}
@@ -20,7 +20,7 @@
 </head>
 <body>
 <main>
-  <header><div class="brand">T<b>MY</b> CAR</div><h1>Termos de Uso</h1><p>Última atualização: 1º de setembro de 2026</p></header>
+  <header><div class="brand">T<b>My</b>Car</div><h1>Termos de Uso</h1><p>Última atualização: 1º de setembro de 2026</p></header>
   <article class="card">
     <p class="notice">Estes termos regulam o uso do <strong>TMy Car</strong>, serviço digital sob responsabilidade de <strong>Williams Bruno Teles Lima</strong>. Contato: <a href="mailto:suportetmycar@gmail.com">suportetmycar@gmail.com</a>.</p>
 
@@ -63,8 +63,9 @@
     <h2>12. Lei aplicável e contato</h2>
     <p>Estes termos são interpretados conforme a legislação brasileira, preservadas as normas de proteção de dados e defesa do consumidor. Dúvidas, solicitações ou problemas podem ser enviados para <a href="mailto:suportetmycar@gmail.com">suportetmycar@gmail.com</a>.</p>
 
-    <div class="actions"><a class="btn" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a><a class="btn alt" href="./politica.html">Política de Privacidade</a><a class="btn alt" href="./excluir-conta.html">Excluir conta e dados</a></div>
+    <div class="actions"><a class="btn" href="./app.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a><a class="btn alt" href="./politica.html">Política de Privacidade</a><a class="btn alt" href="./excluir-conta.html">Excluir conta e dados</a></div>
   </article>
+  <nav class="actions" aria-label="Navegação do site"><a class="btn alt" href="./index.html">Página inicial</a></nav>
   <footer>© 2026 TMy Car · Williams Bruno Teles Lima</footer>
 </main>
 <script>
@@ -73,11 +74,11 @@ function voltarAoApp(evento){
     if(window.parent !== window){
       evento.preventDefault(); window.parent.postMessage('tmycar:fechar-documento', location.origin); return false;
     }
-    if(window.opener && !window.opener.closed){
+    if(window.opener && !window.opener.closed && window.opener.location.origin === location.origin && window.opener.location.pathname.endsWith('/app.html')){
       evento.preventDefault(); window.opener.focus(); window.close(); return false;
     }
   }catch(e){}
-  evento.preventDefault(); location.replace('./index.html'); return false;
+  evento.preventDefault(); location.replace('./app.html'); return false;
 }
 </script>
 </body>

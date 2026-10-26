@@ -4,13 +4,16 @@
   "short_name": "TMy Car",
   "description": "Acompanhe manutenções, quilometragem e gastos do seu carro.",
   "lang": "pt-BR",
-  "start_url": "./",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#02294B",
   "theme_color": "#061A35",
-  "categories": ["auto", "utilities"],
+  "categories": [
+    "auto",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "./icons/icon-192.png",

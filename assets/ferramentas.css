@@ -1,6 +1,6 @@
 .tools-screen{padding-bottom:24px!important}
 .transfer-entry{width:100%;font:inherit;color:inherit;text-align:center;cursor:pointer}
-#s-conta-dados .transfer-entry .ibody,#s-conta-dados .transfer-entry .ititle,#s-conta-dados .transfer-entry .isub{text-align:center!important;display:block}
+#s-conta-dados .transfer-entry .ibody,#s-conta-dados .transfer-entry .ititle,#s-conta-dados .transfer-entry .isub{text-align:left!important;display:block}
 .transfer-heading{font-size:17px;margin:30px 0 0}
 .tools-form .transfer-check{display:flex;align-items:center;gap:10px;line-height:1.5}
 .tools-form .transfer-check input{appearance:auto!important;-webkit-appearance:checkbox!important;width:20px!important;height:20px!important;padding:0!important;flex-shrink:0;accent-color:#1686dd}
@@ -42,3 +42,45 @@
 .tools-vehicle-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.tools-vehicle-heading h3{margin:0}.tools-vehicle-heading .tools-badge{flex-shrink:0}
 .tools-back{background:none;border:0;color:#b3c8df;width:36px;height:36px;display:grid;place-items:center;cursor:pointer}.tools-back svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2}
 .tools-preview{background:#fff;color:#152234;border-radius:16px;padding:20px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;margin-top:22px}
+
+/* Shared back controls match the rounded-square reference, including legacy glyphs. */
+.back,.tools-back{appearance:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 38px!important;width:38px!important;height:38px!important;min-height:38px!important;padding:0!important;margin:0!important;border:1px solid #283b50!important;border-radius:12px!important;background:linear-gradient(145deg,#0d1b2b,#08131f)!important;box-shadow:inset 0 1px 2px #ffffff0c!important;color:#f4f8fd!important;font-size:0!important;cursor:pointer}
+.back svg,.tools-back svg{display:none!important}
+.back::after,.tools-back::after{content:'';display:block;width:10px;height:10px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateX(2px) rotate(45deg);border-radius:1px}
+.back:focus-visible,.tools-back:focus-visible{outline:2px solid #39b7ff!important;outline-offset:3px}
+.topbar-left{min-width:0;gap:12px}
+#s-conta-dados .transfer-entry{display:flex;align-items:center;gap:12px;justify-content:flex-start;text-align:left}
+#s-conta-dados .transfer-entry .iicon{flex:0 0 36px;display:grid;place-items:center}
+#s-conta-dados .transfer-entry .iicon svg{width:24px;height:24px}
+#s-conta-dados .transfer-entry .ibody{flex:1;min-width:0}
+#s-etanol .section,#s-corrida .section,#s-clientes .section,#s-comprovantes .section,
+#s-etanol input,#s-corrida input,#s-corrida textarea,#s-corrida select,
+#s-clientes input,#mn .fuel-form .flabel,#mn .fuel-form input,#mn .fuel-form select{text-align:center!important;text-align-last:center!important}
+#mn .fuel-form .frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+#mn .fuel-form input[type=date]::-webkit-date-and-time-value{text-align:center}
+#toolsClientForm{margin-top:20px}
+#toolsRidePreview{border-radius:0;padding:28px 20px;text-align:center;font-family:ui-monospace,monospace;max-width:360px;margin:24px auto 0;border-top:3px dashed #929aa3;border-bottom:3px dashed #929aa3}
+.fuel-fab svg{width:29px;height:29px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tools-client-row{display:flex;align-items:center;gap:12px;padding:12px 14px;margin:10px 0;border:1px solid #24425b;border-radius:14px;background:#081725}
+.tools-client-info{flex:1;min-width:0;text-align:left}.tools-client-info h3{margin:0 0 5px;font-size:14px;overflow-wrap:anywhere}.tools-client-info p{margin:0;font-size:12px;color:#a8bdcf;overflow-wrap:anywhere}
+.tools-client-controls{display:flex;flex:none;gap:4px}.tools-client-icon{display:grid;place-items:center;width:40px;height:44px;padding:9px;color:#69c9ff;border:0;border-radius:10px;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}.tools-client-icon:last-child{color:#ff8998}.tools-client-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tools-search{display:block;text-align:center;margin:16px 0}.tools-search input{width:100%;margin-top:8px}.tools-list-title{text-align:center;margin:24px 0 8px;font-size:14px}
+.tools-archive-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0;text-align:center}.tools-archive-filters h3{grid-column:1/-1;font-size:14px;margin:0}.tools-archive-filters label{min-width:0}.tools-archive-filters select{width:100%;margin-top:8px;text-align:center;text-align-last:center}
+.tools-document-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tools-document-row label{min-width:0}.tools-document-row input{width:100%;min-width:0}.tools-client-prefill{display:grid;gap:12px}
+.tools-archive-filters label{position:relative}.tools-archive-filters label::after{content:'⌄';position:absolute;right:12px;bottom:13px;color:#5bc6ff;pointer-events:none}.tools-archive-filters select{padding-right:28px}
+@media(max-width:359px){.tools-document-row{grid-template-columns:1fr}.tools-client-row{gap:6px;padding:10px}.tools-client-controls{gap:0}}
+.lancamentos-button{font:inherit;color:inherit;border:1px solid #315577!important;border-radius:12px;background:#091c30;cursor:pointer;display:flex!important;align-items:center;justify-content:center;gap:18px;padding:12px 18px!important;min-height:48px;width:100%;margin-top:8px}
+.lancamentos-button b{margin:0!important}.lancamentos-button>span{font-size:23px;color:#4ab9ff}
+.gastos-counts{display:grid;gap:10px}
+.gastos-counts button{font:inherit;color:#fff;background:#09192b;border:1px solid #315577;border-radius:12px;padding:10px 12px 10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;cursor:pointer}
+.gastos-counts strong{display:grid;place-items:center;min-width:44px;min-height:36px;border:1px solid #315577;background:#06101e;border-radius:9px;font-variant-numeric:tabular-nums}
+html.tmycar-splash #nav,html.tmycar-splash #fabGasto{visibility:hidden!important;pointer-events:none!important}
+#sh[aria-busy=true] .cta{opacity:.65;cursor:wait}
+
+#mn:has(.fuel-form) .section-title{text-align:center!important}
+#mn .fuel-form .flabel,#s-etanol .flabel,#s-corrida .flabel,#s-clientes .flabel{display:block!important;text-align:center!important}
+
+/* Keep closed sheets off the compositor; animate only a prepared surface. */
+.sheet.sheet{visibility:hidden;will-change:auto;transition:transform .22s cubic-bezier(.32,.72,0,1),visibility 0s .22s}
+.sheet.sheet.preparando,.sheet.sheet.on{visibility:visible;will-change:transform;transition-delay:0s}
+@media(prefers-reduced-motion:reduce){.sheet.sheet{transition:none}}

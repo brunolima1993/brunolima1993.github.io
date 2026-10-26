@@ -9,7 +9,7 @@
   <style>
     :root{color-scheme:dark;--bg:#020711;--panel:#08182c;--line:#173552;--ink:#f1f6fc;--muted:#a6b7cd;--blue:#1baaff;--red:#ff7182}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#0b2c55 0,#020711 48%,#000 100%);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.65}
-    main{width:min(760px,calc(100% - 32px));margin:0 auto;padding:44px 0 64px}.brand{font-size:13px;font-weight:800;letter-spacing:.28em;color:#a9bbd3}.brand b{color:var(--blue)}
+    main{width:min(760px,calc(100% - 32px));margin:0 auto;padding:44px 0 64px}.brand{font-size:13px;font-weight:800;letter-spacing:.28em;color:#fff}.brand b{color:var(--blue)}
     h1{margin:13px 0 7px;font-size:clamp(29px,6vw,44px);line-height:1.1}header p,p,li{color:var(--muted)}
     .card{margin-top:25px;padding:clamp(20px,4vw,34px);border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,rgba(9,28,51,.94),rgba(3,12,25,.95));box-shadow:0 24px 70px rgba(0,0,0,.28)}
     h2{margin:28px 0 7px;font-size:18px}h2:first-child{margin-top:0}strong{color:var(--ink)}ol,ul{padding-left:23px}a{color:var(--blue)}
@@ -20,17 +20,15 @@
 </head>
 <body>
 <main>
-  <header><div class="brand">T<b>MY</b> CAR</div><h1>Excluir conta e dados</h1><p>Página pública de exclusão do aplicativo TMy Car</p></header>
+  <header><div class="brand">T<b>My</b>Car</div><h1>Excluir conta e dados</h1><p>Página pública de exclusão do aplicativo TMy Car</p></header>
   <article class="card">
     <h2>Exclusão imediata pelo aplicativo ou navegador</h2>
     <p>Entre na sua conta do TMy Car e siga:</p>
     <ol><li>Abra <strong>Ajustes</strong>.</li><li>Entre em <strong>Conta e dados</strong>.</li><li>Toque em <strong>Excluir minha conta</strong>.</li><li>Confirme sua identidade e a exclusão.</li></ol>
-    <div class="actions"><a class="btn danger" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car para excluir</a></div>
+    <div class="actions"><a class="btn danger" href="./app.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car para excluir</a></div>
 
     <h2>Não consegue acessar a conta?</h2>
-    <div class="step"><b>Solicite pelo suporte</b>Envie a solicitação usando o mesmo e-mail cadastrado. Para proteger seus dados, poderemos pedir uma confirmação de titularidade antes da exclusão.</div>
-    <div class="actions"><a class="btn" href="mailto:suportetmycar@gmail.com?subject=Solicitação%20de%20exclusão%20de%20conta%20TMy%20Car&body=Olá,%20solicito%20a%20exclusão%20da%20minha%20conta%20e%20dos%20dados%20associados.">Enviar solicitação por e-mail</a></div>
-    <p>Contato: <a href="mailto:suportetmycar@gmail.com">suportetmycar@gmail.com</a>. Confirmaremos o recebimento e poderemos validar a titularidade antes de concluir a solicitação. O atendimento ocorrerá o mais rápido possível e dentro dos prazos legais aplicáveis.</p>
+    <p>Envie a solicitação usando o mesmo e-mail cadastrado para: <a href="mailto:suportetmycar@gmail.com">suportetmycar@gmail.com</a>. Confirmaremos o recebimento e poderemos validar a titularidade antes de concluir a exclusão. O atendimento ocorrerá o mais rápido possível e dentro dos prazos legais aplicáveis.</p>
 
     <h2>O que será excluído</h2>
     <ul><li>conta e perfil;</li><li>veículos e quilometragens;</li><li>manutenções e gastos;</li><li>preferências e avisos salvos na nuvem.</li></ul>
@@ -40,8 +38,9 @@
 
     <p class="warning"><strong>Atenção à assinatura:</strong> excluir a conta do TMy Car não cancela uma assinatura da Google Play. Cancele a renovação na área de assinaturas da loja. Se o teste gratuito ainda estiver válido e a conta for recriada com o mesmo e-mail confirmado, somente os dias restantes poderão ser restaurados.</p>
 
-    <div class="actions"><a class="btn alt" href="./politica.html">Ler a Política de Privacidade</a><a class="btn alt" href="./termos.html">Termos de Uso</a><a class="btn alt" href="./index.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a></div>
+    <div class="actions"><a class="btn alt" href="./politica.html">Ler a Política de Privacidade</a><a class="btn alt" href="./termos.html">Termos de Uso</a><a class="btn alt" href="./app.html" onclick="return voltarAoApp(event)">Voltar ao TMy Car</a></div>
   </article>
+  <nav class="actions" aria-label="Navegação do site"><a class="btn alt" href="./index.html">Página inicial</a></nav>
   <footer>Última atualização: 1º de setembro de 2026 · TMy Car</footer>
 </main>
 <script>
@@ -50,11 +49,11 @@ function voltarAoApp(evento){
     if(window.parent !== window){
       evento.preventDefault(); window.parent.postMessage('tmycar:fechar-documento', location.origin); return false;
     }
-    if(window.opener && !window.opener.closed){
+    if(window.opener && !window.opener.closed && window.opener.location.origin === location.origin && window.opener.location.pathname.endsWith('/app.html')){
       evento.preventDefault(); window.opener.focus(); window.close(); return false;
     }
   }catch(e){}
-  evento.preventDefault(); location.replace('./index.html'); return false;
+  evento.preventDefault(); location.replace('./app.html'); return false;
 }
 </script>
 </body>

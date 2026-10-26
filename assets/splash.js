@@ -20,6 +20,7 @@
       splash.classList.remove('on');
       document.documentElement.classList.remove('tmycar-splash');
       document.documentElement.classList.add('tmycar-sem-splash');
+      window.dispatchEvent(new Event('tmycar:splash-fechada'));
     }, reduzirMovimento ? 0 : 140);
   }
 

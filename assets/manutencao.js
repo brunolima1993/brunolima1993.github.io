@@ -96,9 +96,25 @@
     })));
     v.historicoPainelImportado=true;
   }
-  function gruposServicos(registros, ano){
+  function normalizarBusca(texto){
+    return String(texto==null?'':texto).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLocaleLowerCase('pt-BR').replace(/(\d)[.,](?=\d)/g,'$1').replace(/[^a-z0-9]+/g,' ').trim();
+  }
+  function buscarServicos(registros, pesquisa){
+    const termos=normalizarBusca(pesquisa).split(/\s+/).filter(Boolean);
+    if(!termos.length) return registros||[];
+    return (registros||[]).filter(r=>{
+      const data=String(r.data||'');
+      const mes=/^\d{4}-\d{2}-\d{2}$/.test(data)
+        ? new Date(data+'T12:00:00').toLocaleDateString('pt-BR',{month:'long'}) : '';
+      const texto=normalizarBusca([r.servico,data,data.split('-').reverse().join('/'),mes,r.km,
+        r.km==null?'KM não informado':Number(r.km).toLocaleString('pt-BR')+' km'].join(' '));
+      return termos.every(t=>texto.includes(t));
+    });
+  }
+  function gruposServicos(registros, ano, pesquisa=''){
     const meses = new Map();
-    (registros||[]).filter(r=>!ano || r.data.slice(0,4)===String(ano))
+    buscarServicos(registros,pesquisa).filter(r=>!ano || r.data.slice(0,4)===String(ano))
       .slice().sort((a,b)=>b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).forEach(r=>{
         const mes = r.data.slice(0,7);
         if(!meses.has(mes)) meses.set(mes,new Map());
@@ -108,7 +124,7 @@
       });
     return [...meses].map(([mes,dias])=>({mes,dias:[...dias].map(([data,itens])=>({data,itens}))}));
   }
-  const api = {eletricos,hibridos,modelosDaMarca,ehEletrico,tipoVeiculo,marcas,modeloEletrico,mudarPropulsao,validarServico,gruposServicos,nomeServicoPainel,registrarPainel,importarUltimosRegistros};
+  const api = {eletricos,hibridos,modelosDaMarca,ehEletrico,tipoVeiculo,marcas,modeloEletrico,mudarPropulsao,validarServico,gruposServicos,buscarServicos,normalizarBusca,nomeServicoPainel,registrarPainel,importarUltimosRegistros};
   if(typeof module==='object' && module.exports) module.exports=api;
   else root.TMyManutencao=api;
 })(typeof globalThis==='object' ? globalThis : this);
